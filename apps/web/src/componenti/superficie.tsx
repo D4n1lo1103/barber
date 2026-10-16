@@ -3,14 +3,22 @@ import type { ReactNode } from 'react';
 
 /**
  * Superficie traslucida con sfocatura: elemento di base del tema.
- * Il contrasto del testo resta conforme WCAG AA grazie al fondo scuro sottostante.
+ * Il contrasto del testo resta conforme WCAG AA grazie ai token del tema.
  */
-export function Superficie({ children, className }: { children: ReactNode; className?: string }) {
+export function Superficie({
+  children,
+  className,
+  sollevata = false,
+}: {
+  children: ReactNode;
+  className?: string;
+  sollevata?: boolean;
+}) {
   return (
     <div
       className={clsx(
-        'rounded-[var(--radius-superficie)] border border-bordo bg-superficie',
-        'shadow-[0_24px_60px_-30px_rgba(0,0,0,0.8)] backdrop-blur-xl',
+        'rounded-[var(--radius-superficie)] border border-bordo bg-superficie backdrop-blur-xl',
+        sollevata ? 'shadow-sollevata' : 'shadow-superficie',
         className,
       )}
     >

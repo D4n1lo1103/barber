@@ -62,6 +62,13 @@ export async function rimuoviDatiDiProva(contesto: ContestoDiProva): Promise<voi
   });
 }
 
+/** Riporta l'installazione allo stato "primo avvio". */
+export async function azzeraInstallazione(contesto: ContestoDiProva): Promise<void> {
+  await contesto.prisma.servizio.deleteMany();
+  await contesto.prisma.installazione.deleteMany();
+  await contesto.prisma.utente.deleteMany({ where: { ruolo: 'titolare' } });
+}
+
 /** Estrae il valore di un cookie dall'header Set-Cookie della risposta. */
 export function leggiCookie(intestazioni: string[] | undefined, nome: string): string | undefined {
   const voce = intestazioni?.find((cookie) => cookie.startsWith(`${nome}=`));

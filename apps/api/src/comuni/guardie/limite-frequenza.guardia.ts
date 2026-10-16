@@ -5,12 +5,14 @@ import {
   HttpStatus,
   Injectable,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { Reflector } from '@nestjs/core';
 import {
   CHIAVE_LIMITE_FREQUENZA,
   type LimiteFrequenza,
 } from '../decoratori/limite-frequenza.decoratore.js';
 import { LimiteFrequenzaServizio } from '../limite-frequenza.servizio.js';
+import type { Ambiente } from '../../configurazione/ambiente.js';
 import type { RichiestaAutenticata } from '../tipi-richiesta.js';
 
 /**
@@ -22,9 +24,14 @@ export class LimiteFrequenzaGuardia implements CanActivate {
   constructor(
     private readonly reflector: Reflector,
     private readonly limiti: LimiteFrequenzaServizio,
+    private readonly configurazione: ConfigService<Ambiente, true>,
   ) {}
 
   canActivate(contesto: ExecutionContext): boolean {
+    if (this.limitiDisattivati()) {
+      return true;
+    }
+
     const limite = this.reflector.getAllAndOverride<LimiteFrequenza>(CHIAVE_LIMITE_FREQUENZA, [
       contesto.getHandler(),
       contesto.getClass(),
@@ -48,5 +55,13 @@ export class LimiteFrequenzaGuardia implements CanActivate {
     }
 
     return true;
+  }
+
+  /** I limiti si possono disattivare solo fuori dalla produzione, per i test. */
+  private limitiDisattivati(): boolean {
+    return (
+      this.configurazione.get('NODE_ENV', { infer: true }) !== 'production' &&
+      this.configurazione.get('LIMITI_FREQUENZA_DISATTIVI', { infer: true })
+    );
   }
 }

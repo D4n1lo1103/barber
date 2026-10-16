@@ -4,27 +4,21 @@ Stato dello sviluppo per fasi (vedi la roadmap in `CLAUDE.md`).
 
 ## In corso
 
-Nessuna attività in corso: la fase 0 è completata, la fase 1 non è ancora iniziata.
+Nessuna attività in corso: le fasi 0 e 1 sono completate, la fase 2 non è ancora iniziata.
 
-## Da fare — Fase 1: Configurazione salone
+## Da fare — Fase 2: Personale, servizi e orari
 
-- [ ] `TODO` Proporre al titolare le due palette di accento (barbiere e parrucchiere) e
-      **chiedere conferma dei valori** prima di fissarli come token di tema.
-- [ ] `TODO` Design system documentato: token di colore, spaziature, raggi, ombre, animazioni.
-- [ ] `TODO` Procedura guidata al primo avvio: profilo, catalogo servizi iniziale,
-      granularità degli slot, tempo di blocco dello slot, vendita online, dati del salone,
-      account del titolare.
-- [ ] `TODO` Vincolo di riga unica sulla tabella `installazione` (migrazione SQL manuale):
-      l'installazione serve un solo salone.
-- [ ] `TODO` Seed parametrizzato per profilo (`barbiere` / `parrucchiere`) con titolare,
-      dipendenti, servizi, orari, clienti, appuntamenti e prodotti finti.
-- [ ] `TODO` Test: procedura guidata completata una sola volta, permessi della procedura,
-      valori predefiniti per profilo.
+- [ ] `TODO` Gestione del personale dal titolare: creazione e disattivazione degli account
+      dei dipendenti, invito ad attivare l'account (l'invio e-mail arriva nella fase 5).
+- [ ] `TODO` Gestione del catalogo servizi dall'interfaccia: nome, descrizione, prezzo,
+      durata, operatori abilitati.
+- [ ] `TODO` Orari di apertura del salone, orari di lavoro per operatore, giorni di riposo,
+      ferie e assenze.
+- [ ] `TODO` Test: permessi (solo il titolare modifica servizi e personale), validazione
+      delle durate rispetto alla granularità, sovrapposizione di ferie e orari.
 
 ## Da fare — attività trasversali già individuate
 
-- [ ] `TODO` Test end-to-end Playwright del flusso di accesso e dell'uscita
-      (configurazione presente, suite da scrivere con la prima interfaccia di fase 1).
 - [ ] `TODO` Collegare `SessioniServizio.rimuoviScadute()` a un'attività periodica pg-boss
       quando verranno introdotte le attività in background (fase 5).
 - [ ] `TODO` Integrare Sentry su frontend e backend con `IDENTIFICATIVO_INSTALLAZIONE`
@@ -43,6 +37,45 @@ Nessuna attività in corso: la fase 0 è completata, la fase 1 non è ancora ini
 - [ ] `BLOCCATO` Prova reale della procedura di ripristino dei backup.
   - Blocco: richiede un server di prova con un'installazione attiva. Gli script sono
     pronti e documentati; manca la verifica end-to-end su dati reali.
+
+## Completato — Fase 1: Configurazione salone
+
+- [x] `COMPLETATO` Palette di accento confermate dal titolare: barbiere "Rosso lama"
+      (`oklch(0.64 0.2 25)`), parrucchiere "Lavanda" (`oklch(0.74 0.13 310)`).
+- [x] `COMPLETATO` Design system documentato in `docs/design-system.md`: token di colore
+      per profilo e per tema, raggi, ombre, durate; componenti `Superficie`, `Pulsante`,
+      `Campo`, `Avviso`, `Caricamento`.
+- [x] `COMPLETATO` Tema chiaro disponibile oltre a quello scuro, ricordato sul dispositivo.
+- [x] `COMPLETATO` Configurazione dei profili in `packages/shared`: cataloghi iniziali,
+      granularità, blocco slot, etichette e accenti (ADR 0003).
+- [x] `COMPLETATO` Modello dati: estensione di `installazione`, modello `servizi`,
+      vincolo SQL `CHECK (riga = 1)` che impedisce più di un'installazione.
+- [x] `COMPLETATO` Backend della procedura guidata: stato pubblico, catalogo proposto per
+      profilo, completamento transazionale protetto da `CHIAVE_INSTALLAZIONE`,
+      ripetibile una sola volta.
+- [x] `COMPLETATO` Frontend della procedura guidata in cinque passi, con validazione per
+      passo e accento che segue il profilo scelto.
+- [x] `COMPLETATO` Instradamento: finché l'installazione non è configurata l'unica pagina
+      raggiungibile è la procedura guidata.
+- [x] `COMPLETATO` Seed parametrizzato per profilo con titolare, due dipendenti, clienti,
+      servizi e dati del salone; script `azzera` per ripartire dal primo avvio.
+- [x] `COMPLETATO` ADR 0003 (profili e procedura guidata) e aggiornamento del README.
+- [x] `COMPLETATO` Test end-to-end aggiunti alla pipeline di verifica in CI.
+- [x] `COMPLETATO` Limiti di frequenza disattivabili solo fuori dalla produzione, per
+      rendere ripetibili i test end-to-end (verificato da un test dedicato).
+
+### Controlli eseguiti al termine della fase 1
+
+| Controllo            | Comando                                                                 | Esito                                |
+| -------------------- | ----------------------------------------------------------------------- | ------------------------------------ |
+| Formattazione        | `pnpm format:check`                                                     | superato                             |
+| Lint                 | `pnpm lint`                                                             | superato                             |
+| Tipi                 | `pnpm type-check`                                                       | superato                             |
+| Test unitari         | `pnpm test`                                                             | 6 condivisi, 18 backend, 16 frontend |
+| Test di integrazione | `pnpm --filter @barber/api test:integrazione`                           | 21 test superati                     |
+| Test end-to-end      | `pnpm --filter @barber/web test:e2e`                                    | 14 superati, 1 saltato per scelta    |
+| Build                | `pnpm build`                                                            | superato                             |
+| Verifica manuale     | procedura guidata completata nel browser, accento del profilo applicato | superata                             |
 
 ## Completato — Fase 0: Fondamenta
 

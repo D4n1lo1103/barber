@@ -12,7 +12,9 @@ Lo sviluppo procede per fasi (vedi `docs/TODO.md`).
 
 - **Fase 0 — Fondamenta: completata.** Monorepo, Docker, CI, database, autenticazione,
   ruoli e permessi.
-- Fase 1 — Configurazione salone: da iniziare.
+- **Fase 1 — Configurazione salone: completata.** Procedura guidata al primo avvio,
+  profili barbiere e parrucchiere, design system, dati demo parametrizzati.
+- Fase 2 — Personale, servizi e orari: da iniziare.
 
 ## Prerequisiti
 
@@ -47,18 +49,23 @@ docs/            TODO.md e decisioni architetturali (adr/)
 
 ### Variabili d'ambiente
 
-| Variabile                      | Obbligatoria  | Formato                                 | Scopo                                            |
-| ------------------------------ | ------------- | --------------------------------------- | ------------------------------------------------ |
-| `DATABASE_URL`                 | sì            | URL PostgreSQL                          | Connessione al database dell'installazione       |
-| `NODE_ENV`                     | sì            | `development` \| `test` \| `production` | Modalità di esecuzione                           |
-| `PORTA`                        | sì            | intero                                  | Porta di ascolto dell'API                        |
-| `SEGRETO_SESSIONE`             | sì            | almeno 32 caratteri casuali             | Segreto dei cookie e dei token                   |
-| `ORIGINE_WEB`                  | sì            | URL                                     | Origine del frontend: CORS e controllo anti-CSRF |
-| `DURATA_SESSIONE_ORE`          | no (12)       | intero, max 720                         | Durata della sessione di accesso                 |
-| `IDENTIFICATIVO_INSTALLAZIONE` | no (`locale`) | testo                                   | Identifica il salone negli eventi di Sentry      |
-| `SENTRY_DSN`                   | no            | URL                                     | Monitoraggio errori                              |
-| `VITE_URL_API`                 | sì (frontend) | URL                                     | Indirizzo dell'API usato dal browser             |
-| `PASSWORD_DEMO`                | no            | testo                                   | Password degli account dei dati demo             |
+| Variabile                      | Obbligatoria     | Formato                                 | Scopo                                                           |
+| ------------------------------ | ---------------- | --------------------------------------- | --------------------------------------------------------------- |
+| `DATABASE_URL`                 | sì               | URL PostgreSQL                          | Connessione al database dell'installazione                      |
+| `NODE_ENV`                     | sì               | `development` \| `test` \| `production` | Modalità di esecuzione                                          |
+| `PORTA`                        | sì               | intero                                  | Porta di ascolto dell'API                                       |
+| `SEGRETO_SESSIONE`             | sì               | almeno 32 caratteri casuali             | Segreto dei cookie e dei token                                  |
+| `ORIGINE_WEB`                  | sì               | URL                                     | Origine del frontend: CORS e controllo anti-CSRF                |
+| `DURATA_SESSIONE_ORE`          | no (12)          | intero, max 720                         | Durata della sessione di accesso                                |
+| `IDENTIFICATIVO_INSTALLAZIONE` | no (`locale`)    | testo                                   | Identifica il salone negli eventi di Sentry                     |
+| `CHIAVE_INSTALLAZIONE`         | sì               | almeno 16 caratteri casuali             | Richiesta per completare la procedura guidata al primo avvio    |
+| `DATABASE_URL_OMBRA`           | solo in sviluppo | URL PostgreSQL                          | Database temporaneo usato da Prisma per calcolare le migrazioni |
+
+| `LIMITI_FREQUENZA_DISATTIVI` | no (`false`) | `true` \| `false` | Disattiva i limiti di frequenza nei test; ignorata in produzione |
+| `SENTRY_DSN` | no | URL | Monitoraggio errori |
+| `VITE_URL_API` | sì (frontend) | URL | Indirizzo dell'API usato dal browser |
+| `PASSWORD_DEMO` | no | testo | Password degli account dei dati demo |
+| `PROFILO_DEMO` | no (`barbiere`) | `barbiere` \| `parrucchiere` | Profilo usato dai dati demo |
 
 I segreti stanno **solo** nel file `.env`, mai nel database, nel codice o nelle immagini Docker.
 
@@ -68,45 +75,54 @@ I segreti stanno **solo** nel file `.env`, mai nel database, nel codice o nelle 
 docker compose up -d database          # PostgreSQL in Docker
 pnpm --filter @barber/shared build     # pacchetto condiviso
 pnpm --filter @barber/api prisma:migrate   # migrazioni
-pnpm --filter @barber/api seed         # dati demo (mai in produzione)
+pnpm --filter @barber/api seed         # dati demo barbiere (mai in produzione)
+# oppure: pnpm --filter @barber/api seed parrucchiere
 pnpm dev                               # API su :3000, frontend su :5173
 ```
 
 Account dei dati demo (password: `password-demo-salone`, modificabile con `PASSWORD_DEMO`):
 
 - `titolare@salone.test` — ruolo titolare
-- `dipendente@salone.test` — ruolo dipendente
+- `dipendente@salone.test`, `dipendente2@salone.test` — ruolo dipendente
+- `giulia.rossi@cliente.test`, `andrea.conti@cliente.test`, `elena.moretti@cliente.test` — clienti
+
+Per provare la procedura guidata da zero: `pnpm --filter @barber/api azzera`.
 
 Arresto dell'ambiente: `docker compose down` (con `-v` per cancellare anche i dati).
 
 ## Comandi principali
 
-| Comando                                       | Effetto                                              |
-| --------------------------------------------- | ---------------------------------------------------- |
-| `pnpm dev`                                    | Avvia API e frontend con ricaricamento a caldo       |
-| `pnpm build`                                  | Costruisce pacchetto condiviso, API e frontend       |
-| `pnpm lint`                                   | ESLint su tutto il monorepo                          |
-| `pnpm format` / `pnpm format:check`           | Formattazione Prettier                               |
-| `pnpm type-check`                             | Controllo dei tipi di tutti i progetti               |
-| `pnpm test`                                   | Test unitari (Jest sul backend, Vitest sul frontend) |
-| `pnpm --filter @barber/api test:integrazione` | Test di integrazione (richiede il database)          |
-| `pnpm verifica`                               | Esegue in sequenza tutti i controlli                 |
-| `pnpm --filter @barber/api prisma:migrate`    | Crea e applica una migrazione in sviluppo            |
-| `pnpm --filter @barber/api prisma:deploy`     | Applica le migrazioni (test e produzione)            |
-| `pnpm --filter @barber/api seed`              | Inserisce i dati demo                                |
+| Comando                                       | Effetto                                                                  |
+| --------------------------------------------- | ------------------------------------------------------------------------ |
+| `pnpm dev`                                    | Avvia API e frontend con ricaricamento a caldo                           |
+| `pnpm build`                                  | Costruisce pacchetto condiviso, API e frontend                           |
+| `pnpm lint`                                   | ESLint su tutto il monorepo                                              |
+| `pnpm format` / `pnpm format:check`           | Formattazione Prettier                                                   |
+| `pnpm type-check`                             | Controllo dei tipi di tutti i progetti                                   |
+| `pnpm test`                                   | Test unitari (Jest sul backend, Vitest sul frontend)                     |
+| `pnpm --filter @barber/api test:integrazione` | Test di integrazione (richiede il database)                              |
+| `pnpm verifica`                               | Esegue in sequenza tutti i controlli                                     |
+| `pnpm --filter @barber/api prisma:migrate`    | Crea e applica una migrazione in sviluppo                                |
+| `pnpm --filter @barber/api prisma:deploy`     | Applica le migrazioni (test e produzione)                                |
+| `pnpm --filter @barber/api seed [profilo]`    | Inserisce i dati demo del profilo indicato (`barbiere` o `parrucchiere`) |
+| `pnpm --filter @barber/api azzera`            | Svuota il database e riporta l'installazione al primo avvio              |
+| `pnpm --filter @barber/web test:e2e`          | Test end-to-end Playwright                                               |
 
 ## API disponibili
 
 Tutte le rotte hanno prefisso `/api`. L'autorizzazione è sempre verificata lato backend.
 
-| Metodo | Percorso                          | Autenticazione                             | Risposte                                                                              |
-| ------ | --------------------------------- | ------------------------------------------ | ------------------------------------------------------------------------------------- |
-| `GET`  | `/stato`                          | pubblica                                   | `200` stato del servizio e del database                                               |
-| `POST` | `/autenticazione/accesso`         | pubblica, max 5 richieste al minuto per IP | `200` utente, `400` dati non validi, `401` credenziali errate, `429` troppi tentativi |
-| `POST` | `/autenticazione/uscita`          | sessione + token CSRF                      | `204`, `403` token CSRF mancante o non valido                                         |
-| `GET`  | `/autenticazione/io`              | sessione                                   | `200` utente corrente, `401`                                                          |
-| `POST` | `/autenticazione/cambio-password` | sessione + token CSRF                      | `204` (revoca tutte le sessioni), `400`, `401`                                        |
-| `GET`  | `/utenti/personale`               | sessione, solo titolare                    | `200` elenco, `401`, `403`                                                            |
+| Metodo | Percorso                           | Autenticazione                                                                                                         | Risposte                                                                               |
+| ------ | ---------------------------------- | ---------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
+| `GET`  | `/stato`                           | pubblica                                                                                                               | `200` stato del servizio e del database                                                |
+| `GET`  | `/installazione`                   | pubblica                                                                                                               | `200` stato dell'installazione (configurata, profilo, nome del salone, vendita online) |
+| `GET`  | `/installazione/profili/:profilo`  | pubblica                                                                                                               | `200` impostazioni e catalogo proposti, `400` profilo non riconosciuto                 |
+| `POST` | `/installazione/procedura-guidata` | pubblica, con chiave di installazione nell'intestazione `x-chiave-installazione`; max 5 richieste ogni 5 minuti per IP | `204`, `400` dati non validi, `403` chiave errata, `409` già configurata               |
+| `POST` | `/autenticazione/accesso`          | pubblica, max 5 richieste al minuto per IP                                                                             | `200` utente, `400` dati non validi, `401` credenziali errate, `429` troppi tentativi  |
+| `POST` | `/autenticazione/uscita`           | sessione + token CSRF                                                                                                  | `204`, `403` token CSRF mancante o non valido                                          |
+| `GET`  | `/autenticazione/io`               | sessione                                                                                                               | `200` utente corrente, `401`                                                           |
+| `POST` | `/autenticazione/cambio-password`  | sessione + token CSRF                                                                                                  | `204` (revoca tutte le sessioni), `400`, `401`                                         |
+| `GET`  | `/utenti/personale`                | sessione, solo titolare                                                                                                | `200` elenco, `401`, `403`                                                             |
 
 Le richieste che modificano dati devono inviare il valore del cookie `csrf`
 nell'intestazione `x-csrf-token`.
@@ -125,8 +141,13 @@ nell'intestazione `x-csrf-token`.
    docker compose -f docker-compose.produzione.yml exec api pnpm prisma:deploy
    ```
 
-4. Apri il dominio del salone e completa la procedura guidata al primo avvio
-   (disponibile dalla fase 1).
+4. Genera la chiave di installazione (`openssl rand -hex 24`), scrivila nel file `.env`
+   come `CHIAVE_INSTALLAZIONE` e consegnala al titolare.
+5. Apri il dominio del salone: l'applicazione mostra la **procedura guidata al primo
+   avvio**, che chiede profilo (barbiere o parrucchiere), dati del salone, granularità
+   degli slot, tempo di blocco dello slot, vendita online, catalogo iniziale e account del
+   titolare. La chiave di installazione va inserita nell'ultimo passo.
+   La procedura può essere completata una sola volta.
 
 ## Deploy, aggiornamento e rollback
 
@@ -163,8 +184,16 @@ assieme ai dump.
 2. **Permessi**: il titolare accede a tutto, compresi dati economici e impostazioni; il
    dipendente gestisce appuntamenti e clienti; il cliente vede solo la propria area.
 3. **Cambio password**: invalida tutte le sessioni attive dell'utente.
+4. **Primo avvio**: finché l'installazione non è configurata, l'unica pagina raggiungibile
+   è la procedura guidata.
 
 I flussi di agenda, prenotazione, caparra, annullamento e vendita arrivano nelle fasi successive.
+
+## Design system
+
+Token, componenti di base e regole di accessibilità sono documentati in
+`docs/design-system.md`. L'accento cambia con il profilo dell'installazione:
+rosso "lama" per il barbiere, lavanda per il parrucchiere.
 
 ## Decisioni architetturali
 

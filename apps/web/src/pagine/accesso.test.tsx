@@ -8,6 +8,20 @@ import { ErroreApi } from '../servizi/client-api';
 const accediFinto = vi.fn();
 let utenteCorrente: unknown = null;
 
+vi.mock('../installazione/contesto-installazione', () => ({
+  usaInstallazione: () => ({
+    stato: {
+      configurata: true,
+      profilo: 'barbiere',
+      nomeSalone: 'Barberia di prova',
+      venditaOnlineAttiva: false,
+    },
+    inCaricamento: false,
+    errore: null,
+    aggiorna: vi.fn(),
+  }),
+}));
+
 vi.mock('../autenticazione/contesto-sessione', () => ({
   usaSessione: () => ({
     utente: utenteCorrente,
