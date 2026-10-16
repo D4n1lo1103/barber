@@ -1,21 +1,93 @@
 @import 'tailwindcss';
 
 /*
- * Token provvisori del tema. La palette di accento definitiva, diversa per
- * profilo (barbiere / parrucchiere), viene fissata nella fase 1 insieme al
- * design system, dopo conferma dei valori.
+ * Design system del gestionale. I valori qui definiti sono l'unica fonte dei
+ * colori, delle spaziature, dei raggi, delle ombre e delle durate: i componenti
+ * non usano colori letterali. La documentazione è in docs/design-system.md.
+ *
+ * L'accento cambia per profilo (barbiere, parrucchiere) ed è applicato
+ * dall'attributo data-profilo sull'elemento <html>.
  */
 @theme {
-  --color-fondo: oklch(0.16 0.015 265);
-  --color-fondo-elevato: oklch(0.21 0.02 265);
-  --color-superficie: oklch(0.24 0.02 265 / 0.72);
-  --color-bordo: oklch(0.38 0.02 265 / 0.6);
-  --color-testo: oklch(0.96 0.005 265);
-  --color-testo-tenue: oklch(0.72 0.015 265);
-  --color-accento: oklch(0.72 0.17 195);
-  --color-accento-forte: oklch(0.62 0.19 195);
-  --color-errore: oklch(0.68 0.19 25);
+  /* Superfici e testo: tema scuro, predefinito. */
+  --color-fondo: oklch(0.17 0.012 265);
+  --color-fondo-elevato: oklch(0.22 0.015 265);
+  --color-superficie: oklch(0.25 0.015 265 / 0.72);
+  --color-superficie-solida: oklch(0.24 0.015 265);
+  --color-bordo: oklch(0.42 0.015 265 / 0.55);
+  --color-bordo-forte: oklch(0.55 0.02 265 / 0.75);
+  --color-testo: oklch(0.97 0.004 265);
+  --color-testo-tenue: oklch(0.76 0.012 265);
+
+  /* Accento: valori predefiniti, ridefiniti per profilo più sotto. */
+  --color-accento: oklch(0.72 0.15 245);
+  --color-accento-forte: oklch(0.62 0.17 250);
+  --color-su-accento: oklch(0.98 0.005 245);
+
+  /* Colori di stato. Il rosso dell'errore è spostato verso il magenta per
+     restare distinguibile dall'accento del profilo barbiere. */
+  --color-errore: oklch(0.63 0.23 2);
+  --color-avviso: oklch(0.78 0.15 85);
+  --color-conferma: oklch(0.72 0.16 155);
+
+  /* Raggi. */
+  --radius-campo: 0.75rem;
   --radius-superficie: 1.25rem;
+  --radius-pillola: 9999px;
+
+  /* Ombre: profondità sulle superfici traslucide. */
+  --shadow-superficie: 0 24px 60px -30px oklch(0 0 0 / 0.85);
+  --shadow-sollevata: 0 32px 80px -36px oklch(0 0 0 / 0.9);
+
+  /* Animazioni: brevi, per non rallentare il lavoro in negozio. */
+  --durata-breve: 140ms;
+  --durata-media: 240ms;
+  --durata-lunga: 360ms;
+  --curva-uscita: cubic-bezier(0.22, 1, 0.36, 1);
+
+  /* Tipografia. */
+  --font-sans: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+}
+
+/* Accento del profilo barbiere: "Rosso lama". */
+:root[data-profilo='barbiere'] {
+  --color-accento: oklch(0.64 0.2 25);
+  --color-accento-forte: oklch(0.55 0.22 25);
+  --color-su-accento: oklch(0.98 0.005 25);
+}
+
+/* Accento del profilo parrucchiere: "Lavanda". */
+:root[data-profilo='parrucchiere'] {
+  --color-accento: oklch(0.74 0.13 310);
+  --color-accento-forte: oklch(0.64 0.15 310);
+  --color-su-accento: oklch(0.16 0.02 310);
+}
+
+/* Tema chiaro: attivato da data-tema="chiaro". */
+:root[data-tema='chiaro'] {
+  --color-fondo: oklch(0.98 0.004 265);
+  --color-fondo-elevato: oklch(1 0 0);
+  --color-superficie: oklch(1 0 0 / 0.78);
+  --color-superficie-solida: oklch(1 0 0);
+  --color-bordo: oklch(0.72 0.012 265 / 0.6);
+  --color-bordo-forte: oklch(0.58 0.015 265 / 0.8);
+  --color-testo: oklch(0.22 0.015 265);
+  --color-testo-tenue: oklch(0.45 0.015 265);
+  --shadow-superficie: 0 24px 60px -34px oklch(0.3 0.03 265 / 0.35);
+  --shadow-sollevata: 0 32px 80px -40px oklch(0.3 0.03 265 / 0.4);
+  color-scheme: light;
+}
+
+:root[data-tema='chiaro'][data-profilo='barbiere'] {
+  --color-accento: oklch(0.55 0.22 25);
+  --color-accento-forte: oklch(0.47 0.22 25);
+  --color-su-accento: oklch(0.99 0.005 25);
+}
+
+:root[data-tema='chiaro'][data-profilo='parrucchiere'] {
+  --color-accento: oklch(0.55 0.17 310);
+  --color-accento-forte: oklch(0.47 0.17 310);
+  --color-su-accento: oklch(0.99 0.005 310);
 }
 
 @layer base {
@@ -25,17 +97,34 @@
 
   body {
     @apply bg-fondo text-testo antialiased;
-    font-family:
-      'Inter var',
-      'Inter',
-      system-ui,
-      -apple-system,
-      'Segoe UI',
-      sans-serif;
+    font-family: var(--font-sans);
     min-height: 100dvh;
   }
 
-  /* Rispetta la preferenza di sistema per le animazioni ridotte. */
+  /* Alone luminoso di sfondo, nella tinta del profilo. */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    background:
+      radial-gradient(
+        60rem 40rem at 15% -10%,
+        color-mix(in oklch, var(--color-accento) 18%, transparent),
+        transparent 70%
+      ),
+      radial-gradient(
+        50rem 36rem at 90% 0%,
+        color-mix(in oklch, var(--color-accento-forte) 12%, transparent),
+        transparent 70%
+      );
+  }
+
+  :focus-visible {
+    @apply outline-2 outline-offset-2 outline-accento;
+  }
+
   @media (prefers-reduced-motion: reduce) {
     *,
     *::before,
@@ -44,9 +133,5 @@
       animation-iteration-count: 1 !important;
       transition-duration: 0.01ms !important;
     }
-  }
-
-  :focus-visible {
-    @apply outline-2 outline-offset-2 outline-accento;
   }
 }

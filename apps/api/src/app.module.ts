@@ -7,6 +7,7 @@ import { CsrfGuardia } from './comuni/guardie/csrf.guardia.js';
 import { LimiteFrequenzaGuardia } from './comuni/guardie/limite-frequenza.guardia.js';
 import { LimiteFrequenzaServizio } from './comuni/limite-frequenza.servizio.js';
 import { SessioneGuardia } from './comuni/guardie/sessione.guardia.js';
+import { InstallazioneModule } from './installazione/installazione.module.js';
 import { PrismaModule } from './prisma/prisma.module.js';
 import { StatoModule } from './stato/stato.module.js';
 import { UtentiModule } from './utenti/utenti.module.js';
@@ -20,6 +21,7 @@ import { UtentiModule } from './utenti/utenti.module.js';
     }),
     PrismaModule,
     AutenticazioneModule,
+    InstallazioneModule,
     StatoModule,
     UtentiModule,
   ],

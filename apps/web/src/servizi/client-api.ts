@@ -57,10 +57,10 @@ function estraiMessaggio(stato: number, corpo: unknown): string {
 
 export async function chiamaApi<T>(
   percorso: string,
-  opzioni: { metodo?: string; corpo?: unknown } = {},
+  opzioni: { metodo?: string; corpo?: unknown; intestazioni?: Record<string, string> } = {},
 ): Promise<T> {
   const metodo = opzioni.metodo ?? 'GET';
-  const intestazioni: Record<string, string> = {};
+  const intestazioni: Record<string, string> = { ...opzioni.intestazioni };
 
   if (opzioni.corpo !== undefined) {
     intestazioni['Content-Type'] = 'application/json';

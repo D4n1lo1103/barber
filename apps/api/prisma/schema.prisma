@@ -62,14 +62,41 @@ model Sessione {
 }
 
 /// Impostazioni dell'installazione: una sola riga, creata dalla procedura guidata.
+/// Il vincolo di riga unica è applicato da una migrazione SQL manuale.
 model Installazione {
-  id                 String   @id @default(uuid()) @db.Uuid
-  profilo            Profilo
-  nomeSalone         String
-  configurata        Boolean  @default(false)
-  granularitaSlotMin Int      @default(15)
-  creataIl           DateTime @default(now())
-  aggiornataIl       DateTime @updatedAt
+  id                  String   @id @default(uuid()) @db.Uuid
+  /// Vale sempre 1: insieme al vincolo CHECK garantisce una sola installazione.
+  riga                Int      @unique @default(1)
+  profilo             Profilo
+  nomeSalone          String
+  indirizzo           String
+  citta               String
+  telefono            String
+  emailSalone         String
+  configurata         Boolean  @default(false)
+  granularitaSlotMin  Int      @default(15)
+  minutiBloccoSlot    Int      @default(10)
+  venditaOnlineAttiva Boolean  @default(false)
+  creataIl            DateTime @default(now())
+  aggiornataIl        DateTime @updatedAt
 
   @@map("installazione")
+}
+
+/// Servizio erogato dal salone, con prezzo e durata fissa.
+model Servizio {
+  nome            String
+  id              String   @id @default(uuid()) @db.Uuid
+  descrizione     String   @default("")
+  /// Prezzo in centesimi di euro, IVA inclusa.
+  prezzoCentesimi Int
+  durataMinuti    Int
+  attivo          Boolean  @default(true)
+  ordine          Int      @default(0)
+  creatoIl        DateTime @default(now())
+  aggiornatoIl    DateTime @updatedAt
+
+  @@unique([nome])
+  @@index([attivo, ordine])
+  @@map("servizi")
 }

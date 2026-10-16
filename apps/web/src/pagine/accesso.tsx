@@ -4,10 +4,15 @@ import { motion } from 'motion/react';
 import { schemaAccesso } from '@barber/shared';
 import { usaSessione } from '../autenticazione/contesto-sessione';
 import { ErroreApi } from '../servizi/client-api';
+import { Avviso } from '../componenti/avviso';
+import { Campo } from '../componenti/campo';
+import { Pulsante } from '../componenti/pulsante';
 import { Superficie } from '../componenti/superficie';
+import { usaInstallazione } from '../installazione/contesto-installazione';
 
 export function PaginaAccesso() {
   const { utente, accedi } = usaSessione();
+  const { stato } = usaInstallazione();
   const posizione = useLocation();
   const [email, impostaEmail] = useState('');
   const [password, impostaPassword] = useState('');
@@ -55,54 +60,34 @@ export function PaginaAccesso() {
       >
         <Superficie className="p-8">
           <h1 className="text-2xl font-semibold tracking-tight">Accedi</h1>
-          <p className="mt-1 text-sm text-testo-tenue">Gestionale del salone</p>
+          <p className="mt-1 text-sm text-testo-tenue">
+            {stato?.nomeSalone ?? 'Gestionale del salone'}
+          </p>
 
           <form onSubmit={invia} className="mt-8 space-y-5" noValidate>
-            <div className="space-y-2">
-              <label htmlFor="email" className="block text-sm font-medium">
-                E-mail
-              </label>
-              <input
-                id="email"
-                name="email"
-                type="email"
-                autoComplete="email"
-                required
-                value={email}
-                onChange={(evento) => impostaEmail(evento.target.value)}
-                className="w-full rounded-xl border border-bordo bg-fondo-elevato px-3 py-2.5 text-sm outline-none transition focus:border-accento"
-              />
-            </div>
+            <Campo
+              etichetta="E-mail"
+              type="email"
+              autoComplete="email"
+              required
+              value={email}
+              onChange={(evento) => impostaEmail(evento.target.value)}
+            />
 
-            <div className="space-y-2">
-              <label htmlFor="password" className="block text-sm font-medium">
-                Password
-              </label>
-              <input
-                id="password"
-                name="password"
-                type="password"
-                autoComplete="current-password"
-                required
-                value={password}
-                onChange={(evento) => impostaPassword(evento.target.value)}
-                className="w-full rounded-xl border border-bordo bg-fondo-elevato px-3 py-2.5 text-sm outline-none transition focus:border-accento"
-              />
-            </div>
+            <Campo
+              etichetta="Password"
+              type="password"
+              autoComplete="current-password"
+              required
+              value={password}
+              onChange={(evento) => impostaPassword(evento.target.value)}
+            />
 
-            {errore && (
-              <p role="alert" className="text-sm text-errore">
-                {errore}
-              </p>
-            )}
+            {errore && <Avviso tono="errore">{errore}</Avviso>}
 
-            <button
-              type="submit"
-              disabled={inInvio}
-              className="w-full rounded-xl bg-accento px-4 py-2.5 text-sm font-semibold text-fondo transition hover:bg-accento-forte disabled:opacity-60"
-            >
+            <Pulsante type="submit" className="w-full" disabled={inInvio}>
               {inInvio ? 'Accesso in corso…' : 'Accedi'}
-            </button>
+            </Pulsante>
           </form>
         </Superficie>
       </motion.div>

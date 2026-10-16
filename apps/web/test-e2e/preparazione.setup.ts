@@ -1,3 +1,4 @@
+import { execFileSync } from 'node:child_process';
 import { expect, test as preparazione } from '@playwright/test';
 import { PERCORSO_SESSIONE_TITOLARE } from './costanti';
 
@@ -8,7 +9,14 @@ const PASSWORD_DEMO = process.env.PASSWORD_DEMO ?? 'password-demo-salone';
  * Effettua un solo accesso e salva la sessione su file: i test autenticati la
  * riusano, senza superare il limite di frequenza dell'endpoint di accesso.
  */
-preparazione('accesso del titolare', async ({ page }) => {
+preparazione('dati demo e accesso del titolare', async ({ page }) => {
+  // Ripristina un salone completo (personale e clienti) dopo il test
+  // della procedura guidata, che lascia il database appena configurato.
+  execFileSync('pnpm', ['--filter', '@barber/api', 'seed', 'barbiere'], {
+    cwd: '../..',
+    stdio: 'ignore',
+  });
+
   await page.goto('/accesso');
   await page.getByLabel('E-mail').fill(EMAIL_TITOLARE);
   await page.getByLabel('Password').fill(PASSWORD_DEMO);

@@ -30,8 +30,10 @@ jobs:
       NODE_ENV: test
       PORTA: '3000'
       SEGRETO_SESSIONE: segreto-di-prova-per-la-pipeline-abcdef123456
+      CHIAVE_INSTALLAZIONE: chiave-di-prova-della-pipeline
       ORIGINE_WEB: http://localhost:5173
       IDENTIFICATIVO_INSTALLAZIONE: ci
+      VITE_URL_API: http://localhost:3000/api
 
     steps:
       - uses: actions/checkout@v5
@@ -71,3 +73,11 @@ jobs:
 
       - name: Build
         run: pnpm build
+
+      - name: Installazione dei browser per i test end-to-end
+        run: pnpm --filter @barber/web exec playwright install --with-deps chromium
+
+      - name: Test end-to-end
+        run: pnpm --filter @barber/web test:e2e
+        env:
+          NODE_ENV: development

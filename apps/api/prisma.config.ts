@@ -13,5 +13,8 @@ export default defineConfig({
   },
   datasource: {
     url: env('DATABASE_URL'),
+    // Database temporaneo usato da Prisma per calcolare e verificare le
+    // migrazioni in sviluppo. Non serve in produzione.
+    shadowDatabaseUrl: process.env.DATABASE_URL_OMBRA,
   },
 });
