@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { motion } from 'motion/react';
+import { Link } from 'react-router';
 import { CONFIGURAZIONI_PROFILO } from '@barber/shared';
 import { usaSessione } from '../autenticazione/contesto-sessione';
 import { Pulsante } from '../componenti/pulsante';
@@ -60,13 +61,21 @@ export function PaginaPannello() {
           </div>
 
           <p className="mt-6 text-sm text-testo-tenue">
-            Il salone è configurato. Le prossime fasi aggiungeranno personale, orari, agenda e
-            prenotazioni.
+            {utente.ruolo === 'titolare'
+              ? 'Da qui gestisci servizi, personale e orari. L’agenda arriva nella prossima fase.'
+              : 'L’agenda e le prenotazioni arrivano nella prossima fase.'}
           </p>
 
-          <Pulsante variante="secondario" className="mt-8" onClick={() => void esci()}>
-            Esci
-          </Pulsante>
+          <div className="mt-8 flex flex-wrap gap-3">
+            {utente.ruolo === 'titolare' && (
+              <Link to="/impostazioni">
+                <Pulsante>Impostazioni del salone</Pulsante>
+              </Link>
+            )}
+            <Pulsante variante="secondario" onClick={() => void esci()}>
+              Esci
+            </Pulsante>
+          </div>
         </Superficie>
       </motion.div>
     </main>

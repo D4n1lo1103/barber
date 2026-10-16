@@ -38,7 +38,7 @@ export default defineConfig({
   retries: process.env.CI ? 1 : 0,
   reporter: process.env.CI ? 'github' : 'list',
   use: {
-    baseURL: 'http://localhost:5173',
+    baseURL: 'http://localhost:5180',
     locale: 'it-IT',
     timezoneId: 'Europe/Rome',
     trace: 'on-first-retry',
@@ -63,7 +63,9 @@ export default defineConfig({
     {
       name: 'mobile',
       use: { ...devices['Pixel 7'], storageState: PERCORSO_SESSIONE_TITOLARE },
-      testIgnore: '**/procedura-guidata.e2e.ts',
+      // Su mobile si verifica l'accesso: le impostazioni e la procedura
+      // guidata modificano dati condivisi e girano una volta sola.
+      testIgnore: ['**/procedura-guidata.e2e.ts', '**/impostazioni.e2e.ts'],
       dependencies: ['preparazione'],
     },
   ],
@@ -79,7 +81,7 @@ export default defineConfig({
     },
     {
       command: 'pnpm --filter @barber/web dev',
-      url: 'http://localhost:5173',
+      url: 'http://localhost:5180',
       reuseExistingServer: !process.env.CI,
       cwd: '../..',
     },

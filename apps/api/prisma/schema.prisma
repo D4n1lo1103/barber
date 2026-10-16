@@ -35,7 +35,11 @@ model Utente {
   aggiornatoIl    DateTime  @updatedAt
   ultimoAccessoIl DateTime?
 
-  sessioni Sessione[]
+  sessioni          Sessione[]
+  serviziAbilitati  ServizioOperatore[]
+  orariDiLavoro     OrarioOperatore[]
+  assenze           Assenza[]
+  invitiAttivazione InvitoAttivazione[]
 
   @@index([ruolo, attivo])
   @@map("utenti")
@@ -96,7 +100,96 @@ model Servizio {
   creatoIl        DateTime @default(now())
   aggiornatoIl    DateTime @updatedAt
 
+  operatoriAbilitati ServizioOperatore[]
+
   @@unique([nome])
   @@index([attivo, ordine])
   @@map("servizi")
+}
+
+/// Tipo di assenza di un operatore.
+enum TipoAssenza {
+  ferie
+  riposo
+  altro
+}
+
+/// Abilitazione di un operatore a erogare un servizio.
+model ServizioOperatore {
+  servizioId String @db.Uuid
+  operatoreId String @db.Uuid
+
+  servizio  Servizio @relation(fields: [servizioId], references: [id], onDelete: Cascade)
+  operatore Utente   @relation(fields: [operatoreId], references: [id], onDelete: Cascade)
+
+  @@id([servizioId, operatoreId])
+  @@index([operatoreId])
+  @@map("servizi_operatori")
+}
+
+/// Fascia di apertura del salone in un giorno della settimana.
+/// Gli orari sono minuti dalla mezzanotte nel fuso del salone (Europe/Rome),
+/// non istanti: valgono ogni settimana, anche nei giorni di cambio dell'ora legale.
+model OrarioApertura {
+  id            String   @id @default(uuid()) @db.Uuid
+  /// 1 = lunedì … 7 = domenica (ISO-8601).
+  giornoSettimana Int
+  minutoInizio  Int
+  minutoFine    Int
+  creatoIl      DateTime @default(now())
+  aggiornatoIl  DateTime @updatedAt
+
+  @@index([giornoSettimana])
+  @@map("orari_apertura")
+}
+
+/// Fascia di lavoro di un operatore in un giorno della settimana.
+model OrarioOperatore {
+  id              String   @id @default(uuid()) @db.Uuid
+  operatoreId     String   @db.Uuid
+  /// 1 = lunedì … 7 = domenica (ISO-8601).
+  giornoSettimana Int
+  minutoInizio    Int
+  minutoFine      Int
+  creatoIl        DateTime @default(now())
+  aggiornatoIl    DateTime @updatedAt
+
+  operatore Utente @relation(fields: [operatoreId], references: [id], onDelete: Cascade)
+
+  @@index([operatoreId, giornoSettimana])
+  @@map("orari_operatori")
+}
+
+/// Assenza di un operatore: ferie, giorno di riposo o altra indisponibilità.
+/// Le date sono istanti in UTC; l'intervallo comprende l'inizio ed esclude la fine.
+model Assenza {
+  id          String      @id @default(uuid()) @db.Uuid
+  operatoreId String      @db.Uuid
+  tipo        TipoAssenza
+  inizio      DateTime
+  fine        DateTime
+  note        String      @default("")
+  creataIl    DateTime    @default(now())
+  aggiornataIl DateTime   @updatedAt
+
+  operatore Utente @relation(fields: [operatoreId], references: [id], onDelete: Cascade)
+
+  @@index([operatoreId, inizio])
+  @@map("assenze")
+}
+
+/// Invito con cui un membro del personale attiva il proprio account e sceglie
+/// la password. Nel database è memorizzato solo l'hash del token.
+model InvitoAttivazione {
+  id        String    @id @default(uuid()) @db.Uuid
+  utenteId  String    @db.Uuid
+  tokenHash String    @unique
+  scadeIl   DateTime
+  usatoIl   DateTime?
+  creatoIl  DateTime  @default(now())
+
+  utente Utente @relation(fields: [utenteId], references: [id], onDelete: Cascade)
+
+  @@index([utenteId])
+  @@map("inviti_attivazione")
 }
