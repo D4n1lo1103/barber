@@ -4,18 +4,25 @@ Stato dello sviluppo per fasi (vedi la roadmap in `CLAUDE.md`).
 
 ## In corso
 
-Nessuna attività in corso: le fasi 0 e 1 sono completate, la fase 2 non è ancora iniziata.
+Nessuna attività in corso: le fasi 0, 1 e 2 sono completate.
 
-## Da fare — Fase 2: Personale, servizi e orari
+## Da fare — Fase 3: Agenda lato personale
 
-- [ ] `TODO` Gestione del personale dal titolare: creazione e disattivazione degli account
-      dei dipendenti, invito ad attivare l'account (l'invio e-mail arriva nella fase 5).
-- [ ] `TODO` Gestione del catalogo servizi dall'interfaccia: nome, descrizione, prezzo,
-      durata, operatori abilitati.
-- [ ] `TODO` Orari di apertura del salone, orari di lavoro per operatore, giorni di riposo,
-      ferie e assenze.
-- [ ] `TODO` Test: permessi (solo il titolare modifica servizi e personale), validazione
-      delle durate rispetto alla granularità, sovrapposizione di ferie e orari.
+- [ ] `TODO` Calcolo della disponibilità: combinare orari di apertura, orari dell'operatore,
+      assenze e appuntamenti esistenti, con attenzione ai giorni di cambio dell'ora legale.
+- [ ] `TODO` Agenda per operatore con viste giornaliera e settimanale (react-big-calendar).
+- [ ] `TODO` Prenotazione inserita dal personale, con flag "senza caparra".
+- [ ] `TODO` Vincolo di esclusione PostgreSQL contro le doppie prenotazioni dello stesso
+      operatore, più controllo applicativo e test di concorrenza.
+- [ ] `TODO` Schede clienti create dal personale, annullamenti e mancate presentazioni.
+
+## Da definire con il titolare
+
+- [ ] `BLOCCATO` Chiusure straordinarie del salone (festività, chiusura per ferie
+      dell'intera attività).
+  - Blocco: i requisiti elencano orari di apertura e assenze dei singoli operatori, non le
+    chiusure dell'intero salone. Proposta: una tabella `chiusure` con intervallo di date e
+    motivo, che l'agenda tratta come indisponibilità di tutti gli operatori. Serve conferma.
 
 ## Da fare — attività trasversali già individuate
 
@@ -37,6 +44,39 @@ Nessuna attività in corso: le fasi 0 e 1 sono completate, la fase 2 non è anco
 - [ ] `BLOCCATO` Prova reale della procedura di ripristino dei backup.
   - Blocco: richiede un server di prova con un'installazione attiva. Gli script sono
     pronti e documentati; manca la verifica end-to-end su dati reali.
+
+## Completato — Fase 2: Personale, servizi e orari
+
+- [x] `COMPLETATO` Modello dati: abilitazioni servizio-operatore, orari di apertura,
+      orari di lavoro per operatore, assenze, inviti di attivazione.
+- [x] `COMPLETATO` Vincoli SQL: giorni e fasce valide, nessuna sovrapposizione fra fasce
+      dello stesso giorno né fra assenze dello stesso operatore (ADR 0004).
+- [x] `COMPLETATO` Catalogo servizi: creazione, modifica, disattivazione e riordino dal
+      titolare; consultazione per tutto il personale; durata vincolata alla granularità.
+- [x] `COMPLETATO` Personale: creazione dei dipendenti senza che il titolare conosca la
+      password, link di attivazione a scadenza, rigenerazione dell'invito, disattivazione
+      con revoca immediata delle sessioni, riattivazione.
+- [x] `COMPLETATO` Orari: apertura del salone e orari di lavoro, con il vincolo che
+      l'operatore lavori solo quando il salone è aperto; assenze per ferie, riposo e altro.
+- [x] `COMPLETATO` Frontend: area impostazioni del titolare con schede Servizi, Personale
+      e Orari; pagina pubblica di attivazione dell'account.
+- [x] `COMPLETATO` Seed esteso con orari di apertura, orari di lavoro e abilitazioni.
+- [x] `COMPLETATO` ADR 0004 sulla rappresentazione di orari e assenze.
+- [x] `COMPLETATO` Frontend spostato sulla porta 5180: la 5173 è occupata da un altro
+      progetto sulla macchina di sviluppo.
+
+### Controlli eseguiti al termine della fase 2
+
+| Controllo            | Comando                                                       | Esito                                 |
+| -------------------- | ------------------------------------------------------------- | ------------------------------------- |
+| Formattazione        | `pnpm format:check`                                           | superato                              |
+| Lint                 | `pnpm lint`                                                   | superato                              |
+| Tipi                 | `pnpm type-check`                                             | superato                              |
+| Test unitari         | `pnpm test`                                                   | 28 condivisi, 21 backend, 30 frontend |
+| Test di integrazione | `pnpm --filter @barber/api test:integrazione`                 | 60 test superati                      |
+| Test end-to-end      | `pnpm --filter @barber/web test:e2e`                          | 21 superati, 1 saltato per scelta     |
+| Build                | `pnpm build`                                                  | superato                              |
+| Verifica manuale     | catalogo, creazione dipendente con link di attivazione, orari | superata                              |
 
 ## Completato — Fase 1: Configurazione salone
 

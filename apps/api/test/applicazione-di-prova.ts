@@ -69,6 +69,47 @@ export async function azzeraInstallazione(contesto: ContestoDiProva): Promise<vo
   await contesto.prisma.utente.deleteMany({ where: { ruolo: 'titolare' } });
 }
 
+/** Configura un salone minimo, come farebbe la procedura guidata. */
+export async function configuraSalone(
+  contesto: ContestoDiProva,
+  granularitaSlotMin = 15,
+): Promise<void> {
+  await contesto.prisma.installazione.deleteMany();
+  await contesto.prisma.installazione.create({
+    data: {
+      riga: 1,
+      profilo: 'barbiere',
+      nomeSalone: 'Salone di prova',
+      indirizzo: 'Via delle Prove 1',
+      citta: 'Bologna',
+      telefono: '+393401234567',
+      emailSalone: 'salone@prova.integrazione',
+      granularitaSlotMin,
+      minutiBloccoSlot: 10,
+      configurata: true,
+    },
+  });
+}
+
+/** Esegue l'accesso e restituisce i cookie e il token CSRF da riusare. */
+export async function accediPerProva(
+  contesto: ContestoDiProva,
+  email: string,
+  password: string,
+): Promise<{ cookie: string; tokenCsrf: string }> {
+  const { default: request } = await import('supertest');
+  const risposta = await request(contesto.app.getHttpServer())
+    .post('/api/autenticazione/accesso')
+    .send({ email, password });
+
+  const intestazioni = risposta.headers['set-cookie'] as unknown as string[] | undefined;
+
+  return {
+    cookie: intestazioni?.map((valore) => valore.split(';')[0]).join('; ') ?? '',
+    tokenCsrf: leggiCookie(intestazioni, 'csrf') ?? '',
+  };
+}
+
 /** Estrae il valore di un cookie dall'header Set-Cookie della risposta. */
 export function leggiCookie(intestazioni: string[] | undefined, nome: string): string | undefined {
   const voce = intestazioni?.find((cookie) => cookie.startsWith(`${nome}=`));

@@ -8,7 +8,7 @@ import {
 } from './applicazione-di-prova.js';
 
 const PASSWORD = 'password-di-prova-123';
-const ORIGINE_CONSENTITA = process.env.ORIGINE_WEB ?? 'http://localhost:5173';
+const ORIGINE_CONSENTITA = process.env.ORIGINE_WEB ?? 'http://localhost:5180';
 
 describe('Autenticazione, sessioni e permessi', () => {
   let contesto: ContestoDiProva;

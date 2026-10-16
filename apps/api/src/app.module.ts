@@ -8,7 +8,10 @@ import { LimiteFrequenzaGuardia } from './comuni/guardie/limite-frequenza.guardi
 import { LimiteFrequenzaServizio } from './comuni/limite-frequenza.servizio.js';
 import { SessioneGuardia } from './comuni/guardie/sessione.guardia.js';
 import { InstallazioneModule } from './installazione/installazione.module.js';
+import { OrariModule } from './orari/orari.module.js';
+import { PersonaleModule } from './personale/personale.module.js';
 import { PrismaModule } from './prisma/prisma.module.js';
+import { ServiziModule } from './servizi/servizi.module.js';
 import { StatoModule } from './stato/stato.module.js';
 import { UtentiModule } from './utenti/utenti.module.js';
 
@@ -22,6 +25,9 @@ import { UtentiModule } from './utenti/utenti.module.js';
     PrismaModule,
     AutenticazioneModule,
     InstallazioneModule,
+    OrariModule,
+    PersonaleModule,
+    ServiziModule,
     StatoModule,
     UtentiModule,
   ],

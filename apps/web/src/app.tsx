@@ -5,6 +5,8 @@ import { Caricamento } from './componenti/caricamento';
 import { RottaProtetta } from './componenti/rotta-protetta';
 import { FornitoreInstallazione, usaInstallazione } from './installazione/contesto-installazione';
 import { PaginaAccesso } from './pagine/accesso';
+import { PaginaAttivazione } from './pagine/attivazione';
+import { PaginaImpostazioni } from './pagine/impostazioni/impostazioni';
 import { PaginaPannello } from './pagine/pannello';
 import { PaginaProceduraGuidata } from './pagine/procedura-guidata';
 
@@ -39,7 +41,16 @@ function Instradamento() {
   return (
     <Routes>
       <Route path="/accesso" element={<PaginaAccesso />} />
+      <Route path="/attivazione" element={<PaginaAttivazione />} />
       <Route path="/procedura-guidata" element={<Navigate to="/" replace />} />
+      <Route
+        path="/impostazioni"
+        element={
+          <RottaProtetta ruoliConsentiti={['titolare']}>
+            <PaginaImpostazioni />
+          </RottaProtetta>
+        }
+      />
       <Route
         path="/"
         element={

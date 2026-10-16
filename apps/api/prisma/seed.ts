@@ -47,6 +47,12 @@ const PERSONALE_DEMO = [
   },
 ];
 
+/** Apertura demo: 9:00–13:00 e 15:00–19:00 da martedì a sabato. */
+const APERTURA_DEMO = [2, 3, 4, 5, 6].flatMap((giornoSettimana) => [
+  { giornoSettimana, minutoInizio: 540, minutoFine: 780 },
+  { giornoSettimana, minutoInizio: 900, minutoFine: 1140 },
+]);
+
 const CLIENTI_DEMO = [
   {
     nome: 'Giulia',
@@ -146,6 +152,40 @@ async function esegui(): Promise<void> {
       });
     }
 
+    // Orari: il salone apre da martedì a sabato; il titolare lavora sempre,
+    // i dipendenti coprono mattina e pomeriggio alternandosi.
+    await prisma.orarioOperatore.deleteMany();
+    await prisma.orarioApertura.deleteMany();
+    await prisma.orarioApertura.createMany({ data: APERTURA_DEMO });
+
+    const personale = await prisma.utente.findMany({
+      where: { ruolo: { in: ['titolare', 'dipendente'] } },
+      orderBy: { creatoIl: 'asc' },
+    });
+
+    for (const [posizione, operatore] of personale.entries()) {
+      const fasce = APERTURA_DEMO.filter((fascia) =>
+        // Il titolare copre tutte le fasce, i dipendenti una metà giornata ciascuno.
+        posizione === 0
+          ? true
+          : posizione % 2 === 1
+            ? fascia.minutoInizio < 800
+            : fascia.minutoInizio >= 800,
+      );
+
+      await prisma.orarioOperatore.createMany({
+        data: fasce.map((fascia) => ({ ...fascia, operatoreId: operatore.id })),
+      });
+    }
+
+    // Tutti gli operatori sono abilitati a tutti i servizi del catalogo demo.
+    const serviziCreati = await prisma.servizio.findMany({ select: { id: true } });
+    await prisma.servizioOperatore.createMany({
+      data: serviziCreati.flatMap((servizio) =>
+        personale.map((operatore) => ({ servizioId: servizio.id, operatoreId: operatore.id })),
+      ),
+    });
+
     for (const cliente of CLIENTI_DEMO) {
       await prisma.utente.upsert({
         where: { email: cliente.email },
@@ -157,7 +197,7 @@ async function esegui(): Promise<void> {
     console.warn(
       `Dati demo inseriti per il profilo "${profilo}": ${salone.nome}, ` +
         `${configurazione.catalogoIniziale.length} servizi, ${PERSONALE_DEMO.length} membri del personale, ` +
-        `${CLIENTI_DEMO.length} clienti.`,
+        `${CLIENTI_DEMO.length} clienti, orari di apertura e di lavoro.`,
     );
   } finally {
     await prisma.$disconnect();
