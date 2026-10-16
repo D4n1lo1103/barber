@@ -1,0 +1,7 @@
+# Serve il frontend come applicazione a pagina singola.
+:80 {
+	root * /srv
+	encode zstd gzip
+	try_files {path} /index.html
+	file_server
+}

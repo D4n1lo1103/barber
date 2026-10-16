@@ -1,0 +1,75 @@
+// Schema del database dell'installazione di un singolo salone.
+// Tutte le date e gli orari sono memorizzati in UTC.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Ruolo {
+  titolare
+  dipendente
+  cliente
+}
+
+enum Profilo {
+  barbiere
+  parrucchiere
+}
+
+/// Utente dell'installazione: personale (titolare, dipendente) o cliente.
+model Utente {
+  id              String    @id @default(uuid()) @db.Uuid
+  email           String    @unique
+  passwordHash    String?
+  nome            String
+  cognome         String
+  numeroWhatsapp  String?
+  ruolo           Ruolo
+  attivo          Boolean   @default(true)
+  emailVerificata Boolean   @default(false)
+  creatoIl        DateTime  @default(now())
+  aggiornatoIl    DateTime  @updatedAt
+  ultimoAccessoIl DateTime?
+
+  sessioni Sessione[]
+
+  @@index([ruolo, attivo])
+  @@map("utenti")
+}
+
+/// Sessione di accesso: il cookie contiene solo l'identificativo opaco,
+/// mentre nel database è memorizzato l'hash del token di sessione.
+model Sessione {
+  id          String    @id @default(uuid()) @db.Uuid
+  utenteId    String    @db.Uuid
+  tokenHash   String    @unique
+  csrfHash    String
+  creataIl    DateTime  @default(now())
+  scadeIl     DateTime
+  revocataIl  DateTime?
+  indirizzoIp String?
+  agenteUtente String?
+
+  utente Utente @relation(fields: [utenteId], references: [id], onDelete: Cascade)
+
+  @@index([utenteId])
+  @@index([scadeIl])
+  @@map("sessioni")
+}
+
+/// Impostazioni dell'installazione: una sola riga, creata dalla procedura guidata.
+model Installazione {
+  id                 String   @id @default(uuid()) @db.Uuid
+  profilo            Profilo
+  nomeSalone         String
+  configurata        Boolean  @default(false)
+  granularitaSlotMin Int      @default(15)
+  creataIl           DateTime @default(now())
+  aggiornataIl       DateTime @updatedAt
+
+  @@map("installazione")
+}

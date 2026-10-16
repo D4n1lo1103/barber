@@ -1,0 +1,25 @@
+# Reverse proxy dell'installazione: HTTPS automatico tramite Let's Encrypt.
+# DOMINIO_SALONE ed EMAIL_AMMINISTRATORE arrivano dall'ambiente.
+{
+	email {$EMAIL_AMMINISTRATORE}
+}
+
+{$DOMINIO_SALONE} {
+	encode zstd gzip
+
+	# Intestazioni di sicurezza di base; le altre sono impostate da Helmet nell'API.
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		-Server
+	}
+
+	handle /api/* {
+		reverse_proxy api:3000
+	}
+
+	handle {
+		reverse_proxy web:80
+	}
+}

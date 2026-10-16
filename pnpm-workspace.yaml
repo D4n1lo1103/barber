@@ -1,0 +1,20 @@
+packages:
+  - 'apps/*'
+  - 'packages/*'
+allowBuilds:
+  '@parcel/watcher': true
+  '@prisma/engines': true
+  argon2: true
+  prisma: true
+  unrs-resolver: true
+minimumReleaseAgeExclude:
+  - '@prisma/client-runtime-utils@7.10.1'
+  - '@prisma/client@7.10.1'
+  - '@prisma/config@7.10.1'
+  - '@prisma/debug@7.10.1'
+  - '@prisma/engines@7.10.1'
+  - '@prisma/fetch-engine@7.10.1'
+  - '@prisma/get-platform@7.10.1'
+  - eslint@10.13.0
+  - prisma@7.10.1
+  - lucide-react@1.58.0

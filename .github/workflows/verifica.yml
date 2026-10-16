@@ -1,0 +1,73 @@
+name: Verifica
+
+on:
+  push:
+    branches-ignore: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  controlli:
+    name: Lint, tipi, test e build
+    runs-on: ubuntu-latest
+
+    services:
+      database:
+        image: postgres:18-alpine
+        env:
+          POSTGRES_USER: barber
+          POSTGRES_PASSWORD: barber
+          POSTGRES_DB: barber
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U barber -d barber"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      DATABASE_URL: postgresql://barber:barber@localhost:5432/barber?schema=public
+      NODE_ENV: test
+      PORTA: '3000'
+      SEGRETO_SESSIONE: segreto-di-prova-per-la-pipeline-abcdef123456
+      ORIGINE_WEB: http://localhost:5173
+      IDENTIFICATIVO_INSTALLAZIONE: ci
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 12.14.0
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Installazione dipendenze
+        run: pnpm install --frozen-lockfile
+
+      - name: Formattazione
+        run: pnpm format:check
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Costruzione pacchetto condiviso
+        run: pnpm --filter @barber/shared build
+
+      - name: Controllo dei tipi
+        run: pnpm type-check
+
+      - name: Migrazioni del database
+        run: pnpm --filter @barber/api prisma:deploy
+
+      - name: Test unitari
+        run: pnpm test
+
+      - name: Test di integrazione
+        run: pnpm --filter @barber/api test:integrazione
+
+      - name: Build
+        run: pnpm build

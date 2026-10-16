@@ -1,0 +1,52 @@
+@import 'tailwindcss';
+
+/*
+ * Token provvisori del tema. La palette di accento definitiva, diversa per
+ * profilo (barbiere / parrucchiere), viene fissata nella fase 1 insieme al
+ * design system, dopo conferma dei valori.
+ */
+@theme {
+  --color-fondo: oklch(0.16 0.015 265);
+  --color-fondo-elevato: oklch(0.21 0.02 265);
+  --color-superficie: oklch(0.24 0.02 265 / 0.72);
+  --color-bordo: oklch(0.38 0.02 265 / 0.6);
+  --color-testo: oklch(0.96 0.005 265);
+  --color-testo-tenue: oklch(0.72 0.015 265);
+  --color-accento: oklch(0.72 0.17 195);
+  --color-accento-forte: oklch(0.62 0.19 195);
+  --color-errore: oklch(0.68 0.19 25);
+  --radius-superficie: 1.25rem;
+}
+
+@layer base {
+  :root {
+    color-scheme: dark;
+  }
+
+  body {
+    @apply bg-fondo text-testo antialiased;
+    font-family:
+      'Inter var',
+      'Inter',
+      system-ui,
+      -apple-system,
+      'Segoe UI',
+      sans-serif;
+    min-height: 100dvh;
+  }
+
+  /* Rispetta la preferenza di sistema per le animazioni ridotte. */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+
+  :focus-visible {
+    @apply outline-2 outline-offset-2 outline-accento;
+  }
+}

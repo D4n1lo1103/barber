@@ -1,0 +1,16 @@
+node_modules/
+dist/
+build/
+coverage/
+.env
+.env.*
+!.env.example
+*.log
+.DS_Store
+.turbo/
+apps/web/dist/
+apps/api/dist/
+packages/shared/dist/
+playwright-report/
+test-results/
+backup/
