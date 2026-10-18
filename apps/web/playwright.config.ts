@@ -57,7 +57,7 @@ export default defineConfig({
     {
       name: 'chromium',
       use: { ...devices['Desktop Chrome'], storageState: PERCORSO_SESSIONE_TITOLARE },
-      testIgnore: ['**/procedura-guidata.e2e.ts', '**/caparra.e2e.ts'],
+      testIgnore: ['**/procedura-guidata.e2e.ts', '**/caparra.e2e.ts', '**/messaggi.e2e.ts'],
       dependencies: ['preparazione'],
     },
     {
@@ -65,8 +65,21 @@ export default defineConfig({
       use: { ...devices['Pixel 7'], storageState: PERCORSO_SESSIONE_TITOLARE },
       // Su mobile si verifica l'accesso: le impostazioni e la procedura
       // guidata modificano dati condivisi e girano una volta sola.
-      testIgnore: ['**/procedura-guidata.e2e.ts', '**/impostazioni.e2e.ts', '**/caparra.e2e.ts'],
+      testIgnore: [
+        '**/procedura-guidata.e2e.ts',
+        '**/impostazioni.e2e.ts',
+        '**/caparra.e2e.ts',
+        '**/messaggi.e2e.ts',
+      ],
       dependencies: ['preparazione'],
+    },
+    {
+      // I messaggi si configurano dalle impostazioni, che sono condivise:
+      // gira dopo gli altri, come la caparra.
+      name: 'messaggi',
+      testMatch: '**/messaggi.e2e.ts',
+      use: { ...devices['Desktop Chrome'], storageState: PERCORSO_SESSIONE_TITOLARE },
+      dependencies: ['chromium', 'mobile'],
     },
     {
       // La caparra è un'impostazione del salone: attivarla cambia il

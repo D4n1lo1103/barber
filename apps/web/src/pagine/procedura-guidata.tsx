@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import {
   CONFIGURAZIONI_PROFILO,
+  MODELLI_WHATSAPP_PREDEFINITI,
   GRANULARITA_SLOT_AMMESSE,
   PROFILI,
   schemaProceduraGuidata,
@@ -17,7 +18,7 @@ import { usaInstallazione } from '../installazione/contesto-installazione';
 import { ErroreApi } from '../servizi/client-api';
 import { completaProceduraGuidata } from '../servizi/installazione';
 
-const PASSI = ['Profilo', 'Salone', 'Agenda', 'Servizi', 'Titolare'] as const;
+const PASSI = ['Profilo', 'Salone', 'Agenda', 'Messaggi', 'Servizi', 'Titolare'] as const;
 
 type Passo = number;
 
@@ -37,6 +38,8 @@ interface Bozza {
   granularitaSlotMinuti: number;
   minutiBloccoSlot: number;
   venditaOnlineAttiva: boolean;
+  whatsappAttivo: boolean;
+  whatsappIdNumero: string;
   serviziScelti: Record<string, boolean>;
   nome: string;
   cognome: string;
@@ -58,6 +61,8 @@ function bozzaIniziale(profilo: Profilo): Bozza {
     granularitaSlotMinuti: configurazione.granularitaSlotMinuti,
     minutiBloccoSlot: configurazione.minutiBloccoSlot,
     venditaOnlineAttiva: false,
+    whatsappAttivo: false,
+    whatsappIdNumero: '',
     serviziScelti: Object.fromEntries(
       configurazione.catalogoIniziale.map((servizio) => [servizio.nome, true]),
     ),
@@ -94,6 +99,13 @@ function componiDati(bozza: Bozza): DatiProceduraGuidata {
     granularitaSlotMinuti: bozza.granularitaSlotMinuti,
     minutiBloccoSlot: bozza.minutiBloccoSlot,
     venditaOnlineAttiva: bozza.venditaOnlineAttiva,
+    whatsapp: {
+      attivo: bozza.whatsappAttivo,
+      idNumero: bozza.whatsappIdNumero.trim(),
+      // I nomi dei modelli partono da quelli predefiniti e si cambiano dalle
+      // impostazioni: nella procedura guidata serve solo l'essenziale.
+      modelli: MODELLI_WHATSAPP_PREDEFINITI,
+    },
     servizi: serviziSelezionati(bozza),
   } as DatiProceduraGuidata;
 }
@@ -151,8 +163,9 @@ export function PaginaProceduraGuidata() {
         'salone.emailSalone',
       ],
       2: ['granularitaSlotMinuti', 'minutiBloccoSlot'],
-      3: ['servizi'],
-      4: ['titolare.nome', 'titolare.cognome', 'titolare.email', 'titolare.password'],
+      3: ['whatsapp.idNumero', 'whatsapp.modelli'],
+      4: ['servizi'],
+      5: ['titolare.nome', 'titolare.cognome', 'titolare.email', 'titolare.password'],
     };
 
     return Object.fromEntries(
@@ -369,6 +382,48 @@ export function PaginaProceduraGuidata() {
             )}
 
             {passo === 3 && (
+              <>
+                <p className="text-sm text-testo-tenue">
+                  I messaggi di servizio (conferme, promemoria e inviti) possono viaggiare su
+                  WhatsApp per i clienti che danno il consenso. Senza consenso, senza numero o se
+                  l’invio non riesce, il messaggio parte via e-mail.
+                </p>
+
+                <label className="flex items-start gap-3 rounded-[var(--radius-campo)] border border-bordo p-4">
+                  <input
+                    type="checkbox"
+                    checked={bozza.whatsappAttivo}
+                    onChange={(evento) => modifica('whatsappAttivo', evento.target.checked)}
+                    className="mt-1 accent-[var(--color-accento)]"
+                  />
+                  <span>
+                    <span className="block text-sm font-semibold">Messaggi WhatsApp</span>
+                    <span className="block text-xs text-testo-tenue">
+                      Attivabile anche in seguito dalle impostazioni, scheda Messaggi.
+                    </span>
+                  </span>
+                </label>
+
+                {bozza.whatsappAttivo && (
+                  <Campo
+                    etichetta="Identificativo del numero mittente"
+                    value={bozza.whatsappIdNumero}
+                    onChange={(evento) => modifica('whatsappIdNumero', evento.target.value)}
+                    errore={errori['whatsapp.idNumero']}
+                    inputMode="numeric"
+                    suggerimento="«Phone number ID» nella console di Meta. Non è un segreto."
+                  />
+                )}
+
+                <Avviso tono="informazione">
+                  Il token di accesso di WhatsApp è un segreto e non si imposta da qui: va nel file
+                  di configurazione del server, nella variabile WHATSAPP_TOKEN. Finché manca, i
+                  messaggi partono solo via e-mail.
+                </Avviso>
+              </>
+            )}
+
+            {passo === 4 && (
               <fieldset className="space-y-3">
                 <legend className="text-sm font-medium">
                   Catalogo iniziale ({serviziSelezionati(bozza).length} selezionati)
@@ -407,7 +462,7 @@ export function PaginaProceduraGuidata() {
               </fieldset>
             )}
 
-            {passo === 4 && (
+            {passo === 5 && (
               <>
                 <Campo
                   etichetta="Nome"

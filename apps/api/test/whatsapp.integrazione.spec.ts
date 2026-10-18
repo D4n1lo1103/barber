@@ -45,7 +45,7 @@ describe('Messaggi WhatsApp', () => {
     return richiesta.set('Cookie', sessione.cookie).set('x-csrf-token', sessione.tokenCsrf);
   }
 
-  function impostaWhatsapp(dati: unknown) {
+  function impostaWhatsapp(dati: object) {
     return come(titolare, chiama().put('/api/impostazioni/whatsapp').send(dati));
   }
 

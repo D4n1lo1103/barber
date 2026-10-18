@@ -35,6 +35,10 @@ async function compilaFinoAiServizi() {
 
   await screen.findByLabelText("Durata di uno slot dell'agenda");
   await userEvent.click(screen.getByRole('button', { name: 'Avanti' }));
+
+  // Passo dei messaggi: WhatsApp è facoltativo e si salta senza compilare nulla.
+  await screen.findByText(/Messaggi WhatsApp/);
+  await userEvent.click(screen.getByRole('button', { name: 'Avanti' }));
   await screen.findByText(/Catalogo iniziale/);
 }
 

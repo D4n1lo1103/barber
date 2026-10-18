@@ -3,12 +3,13 @@ import { motion } from 'motion/react';
 import { Link } from 'react-router';
 import { Pulsante } from '../../componenti/pulsante';
 import { usaInstallazione } from '../../installazione/contesto-installazione';
+import { SchedaMessaggi } from './scheda-messaggi';
 import { SchedaOrari } from './scheda-orari';
 import { SchedaRegole } from './scheda-regole';
 import { SchedaPersonale } from './scheda-personale';
 import { SchedaServizi } from './scheda-servizi';
 
-const SCHEDE = ['Servizi', 'Personale', 'Orari', 'Regole'] as const;
+const SCHEDE = ['Servizi', 'Personale', 'Orari', 'Regole', 'Messaggi'] as const;
 
 type Scheda = (typeof SCHEDE)[number];
 
@@ -61,6 +62,7 @@ export function PaginaImpostazioni() {
         {scheda === 'Personale' && <SchedaPersonale />}
         {scheda === 'Orari' && <SchedaOrari />}
         {scheda === 'Regole' && <SchedaRegole />}
+        {scheda === 'Messaggi' && <SchedaMessaggi />}
       </motion.div>
     </main>
   );

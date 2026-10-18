@@ -12,7 +12,10 @@ import { Pulsante } from '../../componenti/pulsante';
 import { Superficie } from '../../componenti/superficie';
 import { ErroreApi } from '../../servizi/client-api';
 import {
+  chiediCodiceNumero,
+  confermaCodiceNumero,
   esportaDatiCliente,
+  leggiProfiloCliente,
   leggiRichiestaCancellazione,
   modificaProfiloCliente,
   richiediCancellazioneDati,
@@ -37,6 +40,8 @@ export function ProfiloClienteScheda({
   } | null>(null);
   const [richiesta, impostaRichiesta] = useState<RichiestaCancellazione | null>(null);
   const [cancellazioneAperta, impostaCancellazioneAperta] = useState(false);
+  const [codiceRichiesto, impostaCodiceRichiesto] = useState(false);
+  const [codice, impostaCodice] = useState('');
   const [motivo, impostaMotivo] = useState('');
   const [inCorso, impostaInCorso] = useState(false);
 
@@ -130,6 +135,52 @@ export function ProfiloClienteScheda({
     }
   }
 
+  /** Chiede il codice di verifica del numero. */
+  async function chiediCodice() {
+    impostaInCorso(true);
+    impostaMessaggio(null);
+
+    try {
+      const esito = await chiediCodiceNumero();
+
+      impostaCodiceRichiesto(true);
+      impostaMessaggio({
+        tono: 'conferma',
+        testo:
+          esito.canale === 'whatsapp'
+            ? 'Codice inviato su WhatsApp.'
+            : 'Il salone non ha attivo WhatsApp: il codice è stato inviato per e-mail.',
+      });
+    } catch (problema) {
+      impostaMessaggio({
+        tono: 'errore',
+        testo: problema instanceof ErroreApi ? problema.message : 'Codice non inviato.',
+      });
+    } finally {
+      impostaInCorso(false);
+    }
+  }
+
+  async function confermaNumero() {
+    impostaInCorso(true);
+    impostaMessaggio(null);
+
+    try {
+      await confermaCodiceNumero(codice.trim());
+      onAggiornato(await leggiProfiloCliente());
+      impostaCodiceRichiesto(false);
+      impostaCodice('');
+      impostaMessaggio({ tono: 'conferma', testo: 'Numero verificato.' });
+    } catch (problema) {
+      impostaMessaggio({
+        tono: 'errore',
+        testo: problema instanceof ErroreApi ? problema.message : 'Codice non valido.',
+      });
+    } finally {
+      impostaInCorso(false);
+    }
+  }
+
   return (
     <div className="space-y-5">
       {messaggio && <Avviso tono={messaggio.tono}>{messaggio.testo}</Avviso>}
@@ -161,11 +212,50 @@ export function ProfiloClienteScheda({
             suggerimento={
               profilo.numeroVerificato
                 ? 'Numero verificato.'
-                : 'Il numero verrà verificato quando il salone attiverà i messaggi WhatsApp.'
+                : 'Verificalo per ricevere conferme e promemoria su WhatsApp.'
             }
             inputMode="tel"
           />
         </div>
+
+        {!profilo.numeroVerificato && profilo.numeroWhatsapp && (
+          <div className="mt-4 rounded-[var(--radius-campo)] border border-bordo p-4">
+            {codiceRichiesto ? (
+              <div className="flex flex-wrap items-end gap-3">
+                <div className="min-w-40 flex-1">
+                  <Campo
+                    etichetta="Codice ricevuto"
+                    value={codice}
+                    onChange={(evento) => impostaCodice(evento.target.value)}
+                    inputMode="numeric"
+                    maxLength={6}
+                    autoComplete="one-time-code"
+                    suggerimento="Sei cifre, valide pochi minuti."
+                  />
+                </div>
+                <Pulsante
+                  disabled={inCorso || codice.trim().length !== 6}
+                  onClick={() => void confermaNumero()}
+                >
+                  Conferma il numero
+                </Pulsante>
+              </div>
+            ) : (
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <p className="text-sm text-testo-tenue">
+                  Verifica il tuo numero: ti inviamo un codice di sei cifre.
+                </p>
+                <Pulsante
+                  variante="secondario"
+                  disabled={inCorso}
+                  onClick={() => void chiediCodice()}
+                >
+                  Invia il codice
+                </Pulsante>
+              </div>
+            )}
+          </div>
+        )}
 
         <p className="mt-4 text-sm text-testo-tenue">
           E-mail: <strong>{profilo.email ?? '—'}</strong>
