@@ -65,7 +65,7 @@ export function rigeneraInvito(id: string): Promise<{ token: string; scadeIl: st
 }
 
 export function attivaAccount(token: string, password: string): Promise<void> {
-  return chiamaApi<void>('/personale/attivazione', {
+  return chiamaApi<void>('/autenticazione/attivazione', {
     metodo: 'POST',
     corpo: { token, password },
   });

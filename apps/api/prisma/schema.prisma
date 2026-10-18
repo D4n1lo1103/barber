@@ -22,32 +22,43 @@ enum Profilo {
 
 /// Utente dell'installazione: personale (titolare, dipendente) o cliente.
 model Utente {
-  id              String    @id @default(uuid()) @db.Uuid
+  id                    String    @id @default(uuid()) @db.Uuid
   /// Facoltativa: una scheda cliente creata dal personale può avere solo il
   /// numero WhatsApp. Resta unica quando presente.
-  email           String?   @unique
-  passwordHash    String?
-  nome            String
-  cognome         String
-  numeroWhatsapp  String?
-  ruolo           Ruolo
+  email                 String?   @unique
+  passwordHash          String?
+  nome                  String
+  cognome               String
+  numeroWhatsapp        String?
+  ruolo                 Ruolo
+  /// Il numero si verifica con un codice via WhatsApp (fase 7): fino ad allora
+  /// resta non verificato, anche quando l'account è attivo.
+  numeroVerificato      Boolean   @default(false)
   /// Note interne del personale sulla scheda cliente.
-  note            String    @default("")
-  attivo          Boolean   @default(true)
-  emailVerificata Boolean   @default(false)
-  creatoIl        DateTime  @default(now())
-  aggiornatoIl    DateTime  @updatedAt
-  ultimoAccessoIl DateTime?
+  note                  String    @default("")
+  attivo                Boolean   @default(true)
+  emailVerificata       Boolean   @default(false)
+  /// Consensi GDPR raccolti alla registrazione, separati: il momento in cui
+  /// sono stati dati vale come prova. Nullo significa consenso non dato.
+  consensoTrattamentoIl DateTime?
+  consensoWhatsappIl    DateTime?
+  /// Momento in cui la scheda è stata anonimizzata su richiesta del cliente.
+  anonimizzataIl        DateTime?
+  creatoIl              DateTime  @default(now())
+  aggiornatoIl          DateTime  @updatedAt
+  ultimoAccessoIl       DateTime?
 
   sessioni                  Sessione[]
   serviziAbilitati          ServizioOperatore[]
   orariDiLavoro             OrarioOperatore[]
   assenze                   Assenza[]
-  invitiAttivazione         InvitoAttivazione[]
-  appuntamentiComeCliente   Appuntamento[]      @relation("appuntamentiDelCliente")
-  appuntamentiComeOperatore Appuntamento[]      @relation("appuntamentiDellOperatore")
-  appuntamentiCreati        Appuntamento[]      @relation("appuntamentiCreati")
-  appuntamentiAnnullati     Appuntamento[]      @relation("appuntamentiAnnullati")
+  token                     TokenUtente[]
+  richiesteCancellazione    RichiestaCancellazione[] @relation("richiesteDelCliente")
+  richiesteEvase            RichiestaCancellazione[] @relation("richiesteEvase")
+  appuntamentiComeCliente   Appuntamento[]           @relation("appuntamentiDelCliente")
+  appuntamentiComeOperatore Appuntamento[]           @relation("appuntamentiDellOperatore")
+  appuntamentiCreati        Appuntamento[]           @relation("appuntamentiCreati")
+  appuntamentiAnnullati     Appuntamento[]           @relation("appuntamentiAnnullati")
 
   @@index([ruolo, attivo])
   @@map("utenti")
@@ -76,21 +87,28 @@ model Sessione {
 /// Impostazioni dell'installazione: una sola riga, creata dalla procedura guidata.
 /// Il vincolo di riga unica è applicato da una migrazione SQL manuale.
 model Installazione {
-  id                  String   @id @default(uuid()) @db.Uuid
+  id                          String   @id @default(uuid()) @db.Uuid
   /// Vale sempre 1: insieme al vincolo CHECK garantisce una sola installazione.
-  riga                Int      @unique @default(1)
-  profilo             Profilo
-  nomeSalone          String
-  indirizzo           String
-  citta               String
-  telefono            String
-  emailSalone         String
-  configurata         Boolean  @default(false)
-  granularitaSlotMin  Int      @default(15)
-  minutiBloccoSlot    Int      @default(10)
-  venditaOnlineAttiva Boolean  @default(false)
-  creataIl            DateTime @default(now())
-  aggiornataIl        DateTime @updatedAt
+  riga                        Int      @unique @default(1)
+  profilo                     Profilo
+  nomeSalone                  String
+  indirizzo                   String
+  citta                       String
+  telefono                    String
+  emailSalone                 String
+  configurata                 Boolean  @default(false)
+  granularitaSlotMin          Int      @default(15)
+  /// Ore entro cui un annullamento del cliente è considerato tempestivo.
+  oreLimitePreavviso          Int      @default(24)
+  /// Se vero lo spostamento segue le regole dell'annullamento; se falso è
+  /// libero entro il limite di preavviso.
+  spostamentoComeAnnullamento Boolean  @default(false)
+  /// Anticipo del promemoria al cliente, in ore (fase 7).
+  oreAnticipoPromemoria       Int      @default(24)
+  minutiBloccoSlot            Int      @default(10)
+  venditaOnlineAttiva         Boolean  @default(false)
+  creataIl                    DateTime @default(now())
+  aggiornataIl                DateTime @updatedAt
 
   @@map("installazione")
 }
@@ -190,11 +208,23 @@ model Assenza {
   @@map("assenze")
 }
 
-/// Invito con cui un membro del personale attiva il proprio account e sceglie
-/// la password. Nel database è memorizzato solo l'hash del token.
-model InvitoAttivazione {
+/// Scopo di un token a uso singolo inviato all'utente.
+enum TipoToken {
+  /// Attivazione dell'account e scelta della password (dipendenti e clienti
+  /// con scheda creata dal personale).
+  attivazione
+  /// Verifica dell'indirizzo e-mail dopo la registrazione autonoma.
+  verifica_email
+  /// Reimpostazione della password dimenticata.
+  reset_password
+}
+
+/// Token a uso singolo inviato per e-mail. Nel database è memorizzato solo
+/// l'hash: il valore in chiaro esiste solo nel link consegnato all'utente.
+model TokenUtente {
   id        String    @id @default(uuid()) @db.Uuid
   utenteId  String    @db.Uuid
+  tipo      TipoToken @default(attivazione)
   tokenHash String    @unique
   scadeIl   DateTime
   usatoIl   DateTime?
@@ -202,8 +232,37 @@ model InvitoAttivazione {
 
   utente Utente @relation(fields: [utenteId], references: [id], onDelete: Cascade)
 
-  @@index([utenteId])
-  @@map("inviti_attivazione")
+  @@index([utenteId, tipo])
+  @@map("token_utente")
+}
+
+/// Stato della richiesta di cancellazione dei dati (GDPR).
+enum StatoRichiestaCancellazione {
+  in_attesa
+  evasa
+  rifiutata
+}
+
+/// Richiesta del cliente di cancellare i propri dati. La evade il titolare:
+/// i dati personali vengono rimossi e lo storico resta in forma anonima.
+model RichiestaCancellazione {
+  id           String                      @id @default(uuid()) @db.Uuid
+  clienteId    String                      @db.Uuid
+  stato        StatoRichiestaCancellazione @default(in_attesa)
+  /// Motivo indicato dal cliente, facoltativo.
+  motivo       String                      @default("")
+  /// Nota del titolare quando evade o rifiuta la richiesta.
+  notaTitolare String                      @default("")
+  richiestaIl  DateTime                    @default(now())
+  evasaIl      DateTime?
+  evasaDaId    String?                     @db.Uuid
+
+  cliente Utente  @relation("richiesteDelCliente", fields: [clienteId], references: [id], onDelete: Cascade)
+  evasaDa Utente? @relation("richiesteEvase", fields: [evasaDaId], references: [id], onDelete: SetNull)
+
+  @@index([stato, richiestaIl])
+  @@index([clienteId])
+  @@map("richieste_cancellazione")
 }
 
 enum StatoAppuntamento {

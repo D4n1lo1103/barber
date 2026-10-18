@@ -3,6 +3,7 @@ import { ConfigModule } from '@nestjs/config';
 import { APP_GUARD } from '@nestjs/core';
 import { validaAmbiente } from './configurazione/ambiente.js';
 import { AppuntamentiModule } from './appuntamenti/appuntamenti.module.js';
+import { AttivitaModule } from './attivita/attivita.module.js';
 import { AutenticazioneModule } from './autenticazione/autenticazione.module.js';
 import { ClientiModule } from './clienti/clienti.module.js';
 import { CsrfGuardia } from './comuni/guardie/csrf.guardia.js';
@@ -10,6 +11,7 @@ import { LimiteFrequenzaGuardia } from './comuni/guardie/limite-frequenza.guardi
 import { LimiteFrequenzaServizio } from './comuni/limite-frequenza.servizio.js';
 import { SessioneGuardia } from './comuni/guardie/sessione.guardia.js';
 import { InstallazioneModule } from './installazione/installazione.module.js';
+import { NotificheModule } from './notifiche/notifiche.module.js';
 import { OrariModule } from './orari/orari.module.js';
 import { PersonaleModule } from './personale/personale.module.js';
 import { PrismaModule } from './prisma/prisma.module.js';
@@ -25,6 +27,8 @@ import { UtentiModule } from './utenti/utenti.module.js';
       validate: validaAmbiente,
     }),
     PrismaModule,
+    AttivitaModule,
+    NotificheModule,
     AppuntamentiModule,
     AutenticazioneModule,
     ClientiModule,

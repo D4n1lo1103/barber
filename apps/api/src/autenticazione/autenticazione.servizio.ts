@@ -47,6 +47,14 @@ export class AutenticazioneServizio {
       throw new UnauthorizedException('Credenziali non valide.');
     }
 
+    // I clienti devono confermare l'indirizzo: è l'unico contatto certo e
+    // serve anche per recuperare la password.
+    if (utente.ruolo === 'cliente' && !utente.emailVerificata) {
+      throw new UnauthorizedException(
+        'Conferma il tuo indirizzo e-mail per accedere: controlla la casella di posta.',
+      );
+    }
+
     const sessione = await this.sessioni.crea(utente.id, indirizzoIp, agenteUtente);
 
     await this.prisma.utente.update({

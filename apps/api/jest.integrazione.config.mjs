@@ -5,6 +5,8 @@
 export default {
   rootDir: 'test',
   testEnvironment: 'node',
+  // Prepara l'ambiente prima dell'import di AppModule.
+  setupFiles: ['<rootDir>/preparazione-ambiente.ts'],
   extensionsToTreatAsEsm: ['.ts'],
   moduleFileExtensions: ['ts', 'js', 'json'],
   testRegex: '.*\\.integrazione\\.spec\\.ts$',

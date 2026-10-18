@@ -24,6 +24,7 @@ import {
   type StatoAppuntamento,
 } from '@barber/shared';
 import { ClientiServizio } from '../clienti/clienti.servizio.js';
+import { NotificheServizio } from '../notifiche/notifiche.servizio.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { DisponibilitaServizio } from './disponibilita.servizio.js';
 
@@ -44,6 +45,7 @@ export class AppuntamentiServizio {
     private readonly prisma: PrismaService,
     private readonly disponibilita: DisponibilitaServizio,
     private readonly clienti: ClientiServizio,
+    private readonly notifiche: NotificheServizio,
   ) {}
 
   /** Appuntamenti dell'intervallo di giorni richiesto, per l'agenda. */
@@ -142,10 +144,37 @@ export class AppuntamentiServizio {
         include: INCLUDI_COLLEGAMENTI,
       });
 
+      await this.inviaConferma(creato);
+
       return this.componi(creato);
     } catch (errore) {
       throw this.traduciErroreDiSovrapposizione(errore);
     }
+  }
+
+  /** Conferma al cliente, se ha un indirizzo e-mail. */
+  private async inviaConferma(appuntamento: {
+    inizio: Date;
+    durataMinuti: number;
+    prezzoTotaleCentesimi: number;
+    cliente: { nome: string };
+    operatore: { nome: string; cognome: string };
+    servizi: { nome: string }[];
+    clienteId: string;
+  }): Promise<void> {
+    const cliente = await this.prisma.utente.findUnique({
+      where: { id: appuntamento.clienteId },
+      select: { email: true },
+    });
+
+    if (!cliente?.email) {
+      return;
+    }
+
+    await this.notifiche.inviaConfermaPrenotazione(
+      { nome: appuntamento.cliente.nome, email: cliente.email },
+      appuntamento,
+    );
   }
 
   /**

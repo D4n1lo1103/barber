@@ -1,26 +1,11 @@
+import { Body, Controller, Delete, Get, Param, Patch, Post, UseGuards } from '@nestjs/common';
 import {
-  Body,
-  Controller,
-  Delete,
-  Get,
-  HttpCode,
-  HttpStatus,
-  Param,
-  Patch,
-  Post,
-  UseGuards,
-} from '@nestjs/common';
-import {
-  schemaAttivazioneAccount,
   schemaCreazioneDipendente,
   schemaModificaOperatore,
-  type DatiAttivazioneAccount,
   type DatiCreazioneDipendente,
   type DatiModificaOperatore,
   type Operatore,
 } from '@barber/shared';
-import { LimiteDiFrequenza } from '../comuni/decoratori/limite-frequenza.decoratore.js';
-import { Pubblico } from '../comuni/decoratori/pubblico.decoratore.js';
 import { Ruoli } from '../comuni/decoratori/ruoli.decoratore.js';
 import { UtenteCorrente } from '../comuni/decoratori/utente-corrente.decoratore.js';
 import { RuoliGuardia } from '../comuni/guardie/ruoli.guardia.js';
@@ -76,16 +61,5 @@ export class PersonaleController {
   @Ruoli('titolare')
   rigeneraInvito(@Param('id') id: string): Promise<{ token: string; scadeIl: Date }> {
     return this.personale.rigeneraInvito(id);
-  }
-
-  /** Attivazione dell'account da parte del dipendente invitato. */
-  @Pubblico()
-  @LimiteDiFrequenza(5, 300)
-  @Post('attivazione')
-  @HttpCode(HttpStatus.NO_CONTENT)
-  async attiva(
-    @Body(new ValidazioneZodPipe(schemaAttivazioneAccount)) dati: DatiAttivazioneAccount,
-  ): Promise<void> {
-    await this.personale.attivaAccount(dati.token, dati.password);
   }
 }

@@ -1,6 +1,12 @@
 import { z } from 'zod';
 import { RUOLI } from '../dominio/ruoli.js';
-import { schemaCognome, schemaEmail, schemaNome, schemaPassword } from './comuni.js';
+import {
+  schemaCognome,
+  schemaEmail,
+  schemaNome,
+  schemaNumeroWhatsapp,
+  schemaPassword,
+} from './comuni.js';
 
 export const schemaAccesso = z.object({
   email: schemaEmail,
@@ -20,6 +26,52 @@ export const schemaCambioPassword = z
   });
 
 export type DatiCambioPassword = z.infer<typeof schemaCambioPassword>;
+
+/**
+ * Registrazione autonoma del cliente. Il consenso al trattamento dei dati è
+ * obbligatorio; quello ai messaggi WhatsApp è separato e facoltativo, come
+ * richiede il GDPR.
+ */
+export const schemaRegistrazioneCliente = z.object({
+  nome: schemaNome,
+  cognome: schemaCognome,
+  email: schemaEmail,
+  numeroWhatsapp: schemaNumeroWhatsapp,
+  password: schemaPassword,
+  consensoTrattamento: z.literal(true, {
+    message: 'Per registrarti devi accettare il trattamento dei dati.',
+  }),
+  consensoWhatsapp: z.boolean().default(false),
+});
+
+export type DatiRegistrazioneCliente = z.infer<typeof schemaRegistrazioneCliente>;
+
+const schemaToken = z.string().min(16, 'Link non valido.').max(200, 'Link non valido.');
+
+export const schemaVerificaEmail = z.object({ token: schemaToken });
+
+export type DatiVerificaEmail = z.infer<typeof schemaVerificaEmail>;
+
+export const schemaRichiestaReset = z.object({ email: schemaEmail });
+
+export type DatiRichiestaReset = z.infer<typeof schemaRichiestaReset>;
+
+export const schemaConfermaReset = z.object({
+  token: schemaToken,
+  password: schemaPassword,
+});
+
+export type DatiConfermaReset = z.infer<typeof schemaConfermaReset>;
+
+/** Esito della registrazione: dice al frontend cosa mostrare. */
+export const schemaEsitoRegistrazione = z.object({
+  /** Indirizzo a cui è stata inviata la verifica. */
+  email: z.string(),
+  /** Vero quando la registrazione è stata collegata a una scheda già esistente. */
+  collegataASchedaEsistente: z.boolean(),
+});
+
+export type EsitoRegistrazione = z.infer<typeof schemaEsitoRegistrazione>;
 
 /** Utente autenticato restituito al frontend: nessun dato sensibile. */
 export const schemaUtenteAutenticato = z.object({

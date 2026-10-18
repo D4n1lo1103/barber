@@ -6,6 +6,8 @@ import type { INestApplication } from '@nestjs/common';
 import { AppModule } from '../src/app.module.js';
 import { AutenticazioneServizio } from '../src/autenticazione/autenticazione.servizio.js';
 import { LimiteFrequenzaServizio } from '../src/comuni/limite-frequenza.servizio.js';
+import { MITTENTE_EMAIL } from '../src/notifiche/mittente-email.js';
+import { MittenteRegistro } from '../src/notifiche/mittente-registro.js';
 import { PrismaService } from '../src/prisma/prisma.service.js';
 import type { Ruolo } from '@barber/shared';
 
@@ -14,6 +16,8 @@ export interface ContestoDiProva {
   prisma: PrismaService;
   autenticazione: AutenticazioneServizio;
   limiti: LimiteFrequenzaServizio;
+  /** Mittente di prova: i messaggi non partono, restano in memoria. */
+  email: MittenteRegistro;
 }
 
 /** Suffisso delle e-mail create dai test, usato per la pulizia finale. */
@@ -23,6 +27,8 @@ export const SUFFISSO_PROVA = '@prova.integrazione';
 export const PREFISSO_NUMERO_PROVA = '+39999';
 
 export async function avviaApplicazioneDiProva(): Promise<ContestoDiProva> {
+  // L'ambiente dei test (coda in linea, nessun SMTP) è preparato da
+  // test/preparazione-ambiente.ts, eseguito prima dell'import di AppModule.
   const moduloDiProva = await Test.createTestingModule({ imports: [AppModule] }).compile();
   const app = moduloDiProva.createNestApplication();
 
@@ -35,6 +41,7 @@ export async function avviaApplicazioneDiProva(): Promise<ContestoDiProva> {
     prisma: app.get(PrismaService),
     autenticazione: app.get(AutenticazioneServizio),
     limiti: app.get(LimiteFrequenzaServizio),
+    email: app.get<MittenteRegistro>(MITTENTE_EMAIL),
   };
 }
 

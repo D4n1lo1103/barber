@@ -13,9 +13,20 @@ import { ConfigService } from '@nestjs/config';
 import type { Response } from 'express';
 import {
   schemaAccesso,
+  schemaAttivazioneAccount,
   schemaCambioPassword,
+  schemaConfermaReset,
+  schemaRegistrazioneCliente,
+  schemaRichiestaReset,
+  schemaVerificaEmail,
   type DatiAccesso,
+  type DatiAttivazioneAccount,
   type DatiCambioPassword,
+  type DatiConfermaReset,
+  type DatiRegistrazioneCliente,
+  type DatiRichiestaReset,
+  type DatiVerificaEmail,
+  type EsitoRegistrazione,
   type UtenteAutenticato,
 } from '@barber/shared';
 import { LimiteDiFrequenza } from '../comuni/decoratori/limite-frequenza.decoratore.js';
@@ -25,6 +36,7 @@ import { ValidazioneZodPipe } from '../comuni/validazione.pipe.js';
 import type { Ambiente } from '../configurazione/ambiente.js';
 import type { RichiestaAutenticata, UtenteRichiesta } from '../comuni/tipi-richiesta.js';
 import { AutenticazioneServizio } from './autenticazione.servizio.js';
+import { RegistrazioneServizio } from './registrazione.servizio.js';
 import {
   COOKIE_CSRF,
   COOKIE_SESSIONE,
@@ -36,9 +48,78 @@ import {
 export class AutenticazioneController {
   constructor(
     private readonly autenticazione: AutenticazioneServizio,
+    private readonly registrazione: RegistrazioneServizio,
     private readonly sessioni: SessioniServizio,
     private readonly configurazione: ConfigService<Ambiente, true>,
   ) {}
+
+  /**
+   * Registrazione autonoma del cliente. L'account diventa utilizzabile solo
+   * dopo la conferma dell'indirizzo e-mail.
+   */
+  @Pubblico()
+  @LimiteDiFrequenza(5, 300)
+  @Post('registrazione')
+  registra(
+    @Body(new ValidazioneZodPipe(schemaRegistrazioneCliente)) dati: DatiRegistrazioneCliente,
+  ): Promise<EsitoRegistrazione> {
+    return this.registrazione.registraCliente(dati);
+  }
+
+  @Pubblico()
+  @LimiteDiFrequenza(10, 300)
+  @Post('verifica-email')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async verificaEmail(
+    @Body(new ValidazioneZodPipe(schemaVerificaEmail)) dati: DatiVerificaEmail,
+  ): Promise<void> {
+    await this.registrazione.verificaEmail(dati.token);
+  }
+
+  /** Nuovo invio del link di verifica. Risposta identica anche se l'indirizzo non esiste. */
+  @Pubblico()
+  @LimiteDiFrequenza(3, 300)
+  @Post('verifica-email/rinvio')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async rinviaVerifica(
+    @Body(new ValidazioneZodPipe(schemaRichiestaReset)) dati: DatiRichiestaReset,
+  ): Promise<void> {
+    await this.registrazione.rinviaVerifica(dati.email);
+  }
+
+  @Pubblico()
+  @LimiteDiFrequenza(3, 300)
+  @Post('reset-password')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async richiediReset(
+    @Body(new ValidazioneZodPipe(schemaRichiestaReset)) dati: DatiRichiestaReset,
+  ): Promise<void> {
+    await this.registrazione.richiediReset(dati.email);
+  }
+
+  @Pubblico()
+  @LimiteDiFrequenza(5, 300)
+  @Post('reset-password/conferma')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async confermaReset(
+    @Body(new ValidazioneZodPipe(schemaConfermaReset)) dati: DatiConfermaReset,
+  ): Promise<void> {
+    await this.registrazione.confermaReset(dati.token, dati.password);
+  }
+
+  /**
+   * Attivazione dell'account da un invito: vale per i dipendenti creati dal
+   * titolare e per i clienti con scheda creata dal personale.
+   */
+  @Pubblico()
+  @LimiteDiFrequenza(5, 300)
+  @Post('attivazione')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async attiva(
+    @Body(new ValidazioneZodPipe(schemaAttivazioneAccount)) dati: DatiAttivazioneAccount,
+  ): Promise<void> {
+    await this.registrazione.attivaAccount(dati.token, dati.password, dati.email);
+  }
 
   /** Limite di frequenza stretto: protegge dagli attacchi a forza bruta. */
   @Pubblico()

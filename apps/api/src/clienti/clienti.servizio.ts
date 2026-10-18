@@ -7,7 +7,8 @@ import type {
   ElencoClienti,
 } from '@barber/shared';
 import { PrismaService } from '../prisma/prisma.service.js';
-import { InvitiServizio } from '../personale/inviti.servizio.js';
+import { TokenServizio } from '../autenticazione/token.servizio.js';
+import { NotificheServizio } from '../notifiche/notifiche.servizio.js';
 
 interface RigaCliente {
   id: string;
@@ -25,7 +26,8 @@ interface RigaCliente {
 export class ClientiServizio {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly inviti: InvitiServizio,
+    private readonly token: TokenServizio,
+    private readonly notifiche: NotificheServizio,
   ) {}
 
   async elenca(dati: DatiRicercaClienti): Promise<ElencoClienti> {
@@ -107,7 +109,16 @@ export class ClientiServizio {
       },
     });
 
-    const invito = await this.inviti.crea(creato.id);
+    const invito = await this.token.crea(creato.id);
+
+    // Senza e-mail il link resta in mano al personale: dalla fase 7 l'invito
+    // parte via WhatsApp.
+    if (creato.email) {
+      await this.notifiche.inviaInvitoAttivazione(
+        { nome: creato.nome, email: creato.email },
+        invito.token,
+      );
+    }
 
     return { cliente: this.componi(creato), token: invito.token, scadeIl: invito.scadeIl };
   }
@@ -159,7 +170,16 @@ export class ClientiServizio {
       throw new ConflictException('Il cliente ha già attivato il proprio account.');
     }
 
-    return this.inviti.crea(cliente.id);
+    const invito = await this.token.crea(cliente.id);
+
+    if (cliente.email) {
+      await this.notifiche.inviaInvitoAttivazione(
+        { nome: cliente.nome, email: cliente.email },
+        invito.token,
+      );
+    }
+
+    return invito;
   }
 
   /** Usato dal servizio appuntamenti: verifica che il cliente esista e sia attivo. */

@@ -88,7 +88,7 @@ describe('Gestione del personale', () => {
     expect(risposta.body.token.length).toBeGreaterThanOrEqual(32);
 
     // Nel database resta solo l'hash del token.
-    const invito = await contesto.prisma.invitoAttivazione.findFirstOrThrow({
+    const invito = await contesto.prisma.tokenUtente.findFirstOrThrow({
       where: { utenteId: creato.id },
     });
     expect(invito.tokenHash).not.toBe(risposta.body.token);
@@ -109,7 +109,7 @@ describe('Gestione del personale', () => {
     const nuovaPassword = 'password-scelta-dal-dipendente';
 
     await chiama()
-      .post('/api/personale/attivazione')
+      .post('/api/autenticazione/attivazione')
       .send({ token: creazione.body.token, password: nuovaPassword })
       .expect(204);
 
@@ -126,32 +126,32 @@ describe('Gestione del personale', () => {
     const creazione = await creaDipendente().expect(201);
 
     await chiama()
-      .post('/api/personale/attivazione')
+      .post('/api/autenticazione/attivazione')
       .send({ token: creazione.body.token, password: 'password-scelta-1234' })
       .expect(204);
 
     contesto.limiti.azzera();
     await chiama()
-      .post('/api/personale/attivazione')
+      .post('/api/autenticazione/attivazione')
       .send({ token: creazione.body.token, password: 'altra-password-5678' })
       .expect(400);
   });
 
   it('rifiuta un token di attivazione sconosciuto o scaduto', async () => {
     const creazione = await creaDipendente().expect(201);
-    await contesto.prisma.invitoAttivazione.updateMany({
+    await contesto.prisma.tokenUtente.updateMany({
       where: { utenteId: creazione.body.operatore.id },
       data: { scadeIl: new Date(Date.now() - 1000) },
     });
 
     await chiama()
-      .post('/api/personale/attivazione')
+      .post('/api/autenticazione/attivazione')
       .send({ token: creazione.body.token, password: 'password-scelta-1234' })
       .expect(400);
 
     contesto.limiti.azzera();
     await chiama()
-      .post('/api/personale/attivazione')
+      .post('/api/autenticazione/attivazione')
       .send({ token: 'token-inesistente-ma-lungo-abbastanza', password: 'password-scelta-1234' })
       .expect(400);
   });
@@ -165,7 +165,7 @@ describe('Gestione del personale', () => {
   it('disattiva un dipendente e ne revoca le sessioni', async () => {
     const creazione = await creaDipendente().expect(201);
     await chiama()
-      .post('/api/personale/attivazione')
+      .post('/api/autenticazione/attivazione')
       .send({ token: creazione.body.token, password: 'password-scelta-1234' })
       .expect(204);
 
@@ -214,13 +214,13 @@ describe('Gestione del personale', () => {
     expect(nuovo.body.token).not.toBe(creazione.body.token);
 
     await chiama()
-      .post('/api/personale/attivazione')
+      .post('/api/autenticazione/attivazione')
       .send({ token: creazione.body.token, password: 'password-scelta-1234' })
       .expect(400);
 
     contesto.limiti.azzera();
     await chiama()
-      .post('/api/personale/attivazione')
+      .post('/api/autenticazione/attivazione')
       .send({ token: nuovo.body.token, password: 'password-scelta-1234' })
       .expect(204);
   });
