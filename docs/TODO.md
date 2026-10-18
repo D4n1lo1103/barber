@@ -2,21 +2,41 @@
 
 Stato dello sviluppo per fasi (vedi la roadmap in `CLAUDE.md`).
 
-## In corso
+## In corso — Fase 8: Prodotti e magazzino
 
-Nessuna attività in corso: le fasi da 0 a 7 sono completate, quindi **il software è
-utilizzabile da un salone reale (MVP)**. Prossima: fase 8 — prodotti e magazzino con vendita
-in negozio.
+Le fasi da 0 a 7 sono completate: il software è già utilizzabile da un salone reale.
 
-## Da fare — Fase 8: Prodotti e magazzino
+### Decisioni prese con il titolare (18/10/2026)
 
-- [ ] `TODO` Catalogo prodotti con descrizione, prezzo e giacenza.
-- [ ] `TODO` Vendita in negozio registrata dal personale, anche collegata a un cliente o a un
-      appuntamento.
-- [ ] `TODO` Scarico automatico del magazzino a ogni vendita e avviso di scorta minima.
-- [ ] `TODO` Decisioni da prendere con il titolare: se la giacenza possa andare sotto zero
-      (vendita a scaffale vuoto), chi può correggere le giacenze a mano, e se la vendita in
-      negozio debba produrre un documento per il cliente.
+1. **La giacenza non può andare sotto zero.** Una vendita che supera la giacenza viene
+   rifiutata, sia dal controllo applicativo sia da un vincolo del database.
+2. **Le giacenze si correggono a mano solo dal titolare**, con motivazione tracciata. Il
+   personale vende e scarica il magazzino, ma non modifica le quantità.
+3. **La vendita in negozio non produce alcun documento** per il cliente: resta una
+   registrazione interna. Scontrini e fatture dipendono dalla gestione della cassa, ancora
+   da definire.
+
+### Attività
+
+- [ ] `IN CORSO` Modello dati: prodotti con giacenza e scorta minima, vendite con righe
+      (nome, prezzo e quantità copiati al momento della vendita), movimenti di magazzino come
+      registro di audit.
+- [ ] `TODO` Migrazione SQL manuale: giacenza mai negativa, prezzi e quantità positivi,
+      coerenza fra movimento e causa, indici per le scorte sotto soglia.
+- [ ] `TODO` Catalogo prodotti: creazione, modifica, disattivazione e riordino dal titolare;
+      consultazione per tutto il personale.
+- [ ] `TODO` Vendita in negozio registrata dal personale, con più prodotti, collegabile a un
+      cliente o a un appuntamento, con scarico del magazzino nella stessa transazione.
+- [ ] `TODO` Rifiuto della vendita oltre la giacenza, anche con richieste simultanee.
+- [ ] `TODO` Correzione manuale della giacenza, solo titolare, con motivo obbligatorio.
+- [ ] `TODO` Avviso di scorta minima per il personale.
+- [ ] `TODO` Annullamento di una vendita registrata per errore, con ripristino della giacenza.
+- [ ] `TODO` Interfaccia: scheda Prodotti nelle impostazioni, pagina di vendita per il
+      personale, avviso delle scorte, vendite nella scheda cliente.
+- [ ] `TODO` Dati demo: prodotti con giacenze diverse, una sotto la scorta minima.
+- [ ] `TODO` Test: unitari sul totale della vendita, integrazione su giacenza, concorrenza,
+      permessi e annullamento, end-to-end della vendita in negozio.
+- [ ] `TODO` Documentazione: ADR 0010, README, `MANUALE-DUSO.md`.
 
 ## Da fare — attività trasversali già individuate
 
