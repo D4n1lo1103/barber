@@ -1,18 +1,31 @@
-import { Body, Controller, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  HttpCode,
+  Param,
+  Patch,
+  Post,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
 import {
   ORE_MINIME_PRENOTAZIONE_CLIENTE,
+  schemaCodiceVerificaNumero,
   schemaModificaProfilo,
   schemaPrenotazioneCliente,
   schemaRichiestaCancellazioneDati,
   schemaRichiestaDisponibilita,
   schemaSpostamentoCliente,
   type AppuntamentoCliente,
+  type DatiCodiceVerificaNumero,
   type DatiModificaProfilo,
   type DatiPrenotazioneCliente,
   type DatiRichiestaCancellazioneDati,
   type DatiRichiestaDisponibilita,
   type DatiSpostamentoCliente,
   type DisponibilitaGiorno,
+  type EsitoRichiestaCodice,
   type EsportazioneDati,
   type Operatore,
   type ProfiloCliente,
@@ -30,6 +43,7 @@ import type { UtenteRichiesta } from '../comuni/tipi-richiesta.js';
 import { PersonaleServizio } from '../personale/personale.servizio.js';
 import { ServiziServizio } from '../servizi/servizi.servizio.js';
 import { AreaClienteServizio } from './area-cliente.servizio.js';
+import { VerificaNumeroServizio } from './verifica-numero.servizio.js';
 
 /**
  * Area del cliente: ogni rotta agisce solo sui propri dati, letti dalla
@@ -46,6 +60,7 @@ export class AreaClienteController {
     private readonly disponibilita: DisponibilitaServizio,
     private readonly servizi: ServiziServizio,
     private readonly personale: PersonaleServizio,
+    private readonly verificaNumero: VerificaNumeroServizio,
   ) {}
 
   /** Catalogo e operatori che il cliente può scegliere. */
@@ -116,6 +131,26 @@ export class AreaClienteController {
     const [composto] = await this.areaCliente.componiPerCliente([annullato]);
 
     return { appuntamento: composto! };
+  }
+
+  /**
+   * Chiede un codice per verificare il proprio numero: arriva su WhatsApp,
+   * oppure via e-mail se il salone non ha attivato i messaggi.
+   */
+  @Post('numero/codice')
+  @LimiteDiFrequenza(3, 900)
+  chiediCodiceNumero(@UtenteCorrente() utente: UtenteRichiesta): Promise<EsitoRichiestaCodice> {
+    return this.verificaNumero.inviaCodice(utente.id);
+  }
+
+  @Post('numero/verifica')
+  @LimiteDiFrequenza(10, 900)
+  @HttpCode(204)
+  async confermaCodiceNumero(
+    @Body(new ValidazioneZodPipe(schemaCodiceVerificaNumero)) dati: DatiCodiceVerificaNumero,
+    @UtenteCorrente() utente: UtenteRichiesta,
+  ): Promise<void> {
+    await this.verificaNumero.confermaCodice(utente.id, dati.codice);
   }
 
   @Get('profilo')

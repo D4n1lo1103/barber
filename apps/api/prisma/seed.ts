@@ -65,24 +65,51 @@ const APERTURA_DEMO = configurazioneProfilo('barbiere').aperturaPredefinita.map(
   minutoFine: fascia.minutoFine,
 }));
 
+/**
+ * Clienti di prova, scelti per coprire i casi dei messaggi di servizio:
+ * ogni combinazione di consenso WhatsApp, numero verificato ed e-mail porta a
+ * un canale diverso, così si possono provare WhatsApp, ripiego e assenza di
+ * recapiti senza inventare dati a mano.
+ */
 const CLIENTI_DEMO = [
   {
+    // Consenso dato e numero verificato: riceve tutto su WhatsApp.
     nome: 'Giulia',
     cognome: 'Rossi',
     email: 'giulia.rossi@cliente.test',
     numeroWhatsapp: '+393405550001',
+    consensoWhatsapp: true,
+    numeroVerificato: true,
   },
   {
+    // Nessun consenso: riceve tutto via e-mail, anche se ha il numero.
     nome: 'Andrea',
     cognome: 'Conti',
     email: 'andrea.conti@cliente.test',
     numeroWhatsapp: '+393405550002',
+    consensoWhatsapp: false,
+    numeroVerificato: false,
   },
   {
+    // Consenso dato ma numero non ancora verificato: serve a provare la
+    // verifica con il codice dalla propria area.
     nome: 'Elena',
     cognome: 'Moretti',
     email: 'elena.moretti@cliente.test',
     numeroWhatsapp: '+393405550003',
+    consensoWhatsapp: true,
+    numeroVerificato: false,
+  },
+  {
+    // Scheda creata dal personale: solo numero, nessuna e-mail e consenso
+    // dichiarato al telefono. Senza WhatsApp attivo non ha alcun recapito
+    // digitale, e il personale deve dettare il link di attivazione.
+    nome: 'Paolo',
+    cognome: 'Ferri',
+    email: null,
+    numeroWhatsapp: '+393405550004',
+    consensoWhatsapp: true,
+    numeroVerificato: false,
   },
 ];
 
@@ -307,10 +334,27 @@ async function esegui(): Promise<void> {
     });
 
     for (const cliente of CLIENTI_DEMO) {
-      await prisma.utente.upsert({
-        where: { email: cliente.email },
-        update: {},
-        create: { ...cliente, passwordHash, ruolo: 'cliente', emailVerificata: true },
+      const { consensoWhatsapp, ...dati } = cliente;
+      const comuni = {
+        ...dati,
+        consensoTrattamentoIl: new Date(),
+        consensoWhatsappIl: consensoWhatsapp ? new Date() : null,
+        ruolo: 'cliente' as const,
+        emailVerificata: dati.email !== null,
+      };
+      // Chi non ha e-mail non può accedere da solo: resta una scheda del
+      // personale, in attesa dell'invito.
+      const esistente = await prisma.utente.findFirst({
+        where: { numeroWhatsapp: dati.numeroWhatsapp },
+        select: { id: true },
+      });
+
+      if (esistente) {
+        continue;
+      }
+
+      await prisma.utente.create({
+        data: dati.email ? { ...comuni, passwordHash } : comuni,
       });
     }
 

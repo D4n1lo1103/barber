@@ -26,6 +26,7 @@ interface RigaCliente {
   note: string;
   attivo: boolean;
   passwordHash: string | null;
+  consensoWhatsappIl: Date | null;
   creatoIl: Date;
 }
 
@@ -112,6 +113,8 @@ export class ClientiServizio {
         numeroWhatsapp: dati.numeroWhatsapp,
         email: dati.email ?? null,
         note: dati.note,
+        // Il consenso lo dichiara il cliente: il personale lo registra.
+        consensoWhatsappIl: dati.consensoWhatsapp ? new Date() : null,
         ruolo: 'cliente',
         // L'account esiste ma non è utilizzabile finché il cliente non
         // sceglie la password tramite l'invito.
@@ -121,14 +124,18 @@ export class ClientiServizio {
 
     const invito = await this.token.crea(creato.id);
 
-    // Senza e-mail il link resta in mano al personale: dalla fase 7 l'invito
-    // parte via WhatsApp.
-    if (creato.email) {
-      await this.notifiche.inviaInvitoAttivazione(
-        { nome: creato.nome, email: creato.email },
-        invito.token,
-      );
-    }
+    // L'invito va su WhatsApp se il cliente ha acconsentito, altrimenti via
+    // e-mail. Senza nessuno dei due il link resta in mano al personale, che lo
+    // vede a schermo e può dettarlo.
+    await this.notifiche.inviaInvitoAttivazione(
+      {
+        nome: creato.nome,
+        email: creato.email,
+        numeroWhatsapp: creato.numeroWhatsapp,
+        consensoWhatsapp: creato.consensoWhatsappIl !== null,
+      },
+      invito.token,
+    );
 
     return { cliente: this.componi(creato), token: invito.token, scadeIl: invito.scadeIl };
   }
@@ -182,12 +189,15 @@ export class ClientiServizio {
 
     const invito = await this.token.crea(cliente.id);
 
-    if (cliente.email) {
-      await this.notifiche.inviaInvitoAttivazione(
-        { nome: cliente.nome, email: cliente.email },
-        invito.token,
-      );
-    }
+    await this.notifiche.inviaInvitoAttivazione(
+      {
+        nome: cliente.nome,
+        email: cliente.email,
+        numeroWhatsapp: cliente.numeroWhatsapp,
+        consensoWhatsapp: cliente.consensoWhatsappIl !== null,
+      },
+      invito.token,
+    );
 
     return invito;
   }
@@ -270,6 +280,7 @@ export class ClientiServizio {
       note: riga.note,
       attivo: riga.attivo,
       accountAttivato: riga.passwordHash !== null,
+      consensoWhatsapp: riga.consensoWhatsappIl !== null,
       creatoIl: riga.creatoIl.toISOString(),
     };
   }

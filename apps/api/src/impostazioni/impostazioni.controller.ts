@@ -1,5 +1,15 @@
-import { Body, Controller, Get, Put, UseGuards } from '@nestjs/common';
-import { schemaRegoleSalone, type DatiRegoleSalone, type RegoleSalone } from '@barber/shared';
+import { Body, Controller, Get, Post, Put, UseGuards } from '@nestjs/common';
+import {
+  schemaImpostazioniWhatsapp,
+  schemaInvioDiProva,
+  schemaRegoleSalone,
+  type DatiImpostazioniWhatsapp,
+  type DatiInvioDiProva,
+  type DatiRegoleSalone,
+  type EsitoInvioDiProva,
+  type RegoleSalone,
+  type StatoWhatsapp,
+} from '@barber/shared';
 import { Ruoli } from '../comuni/decoratori/ruoli.decoratore.js';
 import { RuoliGuardia } from '../comuni/guardie/ruoli.guardia.js';
 import { ValidazioneZodPipe } from '../comuni/validazione.pipe.js';
@@ -23,5 +33,31 @@ export class ImpostazioniController {
     @Body(new ValidazioneZodPipe(schemaRegoleSalone)) dati: DatiRegoleSalone,
   ): Promise<RegoleSalone> {
     return this.impostazioni.salvaRegole(dati);
+  }
+
+  /**
+   * Messaggi WhatsApp: attivazione, numero mittente e modelli approvati. Il
+   * token non passa da qui, vive nell'ambiente.
+   */
+  @Get('whatsapp')
+  @Ruoli('titolare')
+  leggiWhatsapp(): Promise<StatoWhatsapp> {
+    return this.impostazioni.leggiWhatsapp();
+  }
+
+  @Put('whatsapp')
+  @Ruoli('titolare')
+  salvaWhatsapp(
+    @Body(new ValidazioneZodPipe(schemaImpostazioniWhatsapp)) dati: DatiImpostazioniWhatsapp,
+  ): Promise<StatoWhatsapp> {
+    return this.impostazioni.salvaWhatsapp(dati);
+  }
+
+  @Post('whatsapp/prova')
+  @Ruoli('titolare')
+  inviaProva(
+    @Body(new ValidazioneZodPipe(schemaInvioDiProva)) dati: DatiInvioDiProva,
+  ): Promise<EsitoInvioDiProva> {
+    return this.impostazioni.inviaProva(dati.numeroWhatsapp);
   }
 }

@@ -12,6 +12,7 @@ import type {
   DatiCreazioneDipendente,
   DatiCreazioneServizio,
   DatiEsitoFinto,
+  DatiImpostazioniWhatsapp,
   DatiEvasioneRichiesta,
   DatiModificaCliente,
   DatiModificaProfilo,
@@ -26,6 +27,8 @@ import type {
   DisponibilitaGiorno,
   ElencoClienti,
   EsitoRegistrazione,
+  EsitoInvioDiProva,
+  EsitoRichiestaCodice,
   EsportazioneDati,
   FasciaSettimanale,
   Operatore,
@@ -34,6 +37,7 @@ import type {
   RegoleSalone,
   RichiestaCancellazione,
   Servizio,
+  StatoWhatsapp,
   SituazioneCaparre,
 } from '@barber/shared';
 import { chiamaApi } from './client-api';
@@ -384,6 +388,33 @@ export function leggiRichiestaCancellazione(): Promise<{
 
 export function richiediCancellazioneDati(motivo: string): Promise<RichiestaCancellazione> {
   return chiamaApi('/area-cliente/cancellazione', { metodo: 'POST', corpo: { motivo } });
+}
+
+// ─── Messaggi WhatsApp ────────────────────────────────────────────────────────
+
+export function leggiImpostazioniWhatsapp(): Promise<StatoWhatsapp> {
+  return chiamaApi('/impostazioni/whatsapp');
+}
+
+export function salvaImpostazioniWhatsapp(dati: DatiImpostazioniWhatsapp): Promise<StatoWhatsapp> {
+  return chiamaApi('/impostazioni/whatsapp', { metodo: 'PUT', corpo: dati });
+}
+
+/** Invio di prova, per verificare la configurazione dei messaggi. */
+export function inviaProvaWhatsapp(numeroWhatsapp: string): Promise<EsitoInvioDiProva> {
+  return chiamaApi('/impostazioni/whatsapp/prova', {
+    metodo: 'POST',
+    corpo: { numeroWhatsapp },
+  });
+}
+
+/** Chiede il codice per verificare il proprio numero. */
+export function chiediCodiceNumero(): Promise<EsitoRichiestaCodice> {
+  return chiamaApi('/area-cliente/numero/codice', { metodo: 'POST' });
+}
+
+export function confermaCodiceNumero(codice: string): Promise<void> {
+  return chiamaApi('/area-cliente/numero/verifica', { metodo: 'POST', corpo: { codice } });
 }
 
 // ─── Pagamenti ────────────────────────────────────────────────────────────────

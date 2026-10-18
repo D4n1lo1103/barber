@@ -1,4 +1,4 @@
-import { createHash, randomBytes } from 'node:crypto';
+import { createHash, randomBytes, randomInt } from 'node:crypto';
 import { BadRequestException, Injectable } from '@nestjs/common';
 import type { TipoToken } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service.js';
@@ -11,6 +11,8 @@ const ORE_VALIDITA: Readonly<Record<TipoToken, number>> = {
   verifica_email: 48,
   // La reimpostazione della password è un'operazione sensibile: finestra breve.
   reset_password: 2,
+  // Il codice di verifica del numero si usa subito: pochi minuti bastano.
+  verifica_numero: 0.25,
 };
 
 export interface TokenGenerato {
@@ -32,6 +34,17 @@ export class TokenServizio {
   }
 
   /**
+   * Hash di un codice corto, legato all'utente.
+   *
+   * Due persone possono ricevere per caso lo stesso codice di sei cifre, e
+   * `tokenHash` è unico: legando l'hash all'utente le collisioni scompaiono e
+   * un codice vale solo per chi l'ha chiesto.
+   */
+  private calcolaHashCodice(utenteId: string, codice: string): string {
+    return createHash('sha256').update(`${utenteId}:${codice}`).digest('hex');
+  }
+
+  /**
    * Genera un token e restituisce il valore in chiaro: viene inserito nel link
    * inviato all'utente e non è più recuperabile.
    */
@@ -46,6 +59,56 @@ export class TokenServizio {
     });
 
     return { token, scadeIl };
+  }
+
+  /**
+   * Genera un codice numerico di sei cifre, per la verifica del numero di
+   * telefono: va dettato o copiato da un messaggio, quindi deve essere corto.
+   *
+   * Nel database resta solo l'hash, come per i token lunghi. Un codice corto
+   * si indovina più facilmente, perciò la finestra di validità è di pochi
+   * minuti e le rotte che lo accettano hanno un limite di frequenza.
+   */
+  async creaCodice(utenteId: string): Promise<TokenGenerato> {
+    // randomInt è uniforme: evita lo sbilanciamento di un modulo su byte casuali.
+    const codice = String(randomInt(0, 1_000_000)).padStart(6, '0');
+    const scadeIl = new Date(Date.now() + ORE_VALIDITA.verifica_numero * 60 * 60 * 1000);
+
+    await this.prisma.tokenUtente.deleteMany({
+      where: { utenteId, tipo: 'verifica_numero', usatoIl: null },
+    });
+    await this.prisma.tokenUtente.create({
+      data: {
+        utenteId,
+        tipo: 'verifica_numero',
+        tokenHash: this.calcolaHashCodice(utenteId, codice),
+        scadeIl,
+      },
+    });
+
+    return { token: codice, scadeIl };
+  }
+
+  /**
+   * Risolve un codice di verifica sapendo già di chi è: due utenti potrebbero
+   * avere lo stesso codice, quindi non basta cercarlo per hash.
+   */
+  async risolviCodice(utenteId: string, codice: string) {
+    const riga = await this.prisma.tokenUtente.findFirst({
+      where: {
+        utenteId,
+        tipo: 'verifica_numero',
+        tokenHash: this.calcolaHashCodice(utenteId, codice),
+        usatoIl: null,
+        scadeIl: { gt: new Date() },
+      },
+    });
+
+    if (!riga) {
+      throw new BadRequestException('Codice non valido o scaduto. Chiedine uno nuovo.');
+    }
+
+    return riga;
   }
 
   /** Verifica il token e restituisce la riga con l'utente a cui appartiene. */

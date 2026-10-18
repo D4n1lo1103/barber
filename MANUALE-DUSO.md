@@ -21,6 +21,7 @@ già completate. Le parti ancora da sviluppare sono elencate in fondo, in
   - [Chiusure del salone](#chiusure-del-salone)
   - [Regole del salone](#regole-del-salone)
   - [Caparra](#caparra)
+  - [Messaggi WhatsApp](#messaggi-whatsapp)
   - [Richieste di cancellazione dei dati](#richieste-di-cancellazione-dei-dati)
 - [Clienti](#clienti)
 - [Agenda](#agenda)
@@ -35,6 +36,7 @@ già completate. Le parti ancora da sviluppare sono elencate in fondo, in
   - [Prenotare online](#prenotare-online)
   - [Spostare o annullare dall'app](#spostare-o-annullare-dallapp)
   - [Pagare la caparra](#pagare-la-caparra)
+  - [Verificare il numero di telefono](#verificare-il-numero-di-telefono)
   - [Profilo, consensi e dati personali](#profilo-consensi-e-dati-personali)
 - [Aspetto e accessibilità](#aspetto-e-accessibilità)
 - [Domande frequenti](#domande-frequenti)
@@ -60,7 +62,7 @@ già completate. Le parti ancora da sviluppare sono elencate in fondo, in
 
 ## Primo avvio dell'installazione
 
-Alla prima apertura dell'indirizzo del salone compare la **procedura guidata**, in cinque
+Alla prima apertura dell'indirizzo del salone compare la **procedura guidata**, in sei
 passi. Serve la **chiave di installazione** consegnata da chi ha predisposto il server.
 
 1. **Profilo**: barbiere o parrucchiere. Determina il catalogo iniziale, le durate tipiche e
@@ -68,8 +70,11 @@ passi. Serve la **chiave di installazione** consegnata da chi ha predisposto il 
 2. **Dati del salone**: nome, indirizzo, città, telefono, e-mail.
 3. **Agenda**: granularità degli slot e tempo di blocco dello slot durante il pagamento
    della caparra; attivazione della vendita online dei prodotti.
-4. **Catalogo iniziale**: i servizi proposti per il profilo, modificabili subito o più tardi.
-5. **Account del titolare** e chiave di installazione.
+4. **Messaggi**: attivazione dei messaggi WhatsApp e identificativo del numero mittente. È
+   facoltativo e si può fare dopo, dalle impostazioni. Il token di WhatsApp non si imposta
+   qui: è un segreto e va nel file di configurazione del server.
+5. **Catalogo iniziale**: i servizi proposti per il profilo, modificabili subito o più tardi.
+6. **Account del titolare** e chiave di installazione.
 
 La procedura si completa **una sola volta**. Finché non è completata nessun'altra pagina è
 raggiungibile.
@@ -86,8 +91,8 @@ di attivazione** e scelgono la propria.
 
 ## Impostazioni del salone (solo titolare)
 
-Dal pannello iniziale, pulsante **Impostazioni del salone**. Quattro schede: Servizi,
-Personale, Orari e Regole. I dipendenti non vedono questa pagina.
+Dal pannello iniziale, pulsante **Impostazioni del salone**. Cinque schede: Servizi,
+Personale, Orari, Regole e Messaggi. I dipendenti non vedono questa pagina.
 
 ### Servizi
 
@@ -201,6 +206,43 @@ che è obbligatorio. L'operazione resta nei movimenti con data e autore.
 **Dove si vedono i movimenti**: nella scheda del cliente, riquadro **Caparre e credito**, con
 il credito disponibile e tutti i movimenti (pagata, rimborsata, convertita in credito,
 trattenuta, scalata, restituita). Sono dati economici: li vede solo il titolare.
+
+### Messaggi WhatsApp
+
+Scheda _Messaggi_. Conferme, promemoria e inviti ad attivare l'account possono arrivare al
+cliente su WhatsApp invece che per e-mail.
+
+Cosa serve, in ordine:
+
+1. Un account **WhatsApp Business** presso Meta con un numero mittente dedicato.
+2. I **modelli approvati** da Meta: WhatsApp non consente messaggi liberi, solo modelli
+   approvati in anticipo. Ne servono quattro (conferma, promemoria, invito, codice di
+   verifica) e i loro nomi vanno scritti in questa scheda.
+3. L'**identificativo del numero mittente** (nella console di Meta è il «Phone number ID»):
+   si incolla qui e non è un segreto.
+4. Il **token di accesso**: è un segreto e **non** si imposta da questa pagina. Va messo nel
+   file di configurazione del server, nella variabile `WHATSAPP_TOKEN`. Se manca, la scheda
+   lo dice in cima e tutti i messaggi partono via e-mail.
+
+Il pulsante **Invia la prova** manda il modello del codice di verifica a un numero che
+indichi tu, per accertarti che la configurazione funzioni prima di contare sui messaggi.
+
+Come viene scelto il canale, per ogni messaggio:
+
+| Situazione                                              | Dove arriva il messaggio |
+| ------------------------------------------------------- | ------------------------ |
+| WhatsApp attivo, consenso del cliente e numero presente | WhatsApp                 |
+| Consenso mancante o revocato                            | e-mail                   |
+| Nessun numero, o WhatsApp non attivo                    | e-mail                   |
+| Invio WhatsApp non riuscito                             | e-mail, subito           |
+| Nessun recapito                                         | nessun messaggio         |
+
+Il **consenso** lo dà il cliente registrandosi, oppure lo dichiara al telefono e il
+dipendente lo registra creando la scheda. Il cliente può revocarlo quando vuole dalla propria
+area: è un obbligo di legge, non una cortesia.
+
+L'anticipo del **promemoria** si imposta nella scheda _Regole_. Il promemoria parte una volta
+sola per appuntamento e non viene inviato per gli appuntamenti annullati.
 
 ### Richieste di cancellazione dei dati
 
@@ -329,6 +371,8 @@ Servono un account e un indirizzo e-mail confermato: senza, non si prenota.
    facoltativo e si può cambiare dopo.
 4. Arriva un'e-mail con un link di **conferma dell'indirizzo**, valido 48 ore. Finché non si
    conferma, l'accesso non funziona. Dalla pagina di verifica si può chiedere un nuovo invio.
+5. Il **numero di telefono** si verifica dopo, quando si vuole, dalla propria area: vedi
+   [Verificare il numero di telefono](#verificare-il-numero-di-telefono).
 
 Casi particolari:
 
@@ -402,6 +446,16 @@ subito: copre la caparra in tutto o in parte, e si paga solo la differenza. Il c
 scadenza e si vede nella sezione _Profilo e dati_. Se la differenza non viene pagata e lo slot
 si libera, il credito usato torna indietro.
 
+### Verificare il numero di telefono
+
+Nella sezione **Profilo e dati**, sotto il numero: **Invia il codice**. Arriva un codice di
+sei cifre su WhatsApp — o per e-mail, se il salone non ha ancora attivato i messaggi — valido
+pochi minuti. Inserendolo, il numero risulta verificato.
+
+Non è obbligatorio per prenotare: serve al salone per essere sicuro di poterti raggiungere.
+Un numero già verificato su un altro account viene rifiutato: in quel caso va contattato il
+salone.
+
 ### Profilo, consensi e dati personali
 
 Sezione **Profilo e dati**.
@@ -458,10 +512,15 @@ _Regole_ delle impostazioni. Vedi
 [Richieste di cancellazione dei dati](#richieste-di-cancellazione-dei-dati).
 
 **Il cliente non ha ricevuto il link di attivazione.**
-Se la scheda ha un'e-mail, l'invito è stato inviato lì: conviene controllare la posta
-indesiderata. Dalla sua scheda si genera comunque un nuovo link, che si può anche dettare al
-telefono; il precedente smette di funzionare. Dalla fase 7 l'invito arriverà anche via
-WhatsApp.
+Se ha dato il consenso l'invito è andato su WhatsApp; altrimenti all'indirizzo e-mail, dove
+conviene controllare la posta indesiderata. Se non ha né consenso né e-mail, il link resta a
+schermo al momento della creazione e si può dettare. Dalla sua scheda si genera comunque un
+nuovo link; il precedente smette di funzionare.
+
+**Perché un cliente riceve le e-mail invece dei messaggi WhatsApp?**
+Perché manca una delle tre condizioni: i messaggi WhatsApp attivi nelle impostazioni, il
+consenso del cliente, un numero nella sua scheda. Vedi
+[Messaggi WhatsApp](#messaggi-whatsapp).
 
 **Il cliente ha pagato ma l'appuntamento risulta ancora in attesa.**
 La conferma arriva dal fornitore di pagamenti, non dal browser del cliente: di solito è
@@ -481,8 +540,7 @@ farsi rinviare dalla pagina di verifica.
 
 Queste funzioni sono previste dalle fasi successive dello sviluppo:
 
-- **Verifica del numero di telefono** (fase 7): oggi l'account si conferma con la sola
-  e-mail; la verifica del numero arriverà con i messaggi WhatsApp.
-- **WhatsApp** (fase 7): conferme, promemoria e inviti, con ripiego sull'e-mail.
 - **Prodotti e magazzino** (fase 8) e **vendita online** (fase 9).
+- **Gestione della cassa e pagamenti in negozio** (registratore telematico, POS): da valutare,
+  non ancora specificata.
 - **Statistiche e KPI** (fase 10), riservati al titolare.

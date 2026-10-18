@@ -398,7 +398,10 @@ export class AppuntamentiServizio {
     };
   }
 
-  /** Conferma al cliente, se ha un indirizzo e-mail. */
+  /**
+   * Conferma al cliente, sul canale che gli spetta: WhatsApp se ha dato il
+   * consenso e il salone l'ha attivo, altrimenti e-mail.
+   */
   private async inviaConferma(appuntamento: {
     inizio: Date;
     durataMinuti: number;
@@ -410,15 +413,20 @@ export class AppuntamentiServizio {
   }): Promise<void> {
     const cliente = await this.prisma.utente.findUnique({
       where: { id: appuntamento.clienteId },
-      select: { email: true },
+      select: { nome: true, email: true, numeroWhatsapp: true, consensoWhatsappIl: true },
     });
 
-    if (!cliente?.email) {
+    if (!cliente) {
       return;
     }
 
     await this.notifiche.inviaConfermaPrenotazione(
-      { nome: appuntamento.cliente.nome, email: cliente.email },
+      {
+        nome: cliente.nome,
+        email: cliente.email,
+        numeroWhatsapp: cliente.numeroWhatsapp,
+        consensoWhatsapp: cliente.consensoWhatsappIl !== null,
+      },
       appuntamento,
     );
   }

@@ -70,8 +70,10 @@ export class PersonaleServizio {
 
     const invito = await this.token.crea(creato.id);
 
+    // L'invito al personale va sempre via e-mail: i messaggi WhatsApp sono
+    // previsti per i clienti.
     await this.notifiche.inviaInvitoAttivazione(
-      { nome: creato.nome, email: dati.email },
+      { nome: creato.nome, email: dati.email, numeroWhatsapp: null, consensoWhatsapp: false },
       invito.token,
     );
 
@@ -166,7 +168,12 @@ export class PersonaleServizio {
 
     if (operatore.email) {
       await this.notifiche.inviaInvitoAttivazione(
-        { nome: operatore.nome, email: operatore.email },
+        {
+          nome: operatore.nome,
+          email: operatore.email,
+          numeroWhatsapp: null,
+          consensoWhatsapp: false,
+        },
         invito.token,
       );
     }

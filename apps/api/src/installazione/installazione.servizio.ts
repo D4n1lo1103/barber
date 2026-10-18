@@ -4,6 +4,7 @@ import { timingSafeEqual } from 'node:crypto';
 import {
   CAPARRA_PERCENTUALE_PREDEFINITA,
   configurazioneProfilo,
+  WHATSAPP_DISATTIVO,
   ORE_LIMITE_PREAVVISO_PREDEFINITO,
   type DatiProceduraGuidata,
   type StatoInstallazione,
@@ -76,6 +77,7 @@ export class InstallazioneServizio {
     }
 
     const configurazione = configurazioneProfilo(dati.profilo);
+    const whatsapp = dati.whatsapp ?? WHATSAPP_DISATTIVO;
     const passwordHash = await this.autenticazione.calcolaHashPassword(dati.titolare.password);
 
     try {
@@ -92,6 +94,14 @@ export class InstallazioneServizio {
             granularitaSlotMin: dati.granularitaSlotMinuti,
             minutiBloccoSlot: dati.minutiBloccoSlot,
             venditaOnlineAttiva: dati.venditaOnlineAttiva,
+            // WhatsApp è facoltativo: senza il passo compilato resta spento e
+            // si attiva più tardi dalle impostazioni.
+            whatsappAttivo: whatsapp.attivo,
+            whatsappIdNumero: whatsapp.idNumero,
+            whatsappModelloConferma: whatsapp.modelli.confermaPrenotazione,
+            whatsappModelloPromemoria: whatsapp.modelli.promemoria,
+            whatsappModelloInvito: whatsapp.modelli.invitoAttivazione,
+            whatsappModelloVerifica: whatsapp.modelli.verificaNumero,
             configurata: true,
           },
         });

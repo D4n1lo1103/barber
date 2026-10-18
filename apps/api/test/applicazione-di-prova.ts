@@ -8,6 +8,8 @@ import { AutenticazioneServizio } from '../src/autenticazione/autenticazione.ser
 import { LimiteFrequenzaServizio } from '../src/comuni/limite-frequenza.servizio.js';
 import { MITTENTE_EMAIL } from '../src/notifiche/mittente-email.js';
 import { MittenteRegistro } from '../src/notifiche/mittente-registro.js';
+import { MITTENTE_WHATSAPP } from '../src/notifiche/mittente-whatsapp.js';
+import { MittenteWhatsappRegistro } from '../src/notifiche/mittente-whatsapp-registro.js';
 import { PrismaService } from '../src/prisma/prisma.service.js';
 import type { Ruolo } from '@barber/shared';
 
@@ -18,6 +20,8 @@ export interface ContestoDiProva {
   limiti: LimiteFrequenzaServizio;
   /** Mittente di prova: i messaggi non partono, restano in memoria. */
   email: MittenteRegistro;
+  /** Mittente WhatsApp di prova: anche qui i messaggi restano in memoria. */
+  whatsapp: MittenteWhatsappRegistro;
 }
 
 /** Suffisso delle e-mail create dai test, usato per la pulizia finale. */
@@ -42,6 +46,7 @@ export async function avviaApplicazioneDiProva(): Promise<ContestoDiProva> {
     autenticazione: app.get(AutenticazioneServizio),
     limiti: app.get(LimiteFrequenzaServizio),
     email: app.get<MittenteRegistro>(MITTENTE_EMAIL),
+    whatsapp: app.get<MittenteWhatsappRegistro>(MITTENTE_WHATSAPP),
   };
 }
 

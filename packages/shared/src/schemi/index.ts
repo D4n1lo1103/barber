@@ -9,3 +9,4 @@ export * from './orari.js';
 export * from './pagamenti.js';
 export * from './personale.js';
 export * from './servizi.js';
+export * from './whatsapp.js';

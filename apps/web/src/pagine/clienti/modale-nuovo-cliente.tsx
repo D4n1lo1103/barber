@@ -6,12 +6,19 @@ import { Modale } from '../../componenti/modale';
 import { Pulsante } from '../../componenti/pulsante';
 import { creaCliente } from '../../servizi/gestione';
 
-const BOZZA_VUOTA = { nome: '', cognome: '', numeroWhatsapp: '', email: '', note: '' };
+const BOZZA_VUOTA = {
+  nome: '',
+  cognome: '',
+  numeroWhatsapp: '',
+  email: '',
+  note: '',
+  consensoWhatsapp: false,
+};
 
 /**
  * Scheda cliente creata dal personale. La password non viene mai impostata qui:
- * al salvataggio il sistema produce un link di attivazione da consegnare al
- * cliente (dalla fase 7 lo invia da sé via WhatsApp o e-mail).
+ * al salvataggio il sistema produce un link di attivazione, che invia da sé al
+ * cliente su WhatsApp o via e-mail e che resta visibile per poterlo dettare.
  */
 export function ModaleNuovoCliente({
   aperto,
@@ -37,7 +44,7 @@ export function ModaleNuovoCliente({
     }
   }, [aperto]);
 
-  function aggiorna(campo: keyof typeof BOZZA_VUOTA, valore: string) {
+  function aggiorna(campo: keyof typeof BOZZA_VUOTA, valore: string | boolean) {
     impostaBozza((precedente) => ({ ...precedente, [campo]: valore }));
   }
 
@@ -138,6 +145,22 @@ export function ModaleNuovoCliente({
             type="email"
             autoComplete="off"
           />
+
+          <label className="flex items-start gap-2 text-sm">
+            <input
+              type="checkbox"
+              checked={bozza.consensoWhatsapp}
+              onChange={(evento) => aggiorna('consensoWhatsapp', evento.target.checked)}
+              className="mt-0.5 accent-[var(--color-accento)]"
+            />
+            <span>
+              Acconsente a ricevere messaggi su WhatsApp
+              <span className="block text-xs text-testo-tenue">
+                Chiedilo al cliente: senza consenso conferme, promemoria e invito vanno via e-mail.
+                Potrà cambiarlo dalla propria area.
+              </span>
+            </span>
+          </label>
 
           <div className="space-y-2">
             <label htmlFor="note-cliente" className="block text-sm font-medium">

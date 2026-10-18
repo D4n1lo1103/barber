@@ -37,6 +37,13 @@ test.describe('Procedura guidata al primo avvio', () => {
     await expect(page.getByLabel("Durata di uno slot dell'agenda")).toHaveValue('15');
     await page.getByRole('button', { name: 'Avanti' }).click();
 
+    // Passo dei messaggi: si attiva WhatsApp e si indica il numero mittente.
+    // Il token non si imposta qui, e la procedura lo dichiara.
+    await page.getByRole('checkbox', { name: /Messaggi WhatsApp/ }).check();
+    await page.getByLabel('Identificativo del numero mittente').fill('123456789012345');
+    await expect(page.getByRole('status')).toContainText('WHATSAPP_TOKEN');
+    await page.getByRole('button', { name: 'Avanti' }).click();
+
     await expect(page.getByText(/Catalogo iniziale \(6 selezionati\)/)).toBeVisible();
     await page.getByRole('button', { name: 'Avanti' }).click();
 
