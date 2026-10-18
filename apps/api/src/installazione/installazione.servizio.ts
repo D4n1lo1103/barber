@@ -10,6 +10,9 @@ import { AutenticazioneServizio } from '../autenticazione/autenticazione.servizi
 import { PrismaService } from '../prisma/prisma.service.js';
 import type { Ambiente } from '../configurazione/ambiente.js';
 
+/** Usata finché la procedura guidata non ha fissato la granularità scelta. */
+const GRANULARITA_PREDEFINITA = 15;
+
 @Injectable()
 export class InstallazioneServizio {
   private readonly logger = new Logger(InstallazioneServizio.name);
@@ -25,7 +28,13 @@ export class InstallazioneServizio {
     const installazione = await this.prisma.installazione.findFirst();
 
     if (!installazione) {
-      return { configurata: false, profilo: null, nomeSalone: null, venditaOnlineAttiva: false };
+      return {
+        configurata: false,
+        profilo: null,
+        nomeSalone: null,
+        venditaOnlineAttiva: false,
+        granularitaSlotMinuti: GRANULARITA_PREDEFINITA,
+      };
     }
 
     return {
@@ -33,6 +42,7 @@ export class InstallazioneServizio {
       profilo: installazione.configurata ? installazione.profilo : null,
       nomeSalone: installazione.configurata ? installazione.nomeSalone : null,
       venditaOnlineAttiva: installazione.venditaOnlineAttiva,
+      granularitaSlotMinuti: installazione.granularitaSlotMin,
     };
   }
 

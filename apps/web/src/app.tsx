@@ -1,3 +1,4 @@
+import { lazy, Suspense } from 'react';
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router';
 import { FornitoreSessione } from './autenticazione/contesto-sessione';
 import { Avviso } from './componenti/avviso';
@@ -6,9 +7,19 @@ import { RottaProtetta } from './componenti/rotta-protetta';
 import { FornitoreInstallazione, usaInstallazione } from './installazione/contesto-installazione';
 import { PaginaAccesso } from './pagine/accesso';
 import { PaginaAttivazione } from './pagine/attivazione';
+import { PaginaClienti } from './pagine/clienti/clienti';
+import { PaginaDettaglioCliente } from './pagine/clienti/dettaglio-cliente';
 import { PaginaImpostazioni } from './pagine/impostazioni/impostazioni';
 import { PaginaPannello } from './pagine/pannello';
 import { PaginaProceduraGuidata } from './pagine/procedura-guidata';
+
+/**
+ * L'agenda porta con sé il calendario e la libreria di date: viene caricata
+ * solo quando serve, per non appesantire l'accesso e la procedura guidata.
+ */
+const PaginaAgenda = lazy(() =>
+  import('./pagine/agenda/agenda').then((modulo) => ({ default: modulo.PaginaAgenda })),
+);
 
 /**
  * Finché l'installazione non è configurata l'unica pagina raggiungibile è la
@@ -43,6 +54,32 @@ function Instradamento() {
       <Route path="/accesso" element={<PaginaAccesso />} />
       <Route path="/attivazione" element={<PaginaAttivazione />} />
       <Route path="/procedura-guidata" element={<Navigate to="/" replace />} />
+      <Route
+        path="/agenda"
+        element={
+          <RottaProtetta ruoliConsentiti={['titolare', 'dipendente']}>
+            <Suspense fallback={<Caricamento messaggio="Caricamento dell’agenda" />}>
+              <PaginaAgenda />
+            </Suspense>
+          </RottaProtetta>
+        }
+      />
+      <Route
+        path="/clienti"
+        element={
+          <RottaProtetta ruoliConsentiti={['titolare', 'dipendente']}>
+            <PaginaClienti />
+          </RottaProtetta>
+        }
+      />
+      <Route
+        path="/clienti/:id"
+        element={
+          <RottaProtetta ruoliConsentiti={['titolare', 'dipendente']}>
+            <PaginaDettaglioCliente />
+          </RottaProtetta>
+        }
+      />
       <Route
         path="/impostazioni"
         element={

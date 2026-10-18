@@ -86,6 +86,8 @@ export const schemaStatoInstallazione = z.object({
   profilo: z.enum(PROFILI).nullable(),
   nomeSalone: z.string().nullable(),
   venditaOnlineAttiva: z.boolean(),
+  /** Granularità degli slot dell'agenda, in minuti: serve alla griglia dell'agenda. */
+  granularitaSlotMinuti: z.number().int().positive(),
 });
 
 export type StatoInstallazione = z.infer<typeof schemaStatoInstallazione>;

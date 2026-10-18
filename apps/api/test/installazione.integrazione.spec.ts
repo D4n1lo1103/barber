@@ -73,6 +73,7 @@ describe('Procedura guidata al primo avvio', () => {
       profilo: null,
       nomeSalone: null,
       venditaOnlineAttiva: false,
+      granularitaSlotMinuti: 15,
     });
   });
 
@@ -186,6 +187,8 @@ describe('Procedura guidata al primo avvio', () => {
       profilo: 'barbiere',
       nomeSalone: 'Salone di prova',
       venditaOnlineAttiva: false,
+      // L'agenda ha bisogno della granularità scelta nella procedura guidata.
+      granularitaSlotMinuti: 15,
     });
   });
 });

@@ -359,6 +359,57 @@ describe('Agenda del personale', () => {
     });
   });
 
+  describe('Tutela degli appuntamenti già fissati', () => {
+    it('rifiuta orari di lavoro che lascerebbero fuori un appuntamento futuro', async () => {
+      await prenota(dipendente, { inizio: alle(11) }).expect(201);
+
+      const risposta = await come(
+        titolare,
+        chiama()
+          .put(`/api/orari/operatori/${idDipendente}`)
+          .send({ fasce: [{ giornoSettimana: 3, minutoInizio: 540, minutoFine: 600 }] }),
+      ).expect(400);
+
+      expect(risposta.body.message).toContain('11:00');
+    });
+
+    it('rifiuta un’assenza che coprirebbe un appuntamento in agenda', async () => {
+      await prenota(dipendente, { inizio: alle(11) }).expect(201);
+
+      const risposta = await come(
+        titolare,
+        chiama()
+          .post('/api/orari/assenze')
+          .send({
+            operatoreId: idDipendente,
+            tipo: 'ferie',
+            inizio: alle(9),
+            fine: alle(13),
+          }),
+      ).expect(400);
+
+      expect(risposta.body.message).toContain('appuntamenti in agenda');
+    });
+
+    it('accetta l’assenza se l’appuntamento è stato annullato', async () => {
+      const creato = await prenota(dipendente, { inizio: alle(11) }).expect(201);
+
+      await come(
+        dipendente,
+        chiama()
+          .post(`/api/appuntamenti/${creato.body.id}/annullamento`)
+          .send({ motivo: 'tempestivo' }),
+      ).expect(201);
+
+      await come(
+        titolare,
+        chiama()
+          .post('/api/orari/assenze')
+          .send({ operatoreId: idDipendente, tipo: 'ferie', inizio: alle(9), fine: alle(13) }),
+      ).expect(201);
+    });
+  });
+
   describe('Agenda e storico', () => {
     it('elenca gli appuntamenti del giorno e filtra per operatore', async () => {
       await prenota(dipendente).expect(201);

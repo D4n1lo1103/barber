@@ -16,7 +16,11 @@ Lo sviluppo procede per fasi (vedi `docs/TODO.md`).
   profili barbiere e parrucchiere, design system, dati demo parametrizzati.
 - **Fase 2 — Personale, servizi e orari: completata.** Catalogo servizi, gestione dei
   dipendenti con attivazione dell'account, orari di apertura e di lavoro, assenze.
-- Fase 3 — Agenda lato personale: da iniziare.
+- **Fase 3 — Agenda lato personale: completata.** Calcolo della disponibilità, agenda per
+  operatore con viste giornaliera e settimanale, inserimento dal personale con flag "senza
+  caparra", spostamenti, annullamenti con motivo, mancate presentazioni, completamento,
+  schede clienti con invito di attivazione.
+- Fase 4 — Area cliente: da iniziare.
 
 ## Prerequisiti
 
@@ -117,7 +121,7 @@ Tutte le rotte hanno prefisso `/api`. L'autorizzazione è sempre verificata lato
 | Metodo   | Percorso                           | Autenticazione                                                                                                         | Risposte                                                                                               |
 | -------- | ---------------------------------- | ---------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
 | `GET`    | `/stato`                           | pubblica                                                                                                               | `200` stato del servizio e del database                                                                |
-| `GET`    | `/installazione`                   | pubblica                                                                                                               | `200` stato dell'installazione (configurata, profilo, nome del salone, vendita online)                 |
+| `GET`    | `/installazione`                   | pubblica                                                                                                               | `200` stato dell'installazione (configurata, profilo, nome del salone, vendita online, granularità)    |
 | `GET`    | `/installazione/profili/:profilo`  | pubblica                                                                                                               | `200` impostazioni e catalogo proposti, `400` profilo non riconosciuto                                 |
 | `POST`   | `/installazione/procedura-guidata` | pubblica, con chiave di installazione nell'intestazione `x-chiave-installazione`; max 5 richieste ogni 5 minuti per IP | `204`, `400` dati non validi, `403` chiave errata, `409` già configurata                               |
 | `POST`   | `/autenticazione/accesso`          | pubblica, max 5 richieste al minuto per IP                                                                             | `200` utente, `400` dati non validi, `401` credenziali errate, `429` troppi tentativi                  |
@@ -144,6 +148,29 @@ Tutte le rotte hanno prefisso `/api`. L'autorizzazione è sempre verificata lato
 | `GET`    | `/orari/assenze`                   | sessione (personale)                                                                                                   | `200` assenze, filtrabili per operatore e periodo                                                      |
 | `POST`   | `/orari/assenze`                   | solo titolare                                                                                                          | `201` assenza registrata, `400` intervallo non valido o sovrapposto                                    |
 | `DELETE` | `/orari/assenze/:id`               | solo titolare                                                                                                          | `204`, `404`                                                                                           |
+
+### Clienti e agenda (fase 3)
+
+Tutte queste rotte richiedono una sessione del personale (titolare o dipendente): ogni
+membro del personale vede e gestisce tutte le agende. L'area clienti avrà rotte proprie,
+con le regole di preavviso previste per i clienti (fase 4).
+
+| Metodo  | Percorso                                  | Note                                                                                       | Risposte                                                                                      |
+| ------- | ----------------------------------------- | ------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------- |
+| `GET`   | `/clienti`                                | `cerca`, `pagina`, `perPagina`                                                             | `200` elenco paginato                                                                         |
+| `GET`   | `/clienti/:id`                            |                                                                                            | `200` scheda, `404`                                                                           |
+| `POST`  | `/clienti`                                | nome, cognome, numero WhatsApp (e-mail facoltativa); max 30 richieste ogni 5 minuti per IP | `201` scheda e link di attivazione, `400` dati non validi, `409` numero o e-mail già presenti |
+| `PATCH` | `/clienti/:id`                            |                                                                                            | `200` scheda aggiornata, `409` numero o e-mail di un altro cliente                            |
+| `POST`  | `/clienti/:id/invito`                     |                                                                                            | `201` nuovo link di attivazione, `409` account già attivato                                   |
+| `GET`   | `/appuntamenti`                           | `dal` (data locale), `giorni`, `operatoreId`, `clienteId`                                  | `200` appuntamenti del periodo, `400` data non valida                                         |
+| `GET`   | `/appuntamenti/disponibilita`             | `operatoreId`, `servizioIds` separati da virgola, `dal`, `giorni`, `escludiAppuntamentoId` | `200` slot liberi per giorno, `400` servizi o operatore non compatibili                       |
+| `GET`   | `/appuntamenti/cliente/:clienteId`        | storico, dal più recente                                                                   | `200` appuntamenti, `404` cliente inesistente                                                 |
+| `GET`   | `/appuntamenti/:id`                       |                                                                                            | `200`, `404`                                                                                  |
+| `POST`  | `/appuntamenti`                           | cliente, operatore, servizi, inizio, `senzaCaparra`; max 60 richieste ogni 5 minuti per IP | `201` appuntamento, `400` fuori orario o oltre i limiti di data, `409` slot occupato          |
+| `POST`  | `/appuntamenti/:id/spostamento`           | nuovo orario e, se serve, nuovo operatore                                                  | `201` appuntamento aggiornato, `400`, `409` slot occupato                                     |
+| `POST`  | `/appuntamenti/:id/annullamento`          | motivo (`tempestivo`, `tardivo`, `dal_salone`) e nota                                      | `201` appuntamento annullato, `400` motivo mancante o stato non compatibile                   |
+| `POST`  | `/appuntamenti/:id/mancata-presentazione` |                                                                                            | `201` appuntamento segnato, `400` stato non compatibile                                       |
+| `POST`  | `/appuntamenti/:id/completamento`         | sempre manuale                                                                             | `201` appuntamento completato, `400` stato non compatibile                                    |
 
 Le richieste che modificano dati devono inviare il valore del cookie `csrf`
 nell'intestazione `x-csrf-token`.
@@ -213,8 +240,22 @@ assieme ai dump.
    link verrà inviato automaticamente per e-mail.
 6. **Orari**: il titolare definisce le fasce di apertura del salone e, dentro quelle, gli
    orari di lavoro di ciascun operatore; ferie e assenze si registrano per periodo.
+7. **Scheda cliente dal personale**: bastano nome, cognome e numero WhatsApp. Il sistema
+   genera un link di attivazione: è il cliente a scegliere la propria password, che il personale
+   non conosce mai. Un numero già presente non crea un duplicato: la scheda esistente viene
+   segnalata.
+8. **Prenotazione dal personale**: si scelgono cliente, operatore e servizi; il sistema
+   propone solo gli orari realmente liberi, calcolati su orari di lavoro, assenze e
+   appuntamenti esistenti. Nessun preavviso minimo, flag "senza caparra" disponibile solo al
+   personale, registrazione possibile fino a 7 giorni nel passato e 60 giorni in avanti.
+9. **Agenda**: viste giornaliera (una colonna per operatore) e settimanale; il giorno
+   mostrato è nell'indirizzo, quindi l'agenda di una data è condivisibile.
+10. **Chiusura dell'appuntamento**: il personale lo sposta, lo annulla indicando se l'avviso
+    del cliente è stato tempestivo o tardivo, segna la mancata presentazione oppure lo
+    completa a mano. Ogni passaggio è tracciato con autore e momento.
 
-I flussi di agenda, prenotazione, caparra, annullamento e vendita arrivano nelle fasi successive.
+Il manuale d'uso completo, pensato per il titolare e per i dipendenti, è in
+`MANUALE-DUSO.md`. I flussi di area cliente, caparra e vendita arrivano nelle fasi successive.
 
 ## Design system
 

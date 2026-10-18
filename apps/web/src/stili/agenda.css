@@ -1,0 +1,108 @@
+/*
+ * Aspetto dell'agenda (react-big-calendar) nel design system del gestionale.
+ * Le classi .rbc-* vengono dalla libreria: qui sostituiamo i suoi colori con i
+ * token del tema, così l'agenda resta coerente in tema scuro e chiaro.
+ */
+.agenda-salone {
+  --rbc-bordo: var(--color-bordo);
+  height: 100%;
+  color: var(--color-testo);
+}
+
+.agenda-salone .rbc-time-view,
+.agenda-salone .rbc-time-header-content,
+.agenda-salone .rbc-time-content,
+.agenda-salone .rbc-timeslot-group,
+.agenda-salone .rbc-day-slot,
+.agenda-salone .rbc-header,
+.agenda-salone .rbc-time-header.rbc-overflowing,
+.agenda-salone .rbc-time-content > * + * > * {
+  border-color: var(--rbc-bordo);
+}
+
+.agenda-salone .rbc-time-view {
+  border-radius: var(--radius-superficie);
+  background: var(--color-superficie);
+  backdrop-filter: blur(16px);
+  overflow: hidden;
+}
+
+.agenda-salone .rbc-header {
+  padding: 0.6rem 0.25rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  text-transform: capitalize;
+}
+
+.agenda-salone .rbc-today {
+  background: color-mix(in oklch, var(--color-accento) 10%, transparent);
+}
+
+.agenda-salone .rbc-label {
+  font-size: 0.72rem;
+  color: var(--color-testo-tenue);
+}
+
+.agenda-salone .rbc-time-slot {
+  border-color: color-mix(in oklch, var(--color-bordo) 45%, transparent);
+}
+
+.agenda-salone .rbc-current-time-indicator {
+  height: 2px;
+  background: var(--color-accento);
+  box-shadow: 0 0 12px color-mix(in oklch, var(--color-accento) 70%, transparent);
+}
+
+.agenda-salone .rbc-event,
+.agenda-salone .rbc-event.rbc-selected {
+  border: 1px solid color-mix(in oklch, var(--colore-stato) 65%, transparent);
+  border-radius: 0.6rem;
+  background: color-mix(in oklch, var(--colore-stato) 26%, var(--color-fondo-elevato));
+  color: var(--color-testo);
+  padding: 0.2rem 0.4rem;
+  outline: none;
+  transition: transform var(--durata-breve) var(--curva-uscita);
+}
+
+.agenda-salone .rbc-event:hover {
+  transform: translateY(-1px);
+}
+
+.agenda-salone .rbc-event:focus-visible {
+  outline: 2px solid var(--color-accento);
+  outline-offset: 2px;
+}
+
+/* Gli stati dell'appuntamento: il colore è impostato dal componente evento. */
+.agenda-salone .evento-confermato {
+  --colore-stato: var(--color-accento);
+}
+
+.agenda-salone .evento-in_attesa_pagamento {
+  --colore-stato: var(--color-avviso);
+}
+
+.agenda-salone .evento-completato {
+  --colore-stato: var(--color-conferma);
+}
+
+.agenda-salone .evento-annullato {
+  --colore-stato: var(--color-testo-tenue);
+  opacity: 0.6;
+  text-decoration: line-through;
+}
+
+.agenda-salone .evento-mancata_presentazione {
+  --colore-stato: var(--color-errore);
+}
+
+.agenda-salone .rbc-slot-selection {
+  background: color-mix(in oklch, var(--color-accento) 35%, transparent);
+  border-radius: 0.4rem;
+}
+
+/* L'intestazione propria della libreria non serve: la barra è nostra. */
+.agenda-salone .rbc-toolbar {
+  display: none;
+}

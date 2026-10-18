@@ -47,7 +47,7 @@ test.describe('Sessione del titolare', () => {
     await page.goto('/');
 
     await expect(page.getByRole('heading', { name: /Ciao/ })).toBeVisible();
-    await expect(page.getByText('Titolare')).toBeVisible();
+    await expect(page.getByText('Titolare · Barbiere')).toBeVisible();
 
     const cookieSessione = (await context.cookies()).find((voce) => voce.name === 'sessione');
     expect(cookieSessione?.httpOnly).toBe(true);
