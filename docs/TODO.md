@@ -2,72 +2,24 @@
 
 Stato dello sviluppo per fasi (vedi la roadmap in `CLAUDE.md`).
 
-## In corso — Fase 6: Caparra e pagamenti Stripe
+## In corso
 
-Le fasi da 0 a 5 sono completate.
+Nessuna attività in corso: le fasi da 0 a 6 sono completate. Prossima: fase 7 — WhatsApp
+(conferme, promemoria, inviti, ripiego via e-mail). Al termine della fase 7 il software è
+utilizzabile da un salone reale.
 
-### Decisioni prese con il titolare (18/10/2026)
+## Da fare — Fase 7: WhatsApp
 
-1. **La caparra si governa dalle impostazioni**, non dalla procedura guidata: il salone
-   decide se applicarla e con quale percentuale, nella scheda _Regole_.
-2. **Forma di restituzione** per un annullamento tempestivo: scelta del salone fra rimborso
-   sul metodo di pagamento e credito. Un'installazione nuova parte da _rimborso_.
-3. **Stripe dietro interfaccia**, con un provider finto per i test automatici: lo sviluppo
-   non dipende dalle chiavi, che servono solo alla verifica manuale nel browser.
-4. **Gli appuntamenti inseriti dal personale non hanno caparra.** La caparra si paga online
-   al momento della prenotazione, e al telefono il cliente non può farlo: l'attivazione resta
-   una scelta a monte nelle impostazioni e riguarda solo le prenotazioni che il cliente fa da
-   sé. Di conseguenza il flag «senza caparra» non è più una spunta nel pannello del personale:
-   ogni appuntamento inserito dal personale risulta senza caparra.
-
-### Attività
-
-- [x] `COMPLETATO` Modello dati: impostazioni della caparra sull'installazione, importo e
-      scadenza del blocco sull'appuntamento, pagamenti, movimenti della caparra, movimenti
-      del credito del cliente, eventi di pagamento già elaborati (idempotenza).
-- [x] `COMPLETATO` Migrazione SQL manuale con i vincoli scritti a mano: percentuale fra 1 e
-      100, caparra non superiore al prezzo, scadenza del blocco solo in attesa di pagamento,
-      restituzione discrezionale sempre motivata e con autore, un solo pagamento aperto per
-      appuntamento.
-- [x] `COMPLETATO` Impostazioni della caparra nella scheda _Regole_ (attiva, percentuale,
-      forma di restituzione), con validazione condivisa.
-- [x] `COMPLETATO` Interfaccia `FornitorePagamenti` con due realizzazioni: Stripe Checkout
-      ospitato e fornitore finto per test e sviluppo senza chiavi.
-- [x] `COMPLETATO` Prenotazione online con caparra attiva: appuntamento
-      `in_attesa_pagamento`, slot bloccato per i minuti definiti in installazione.
-- [x] `COMPLETATO` Webhook verificato per firma e idempotente (registro degli eventi per
-      identificativo): la conferma dell'appuntamento avviene solo qui.
-- [x] `COMPLETATO` Scadenza del blocco su pg-boss, più la ripulitura dei blocchi scaduti
-      prima di occupare uno slot: la correttezza non dipende dalla coda.
-- [x] `COMPLETATO` Regole di annullamento: tempestivo (rimborso o credito secondo
-      l'impostazione), tardivo e mancata presentazione (trattenuta), dal salone (rimborso
-      integrale).
-- [x] `COMPLETATO` Caparra scalata dal totale al completamento dell'appuntamento.
-- [x] `COMPLETATO` Restituzione discrezionale: solo titolare, motivazione obbligatoria,
-      tracciata.
-- [ ] `TODO` Credito del cliente: saldo, utilizzo per una prenotazione futura, nessuna
-      scadenza.
-- [ ] `TODO` Registro di audit dei movimenti: data, importo, autore e motivo su ogni
-      movimento, visibile al titolare sulla scheda cliente e sull'appuntamento.
-- [ ] `TODO` Interfaccia: pagamento della caparra nell'area cliente, stato del pagamento
-      nell'agenda, movimenti e credito nella scheda cliente, restituzione discrezionale.
-- [ ] `TODO` Test: unitari sul calcolo della caparra e sulle regole di restituzione,
-      integrazione su webhook (firma, idempotenza, ordine degli eventi), scadenza del
-      blocco, permessi; end-to-end del flusso di prenotazione con caparra e annullamento.
-- [ ] `TODO` Documentazione: ADR 0008, README (variabili Stripe e rotte), `.env.example`,
-      `MANUALE-DUSO.md`.
-
-### Da chiarire prima di implementare i flussi
-
-- [ ] `BLOCCATO` **Spostamento quando la regola è «trattato come un annullamento»**: non è
-      definito se lo spostamento debba restituire la caparra e richiederne una nuova, oppure
-      se la caparra già pagata segua l'appuntamento spostato.
-  - Blocco: serve la decisione del titolare.
-- [ ] `TODO` Interfaccia del pagamento nell'area cliente: pagina di ritorno, ripresa del
-      pagamento, pagina del fornitore finto per lo sviluppo.
-- [ ] `BLOCCATO` **Credito inferiore alla caparra dovuta**: non è definito se il credito
-      possa coprire una parte dell'importo, con il resto pagato con carta, o solo l'intero.
-  - Blocco: serve la decisione del titolare.
+- [ ] `TODO` Mittente WhatsApp dietro interfaccia, come già fatto per le e-mail, con
+      WhatsApp Cloud API ufficiale di Meta e modelli approvati.
+- [ ] `TODO` Conferma della prenotazione, promemoria con l'anticipo già configurabile e
+      invito ad attivare l'account.
+- [ ] `TODO` Ripiego via e-mail quando manca il consenso o l'invio fallisce.
+- [ ] `TODO` Verifica del numero di telefono con codice via WhatsApp (rinviata dalla fase 4).
+- [ ] `TODO` Attività periodica dei promemoria su pg-boss.
+- [ ] `TODO` Decisioni da prendere con il titolare: numero di telefono mittente e account
+      Meta, testi dei modelli da far approvare, se il promemoria debba partire anche per gli
+      appuntamenti inseriti dal personale senza e-mail.
 
 ## Da fare — attività trasversali già individuate
 
@@ -75,9 +27,9 @@ Le fasi da 0 a 5 sono completate.
       un'attività periodica pg-boss: la coda ora esiste, manca la pianificazione ricorrente.
 - [ ] `TODO` Integrare Sentry su frontend e backend con `IDENTIFICATIVO_INSTALLAZIONE`
       su ogni evento e senza dati personali dei clienti.
-- [ ] `TODO` Registro di audit per le operazioni sensibili (movimenti della caparra,
-      restituzioni discrezionali, cancellazione dei dati di un cliente, disattivazione di
-      account): da progettare nella fase 6.
+- [ ] `TODO` Registro di audit unico per le operazioni sensibili. I movimenti della caparra
+      e le restituzioni discrezionali sono già tracciati (fase 6); mancano cancellazione dei
+      dati di un cliente e disattivazione di account.
 - [ ] `TODO` Il pacchetto JavaScript del frontend supera i 500 kB: valutare un ulteriore
       taglio in parti ora che l'area cliente è cresciuta.
 
@@ -92,6 +44,84 @@ Le fasi da 0 a 5 sono completate.
 - [ ] `BLOCCATO` Prova reale della procedura di ripristino dei backup.
   - Blocco: richiede un server di prova con un'installazione attiva. Gli script sono
     pronti e documentati; manca la verifica end-to-end su dati reali.
+
+## Completato — Fase 6: Caparra e pagamenti Stripe (18/10/2026)
+
+### Decisioni prese con il titolare (18/10/2026)
+
+1. **La caparra si governa dalle impostazioni**: il salone decide se applicarla e con quale
+   percentuale, dalla scheda _Regole_.
+2. **Forma di restituzione** per un annullamento tempestivo: scelta del salone fra rimborso e
+   credito. Un'installazione nuova parte da _rimborso_.
+3. **Stripe dietro interfaccia**, con un fornitore finto per i test: lo sviluppo non dipende
+   dalle chiavi, che servono solo alla verifica manuale nel browser.
+4. **Gli appuntamenti inseriti dal personale non hanno caparra**: si paga online al momento
+   della prenotazione, e al telefono il cliente non può farlo. La spunta «senza caparra» è
+   sparita dal pannello, perché non avrebbe più effetto.
+5. **Lo spostamento «trattato come un annullamento»** restituisce la caparra e ne richiede una
+   nuova sul nuovo orario.
+6. **Il credito copre la caparra per quello che può**, il resto si paga con carta.
+
+### Attività
+
+- [x] `COMPLETATO` Modello dati: impostazioni della caparra, importo e scadenza del blocco
+      sull'appuntamento, pagamenti, movimenti della caparra, movimenti del credito, eventi di
+      pagamento già elaborati (idempotenza).
+- [x] `COMPLETATO` Migrazione SQL manuale con i vincoli scritti a mano: percentuale fra 1 e
+      100, caparra non superiore al prezzo, scadenza del blocco solo in attesa di pagamento,
+      restituzione discrezionale sempre motivata e con autore, un solo pagamento aperto per
+      appuntamento.
+- [x] `COMPLETATO` Impostazioni della caparra nella scheda _Regole_, con validazione condivisa.
+- [x] `COMPLETATO` Interfaccia `FornitorePagamenti`: Stripe Checkout ospitato e fornitore
+      finto per test e sviluppo senza chiavi, mai costruito in produzione.
+- [x] `COMPLETATO` Prenotazione online con caparra: appuntamento `in_attesa_pagamento` e slot
+      bloccato per i minuti definiti in installazione.
+- [x] `COMPLETATO` Webhook verificato per firma e idempotente: la conferma dell'appuntamento
+      avviene solo qui, e un importo diverso da quello atteso non conferma nulla.
+- [x] `COMPLETATO` Scadenza del blocco su pg-boss, più la chiusura dei blocchi scaduti prima
+      di calcolare la disponibilità e prima di occupare uno slot: la correttezza non dipende
+      dalla coda.
+- [x] `COMPLETATO` Regole di annullamento: tempestivo (rimborso o credito), tardivo e mancata
+      presentazione (trattenuta), dal salone (rimborso integrale).
+- [x] `COMPLETATO` Caparra scalata dal totale al completamento.
+- [x] `COMPLETATO` Restituzione discrezionale: solo titolare, motivazione obbligatoria,
+      tracciata con data e autore.
+- [x] `COMPLETATO` Credito del cliente: saldo senza scadenza, utilizzo parziale o totale,
+      restituzione se la differenza non viene pagata.
+- [x] `COMPLETATO` Registro dei movimenti: caparra pagata, trattenuta e saldo del credito si
+      calcolano dai movimenti, senza totali da tenere allineati.
+- [x] `COMPLETATO` Interfaccia: riepilogo e pagamento nell'area cliente, ripresa del
+      pagamento, pagina del fornitore finto, caparra nel dettaglio dell'appuntamento,
+      restituzione discrezionale, credito e movimenti nella scheda cliente (solo titolare).
+- [x] `COMPLETATO` Test: unitari sul calcolo della caparra, sull'uso del credito e sulle
+      regole di restituzione; 19 test di integrazione su conferma, idempotenza, firma non
+      valida, scadenza, rimborso, credito e restituzione discrezionale; end-to-end del flusso
+      di pagamento, in un progetto a sé perché la caparra è un'impostazione del salone.
+- [x] `COMPLETATO` ADR 0008, README, `.env.example` e `MANUALE-DUSO.md` aggiornati.
+
+### Controlli eseguiti al termine della fase 6
+
+| Controllo            | Comando                                       | Esito                                 |
+| -------------------- | --------------------------------------------- | ------------------------------------- |
+| Formattazione        | `pnpm format:check`                           | superato                              |
+| Lint                 | `pnpm lint`                                   | superato                              |
+| Tipi                 | `pnpm type-check`                             | superato                              |
+| Test unitari         | `pnpm test`                                   | 70 condivisi, 30 backend, 38 frontend |
+| Test di integrazione | `pnpm --filter @barber/api test:integrazione` | 165 test superati                     |
+| Test end-to-end      | `pnpm --filter @barber/web test:e2e`          | 38 superati, 1 saltato per scelta     |
+| Build                | `pnpm build`                                  | superato                              |
+
+### Limiti noti e rischi residui
+
+- **Verifica manuale con Stripe reale ancora da fare**: serve inserire le chiavi di prova in
+  `.env` e registrare il webhook. Senza chiavi il flusso è coperto dal fornitore finto, che
+  percorre la stessa strada ma non parla con Stripe.
+- **Pagamento riuscito su uno slot già liberato**: resta possibile se il cliente paga
+  all'ultimo istante. Viene registrato nei log e la caparra risulta pagata su un appuntamento
+  annullato, così il titolare la vede fra i movimenti e può restituirla.
+- **Registro di audit generale**: i movimenti della caparra sono tracciati, ma le altre
+  operazioni sensibili (disattivazione di account, cancellazione dei dati) non hanno ancora un
+  registro unico. Resta fra le attività trasversali.
 
 ## Completato — Fasi 4 e 5: Area cliente ed e-mail (18/10/2026)
 

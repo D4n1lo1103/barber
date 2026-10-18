@@ -24,7 +24,12 @@ Lo sviluppo procede per fasi (vedi `docs/TODO.md`).
   Registrazione autonoma con consensi GDPR, verifica dell'indirizzo, reimpostazione della
   password, prenotazione online, spostamento e annullamento secondo le regole del salone,
   copia e cancellazione dei propri dati; invio e-mail via SMTP con coda pg-boss.
-- Fase 6 — Caparra e pagamenti Stripe: da iniziare.
+- **Fase 6 — Caparra e pagamenti Stripe: completata.** Caparra configurabile dal titolare
+  (attivazione, percentuale, forma di restituzione), pagamento online con Stripe Checkout
+  ospitato, conferma solo dopo l'evento firmato e idempotente, scadenza del blocco dello
+  slot, rimborsi, credito senza scadenza, restituzione discrezionale del titolare e registro
+  dei movimenti. Senza le chiavi di Stripe i pagamenti non sono reali: viene usato un
+  fornitore finto (vedi ADR 0008).
 
 ## Prerequisiti
 
@@ -77,6 +82,9 @@ docs/            TODO.md e decisioni architetturali (adr/)
 | `SMTP_MITTENTE` | no | `Nome <indirizzo>` | Mittente dei messaggi di servizio |
 | `SMTP_TLS_IMPLICITO` | no (`false`) | `true` \| `false` | `true` solo con TLS implicito (porta 465) |
 | `CODA_ATTIVA` | no (`true`) | `true` \| `false` | Coda pg-boss delle attività in background; con `false` vengono eseguite in linea |
+| `STRIPE_CHIAVE_SEGRETA` | sì in produzione | `sk_…` | Chiave segreta Stripe. Senza, i pagamenti sono finti (solo sviluppo e test) |
+| `STRIPE_SEGRETO_WEBHOOK` | sì in produzione | `whsec_…` | Segreto con cui si verifica la firma degli eventi Stripe |
+| `STRIPE_CHIAVE_PUBBLICABILE` | no | `pk_…` | Chiave pubblicabile; non è un segreto |
 | `LIMITI_FREQUENZA_DISATTIVI` | no (`false`) | `true` \| `false` | Disattiva i limiti di frequenza nei test; ignorata in produzione |
 | `SENTRY_DSN` | no | URL | Monitoraggio errori |
 | `VITE_URL_API` | sì (frontend) | URL | Indirizzo dell'API usato dal browser |
@@ -166,7 +174,7 @@ Tutte le rotte hanno prefisso `/api`. L'autorizzazione è sempre verificata lato
 | `GET`    | `/orari/chiusure`                         | sessione (personale)                                                                                                   | `200` chiusure raggruppate per periodo e motivo                                                        |
 | `POST`   | `/orari/chiusure`                         | solo titolare                                                                                                          | `201` chiusura registrata per tutti gli operatori, `400` periodo non valido o già occupato             |
 | `DELETE` | `/orari/chiusure`                         | solo titolare                                                                                                          | `204` chiusura rimossa per tutti, `404`                                                                |
-| `GET`    | `/impostazioni/regole`                    | sessione (personale)                                                                                                   | `200` limite di preavviso, regola di spostamento, anticipo del promemoria                              |
+| `GET`    | `/impostazioni/regole`                    | sessione (personale)                                                                                                   | `200` preavviso, regola di spostamento, promemoria, caparra (attiva, percentuale, restituzione)        |
 | `PUT`    | `/impostazioni/regole`                    | solo titolare                                                                                                          | `200` regole salvate, `400` valori fuori intervallo                                                    |
 | `GET`    | `/cancellazioni`                          | solo titolare                                                                                                          | `200` richieste di cancellazione con gli appuntamenti futuri di ciascun cliente                        |
 | `POST`   | `/cancellazioni/:id/evasione`             | solo titolare                                                                                                          | `201` richiesta chiusa, `400` appuntamenti ancora in agenda, `409` già chiusa                          |
@@ -316,6 +324,29 @@ assieme ai dump.
 16. **E-mail di servizio**: verifica dell'indirizzo, reimpostazione della password, inviti
     ad attivare l'account e conferme di prenotazione, inviate via SMTP attraverso la coda
     pg-boss, così un invio fallito viene ritentato.
+
+### Pagamenti della caparra (fase 6)
+
+| Metodo | Percorso                                   | Autenticazione                            | Risposte                                                                      |
+| ------ | ------------------------------------------ | ----------------------------------------- | ----------------------------------------------------------------------------- |
+| `GET`  | `/pagamenti/configurazione`                | pubblica                                  | `200` dichiara se i pagamenti sono finti                                      |
+| `POST` | `/pagamenti/webhook`                       | firma del fornitore, nessuna sessione     | `204` evento accettato, `400` firma non verificabile                          |
+| `POST` | `/pagamenti/appuntamenti/:id`              | solo cliente, max 10 ogni 5 minuti per IP | `201` indirizzo di pagamento e scadenza, `400` non in attesa o blocco scaduto |
+| `POST` | `/pagamenti/appuntamenti/:id/restituzione` | solo titolare                             | `204` caparra restituita, `400` nulla di trattenuto o motivo mancante         |
+| `GET`  | `/pagamenti/clienti/:id/situazione`        | solo titolare                             | `200` credito e movimenti della caparra                                       |
+| `POST` | `/pagamenti/finto/esito`                   | pubblica, solo senza chiavi Stripe        | `204` esito registrato, `404` con Stripe configurato                          |
+
+Lo stato di un pagamento si considera definitivo **solo** dopo l'evento del webhook: il
+ritorno del browser non conferma nulla. Gli eventi sono verificati per firma e registrati per
+identificativo, quindi un reinvio non produce doppi movimenti.
+
+17. **Caparra**: se il titolare l'attiva, chi prenota online paga una percentuale del prezzo
+    al momento della prenotazione. Lo slot resta bloccato per i minuti scelti in
+    installazione; scaduti, torna libero. La caparra viene scalata dal totale a servizio
+    concluso, restituita (rimborso o credito) per un annullamento tempestivo, trattenuta per
+    un annullamento tardivo o una mancata presentazione, e sempre rimborsata se annulla il
+    salone. Solo il titolare può restituire una caparra trattenuta, con motivazione
+    obbligatoria. Gli appuntamenti inseriti dal personale non prevedono caparra.
 
 Il manuale d'uso completo, pensato per il titolare, per i dipendenti e per i clienti, è in
 `MANUALE-DUSO.md`. I flussi di caparra, pagamenti, WhatsApp e vendita arrivano nelle fasi
