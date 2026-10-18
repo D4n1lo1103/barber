@@ -121,6 +121,12 @@ export const schemaAppuntamento = z.object({
   durataMinuti: z.number().int(),
   prezzoTotaleCentesimi: z.number().int(),
   senzaCaparra: z.boolean(),
+  /** Caparra dovuta, calcolata alla prenotazione: zero se non richiesta. */
+  caparraCentesimi: z.number().int(),
+  /** Caparra effettivamente pagata e non restituita. */
+  caparraPagataCentesimi: z.number().int(),
+  /** Istante oltre cui lo slot non è più tenuto, mentre si attende il pagamento. */
+  bloccoScadeIl: z.string().nullable(),
   note: z.string(),
   servizi: z.array(schemaServizioDellAppuntamento),
   creatoDaPersonale: z.boolean(),

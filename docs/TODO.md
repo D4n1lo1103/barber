@@ -14,28 +14,37 @@ Le fasi da 0 a 5 sono completate.
    sul metodo di pagamento e credito. Un'installazione nuova parte da _rimborso_.
 3. **Stripe dietro interfaccia**, con un provider finto per i test automatici: lo sviluppo
    non dipende dalle chiavi, che servono solo alla verifica manuale nel browser.
+4. **Gli appuntamenti inseriti dal personale non hanno caparra.** La caparra si paga online
+   al momento della prenotazione, e al telefono il cliente non può farlo: l'attivazione resta
+   una scelta a monte nelle impostazioni e riguarda solo le prenotazioni che il cliente fa da
+   sé. Di conseguenza il flag «senza caparra» non è più una spunta nel pannello del personale:
+   ogni appuntamento inserito dal personale risulta senza caparra.
 
 ### Attività
 
-- [ ] `IN CORSO` Modello dati: impostazioni della caparra sull'installazione, importo e
+- [x] `COMPLETATO` Modello dati: impostazioni della caparra sull'installazione, importo e
       scadenza del blocco sull'appuntamento, pagamenti, movimenti della caparra, movimenti
-      del credito del cliente, eventi Stripe già elaborati (idempotenza).
-- [ ] `TODO` Migrazione SQL manuale: vincoli di coerenza fra stato dell'appuntamento e
-      scadenza del blocco, indici per saldo del credito e movimenti.
-- [ ] `TODO` Impostazioni della caparra nella scheda _Regole_ (attiva, percentuale, forma di
-      restituzione), con validazione condivisa.
-- [ ] `TODO` Interfaccia `FornitorePagamenti` con due realizzazioni: Stripe e fornitore
-      finto per test e sviluppo senza chiavi.
-- [ ] `TODO` Prenotazione online con caparra attiva: appuntamento `in_attesa_pagamento`,
-      slot bloccato per i minuti definiti in installazione, pagamento avviato.
-- [ ] `TODO` Webhook Stripe verificato per firma e idempotente: la conferma
-      dell'appuntamento avviene solo qui.
-- [ ] `TODO` Scadenza del blocco su pg-boss: annullamento `pagamento_non_completato` e slot
-      di nuovo libero.
-- [ ] `TODO` Regole di annullamento: tempestivo (rimborso o credito secondo l'impostazione),
-      tardivo e mancata presentazione (trattenuta), dal salone (rimborso integrale).
-- [ ] `TODO` Caparra scalata dal totale al completamento dell'appuntamento.
-- [ ] `TODO` Restituzione discrezionale: solo titolare, motivazione obbligatoria, tracciata.
+      del credito del cliente, eventi di pagamento già elaborati (idempotenza).
+- [x] `COMPLETATO` Migrazione SQL manuale con i vincoli scritti a mano: percentuale fra 1 e
+      100, caparra non superiore al prezzo, scadenza del blocco solo in attesa di pagamento,
+      restituzione discrezionale sempre motivata e con autore, un solo pagamento aperto per
+      appuntamento.
+- [x] `COMPLETATO` Impostazioni della caparra nella scheda _Regole_ (attiva, percentuale,
+      forma di restituzione), con validazione condivisa.
+- [x] `COMPLETATO` Interfaccia `FornitorePagamenti` con due realizzazioni: Stripe Checkout
+      ospitato e fornitore finto per test e sviluppo senza chiavi.
+- [x] `COMPLETATO` Prenotazione online con caparra attiva: appuntamento
+      `in_attesa_pagamento`, slot bloccato per i minuti definiti in installazione.
+- [x] `COMPLETATO` Webhook verificato per firma e idempotente (registro degli eventi per
+      identificativo): la conferma dell'appuntamento avviene solo qui.
+- [x] `COMPLETATO` Scadenza del blocco su pg-boss, più la ripulitura dei blocchi scaduti
+      prima di occupare uno slot: la correttezza non dipende dalla coda.
+- [x] `COMPLETATO` Regole di annullamento: tempestivo (rimborso o credito secondo
+      l'impostazione), tardivo e mancata presentazione (trattenuta), dal salone (rimborso
+      integrale).
+- [x] `COMPLETATO` Caparra scalata dal totale al completamento dell'appuntamento.
+- [x] `COMPLETATO` Restituzione discrezionale: solo titolare, motivazione obbligatoria,
+      tracciata.
 - [ ] `TODO` Credito del cliente: saldo, utilizzo per una prenotazione futura, nessuna
       scadenza.
 - [ ] `TODO` Registro di audit dei movimenti: data, importo, autore e motivo su ogni
@@ -54,6 +63,8 @@ Le fasi da 0 a 5 sono completate.
       definito se lo spostamento debba restituire la caparra e richiederne una nuova, oppure
       se la caparra già pagata segua l'appuntamento spostato.
   - Blocco: serve la decisione del titolare.
+- [ ] `TODO` Interfaccia del pagamento nell'area cliente: pagina di ritorno, ripresa del
+      pagamento, pagina del fornitore finto per lo sviluppo.
 - [ ] `BLOCCATO` **Credito inferiore alla caparra dovuta**: non è definito se il credito
       possa coprire una parte dell'importo, con il resto pagato con carta, o solo l'intero.
   - Blocco: serve la decisione del titolare.

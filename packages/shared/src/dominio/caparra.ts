@@ -98,6 +98,43 @@ export function trattamentoDellaCaparra(parametri: {
   }
 }
 
+/** Un movimento, ridotto a ciò che serve per i totali. */
+export interface MovimentoPerTotali {
+  tipo: TipoMovimentoCaparra;
+  importoCentesimi: number;
+}
+
+/**
+ * Caparra entrata e non ancora restituita, calcolata dai movimenti.
+ *
+ * «trattenuta» e «scalata» non restituiscono denaro al cliente: la caparra
+ * resta al salone, quindi non riducono l'importo pagato.
+ */
+export function caparraPagataDaMovimenti(movimenti: readonly MovimentoPerTotali[]): number {
+  return movimenti.reduce((totale, movimento) => {
+    switch (movimento.tipo) {
+      case 'pagata':
+        return totale + movimento.importoCentesimi;
+      case 'rimborsata':
+      case 'convertita_in_credito':
+      case 'restituita_discrezionale':
+        return totale - movimento.importoCentesimi;
+      default:
+        return totale;
+    }
+  }, 0);
+}
+
+/** Caparra trattenuta dal salone e non più restituita. */
+export function caparraTrattenutaDaMovimenti(movimenti: readonly MovimentoPerTotali[]): number {
+  const somma = (tipo: TipoMovimentoCaparra) =>
+    movimenti
+      .filter((movimento) => movimento.tipo === tipo)
+      .reduce((totale, movimento) => totale + movimento.importoCentesimi, 0);
+
+  return Math.max(0, somma('trattenuta') - somma('restituita_discrezionale'));
+}
+
 /** Il movimento aumenta il credito del cliente. */
 export function accreditaCredito(tipo: TipoMovimentoCaparra): boolean {
   return tipo === 'convertita_in_credito';

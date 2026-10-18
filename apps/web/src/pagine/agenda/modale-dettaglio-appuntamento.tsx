@@ -117,7 +117,9 @@ export function ModaleDettaglioAppuntamento({
           <div>
             <dt className="text-xs text-testo-tenue">Caparra</dt>
             <dd className="font-medium">
-              {appuntamento.senzaCaparra ? 'Non richiesta' : 'Secondo le regole del salone'}
+              {appuntamento.senzaCaparra
+                ? 'Non richiesta'
+                : formattaPrezzo(appuntamento.caparraCentesimi)}
             </dd>
           </div>
         </dl>

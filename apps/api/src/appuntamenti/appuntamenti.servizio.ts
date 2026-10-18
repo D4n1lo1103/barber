@@ -7,6 +7,7 @@ import {
 } from '@nestjs/common';
 import {
   azioniDelCliente,
+  caparraPagataDaMovimenti,
   dataLocale,
   fineGiornoLocale,
   giorniConsecutivi,
@@ -24,6 +25,7 @@ import {
   type DatiRicercaAgenda,
   type DatiPrenotazioneCliente,
   type DatiSpostamentoAppuntamento,
+  type MovimentoPerTotali,
   type StatoAppuntamento,
 } from '@barber/shared';
 import { ClientiServizio } from '../clienti/clienti.servizio.js';
@@ -41,6 +43,8 @@ const INCLUDI_COLLEGAMENTI = {
   cliente: { select: { id: true, nome: true, cognome: true, numeroWhatsapp: true } },
   operatore: { select: { id: true, nome: true, cognome: true } },
   servizi: { orderBy: { ordine: 'asc' } },
+  // Serve a calcolare la caparra già pagata senza una query per appuntamento.
+  movimentiCaparra: { select: { tipo: true, importoCentesimi: true } },
 } as const;
 
 @Injectable()
@@ -250,7 +254,7 @@ export class AppuntamentiServizio {
           stato: caparra.centesimi > 0 ? 'in_attesa_pagamento' : 'confermato',
           caparraCentesimi: caparra.centesimi,
           bloccoScadeIl: caparra.scadeIl,
-          senzaCaparra: dati.senzaCaparra,
+          senzaCaparra: caparra.centesimi === 0,
           note: dati.note,
           // Nullo quando prenota il cliente stesso dall'area clienti.
           creatoDaId: autoreId,
@@ -284,9 +288,11 @@ export class AppuntamentiServizio {
   /**
    * Caparra dovuta su una nuova prenotazione e scadenza del blocco dello slot.
    *
-   * La caparra si paga online, quindi la richiede solo la prenotazione del
-   * cliente: un appuntamento preso al telefono o in negozio nasce confermato,
-   * e il flag «senza caparra» del personale resta tracciato sulla riga.
+   * La caparra si paga **online al momento della prenotazione**, quindi la
+   * richiede solo la prenotazione fatta dal cliente: un appuntamento preso al
+   * telefono o in negozio non ha caparra, perché in quel momento il cliente non
+   * può pagare (decisione del titolare del 18/10/2026). Per questo
+   * `senzaCaparra` risulta vero su ogni appuntamento inserito dal personale.
    */
   private async caparraPerLaPrenotazione(
     dati: DatiCreazioneAppuntamento,
@@ -601,6 +607,8 @@ export class AppuntamentiServizio {
     durataMinuti: number;
     prezzoTotaleCentesimi: number;
     senzaCaparra: boolean;
+    caparraCentesimi: number;
+    bloccoScadeIl: Date | null;
     note: string;
     creatoDaId: string | null;
     creatoIl: Date;
@@ -610,6 +618,7 @@ export class AppuntamentiServizio {
       prezzoCentesimi: number;
       durataMinuti: number;
     }[];
+    movimentiCaparra: MovimentoPerTotali[];
   }): Appuntamento {
     return {
       id: riga.id,
@@ -631,6 +640,9 @@ export class AppuntamentiServizio {
       durataMinuti: riga.durataMinuti,
       prezzoTotaleCentesimi: riga.prezzoTotaleCentesimi,
       senzaCaparra: riga.senzaCaparra,
+      caparraCentesimi: riga.caparraCentesimi,
+      caparraPagataCentesimi: caparraPagataDaMovimenti(riga.movimentiCaparra),
+      bloccoScadeIl: riga.bloccoScadeIl?.toISOString() ?? null,
       note: riga.note,
       servizi: riga.servizi.map((servizio) => ({
         servizioId: servizio.servizioId,

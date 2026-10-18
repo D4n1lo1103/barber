@@ -1,5 +1,10 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { accreditaCredito, type TipoMovimentoCaparra } from '@barber/shared';
+import {
+  accreditaCredito,
+  caparraPagataDaMovimenti,
+  caparraTrattenutaDaMovimenti,
+  type TipoMovimentoCaparra,
+} from '@barber/shared';
 import { PrismaService } from '../prisma/prisma.service.js';
 
 /** Un movimento da registrare nel registro della caparra. */
@@ -96,20 +101,7 @@ export class CaparraServizio {
       select: { tipo: true, importoCentesimi: true },
     });
 
-    return movimenti.reduce((totale, movimento) => {
-      switch (movimento.tipo) {
-        case 'pagata':
-          return totale + movimento.importoCentesimi;
-        case 'rimborsata':
-        case 'convertita_in_credito':
-        case 'restituita_discrezionale':
-          return totale - movimento.importoCentesimi;
-        // «trattenuta» e «scalata» non restituiscono denaro al cliente: la
-        // caparra resta al salone, quindi il saldo pagato non cambia.
-        default:
-          return totale;
-      }
-    }, 0);
+    return caparraPagataDaMovimenti(movimenti);
   }
 
   /** La caparra di questo appuntamento è stata trattenuta e non più restituita. */
@@ -119,13 +111,6 @@ export class CaparraServizio {
       select: { tipo: true, importoCentesimi: true },
     });
 
-    const trattenuta = movimenti
-      .filter((movimento) => movimento.tipo === 'trattenuta')
-      .reduce((totale, movimento) => totale + movimento.importoCentesimi, 0);
-    const restituita = movimenti
-      .filter((movimento) => movimento.tipo === 'restituita_discrezionale')
-      .reduce((totale, movimento) => totale + movimento.importoCentesimi, 0);
-
-    return Math.max(0, trattenuta - restituita);
+    return caparraTrattenutaDaMovimenti(movimenti);
   }
 }
