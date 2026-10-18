@@ -55,11 +55,15 @@ const PERSONALE_DEMO = [
   },
 ];
 
-/** Apertura demo: 9:00–13:00 e 15:00–19:00 da martedì a sabato. */
-const APERTURA_DEMO = [2, 3, 4, 5, 6].flatMap((giornoSettimana) => [
-  { giornoSettimana, minutoInizio: 540, minutoFine: 780 },
-  { giornoSettimana, minutoInizio: 900, minutoFine: 1140 },
-]);
+/**
+ * Apertura demo: la stessa proposta dalla procedura guidata, cioè da martedì a
+ * sabato (domenica e lunedì chiusi).
+ */
+const APERTURA_DEMO = configurazioneProfilo('barbiere').aperturaPredefinita.map((fascia) => ({
+  giornoSettimana: fascia.giornoSettimana as number,
+  minutoInizio: fascia.minutoInizio,
+  minutoFine: fascia.minutoFine,
+}));
 
 const CLIENTI_DEMO = [
   {

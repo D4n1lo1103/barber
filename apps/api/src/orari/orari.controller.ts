@@ -13,12 +13,17 @@ import {
 } from '@nestjs/common';
 import {
   schemaCreazioneAssenza,
+  schemaCreazioneChiusura,
   schemaOrariApertura,
   schemaOrariOperatore,
+  schemaRimozioneChiusura,
   type Assenza,
+  type Chiusura,
   type DatiCreazioneAssenza,
+  type DatiCreazioneChiusura,
   type DatiOrariApertura,
   type DatiOrariOperatore,
+  type DatiRimozioneChiusura,
   type FasciaSettimanale,
 } from '@barber/shared';
 import { Ruoli } from '../comuni/decoratori/ruoli.decoratore.js';
@@ -86,6 +91,30 @@ export class OrariController {
     @Body(new ValidazioneZodPipe(schemaCreazioneAssenza)) dati: DatiCreazioneAssenza,
   ): Promise<Assenza> {
     return this.orari.creaAssenza(dati);
+  }
+
+  /** Chiusure straordinarie del salone: un flusso solo, per tutti gli operatori. */
+  @Get('chiusure')
+  @Ruoli('titolare', 'dipendente')
+  elencaChiusure(): Promise<{ chiusure: Chiusura[] }> {
+    return this.orari.elencaChiusure().then((chiusure) => ({ chiusure }));
+  }
+
+  @Post('chiusure')
+  @Ruoli('titolare')
+  creaChiusura(
+    @Body(new ValidazioneZodPipe(schemaCreazioneChiusura)) dati: DatiCreazioneChiusura,
+  ): Promise<Chiusura> {
+    return this.orari.creaChiusura(dati);
+  }
+
+  @Delete('chiusure')
+  @Ruoli('titolare')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  rimuoviChiusura(
+    @Body(new ValidazioneZodPipe(schemaRimozioneChiusura)) dati: DatiRimozioneChiusura,
+  ): Promise<void> {
+    return this.orari.rimuoviChiusura(dati);
   }
 
   @Delete('assenze/:id')

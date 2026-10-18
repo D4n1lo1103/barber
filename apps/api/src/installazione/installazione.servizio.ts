@@ -58,6 +58,7 @@ export class InstallazioneServizio {
       throw new ConflictException("L'installazione è già stata configurata.");
     }
 
+    const configurazione = configurazioneProfilo(dati.profilo);
     const passwordHash = await this.autenticazione.calcolaHashPassword(dati.titolare.password);
 
     try {
@@ -78,7 +79,7 @@ export class InstallazioneServizio {
           },
         });
 
-        await transazione.utente.create({
+        const titolare = await transazione.utente.create({
           data: {
             email: dati.titolare.email,
             passwordHash,
@@ -87,6 +88,21 @@ export class InstallazioneServizio {
             ruolo: 'titolare',
             emailVerificata: true,
           },
+        });
+
+        // Orari di apertura proposti dal profilo (da martedì a sabato:
+        // domenica e lunedì restano chiusi, cioè senza fasce) e orari di
+        // lavoro del titolare, che è anche operatore. Il titolare può
+        // cambiarli subito dalle impostazioni.
+        const apertura = configurazione.aperturaPredefinita.map((fascia) => ({
+          giornoSettimana: fascia.giornoSettimana,
+          minutoInizio: fascia.minutoInizio,
+          minutoFine: fascia.minutoFine,
+        }));
+
+        await transazione.orarioApertura.createMany({ data: apertura });
+        await transazione.orarioOperatore.createMany({
+          data: apertura.map((fascia) => ({ ...fascia, operatoreId: titolare.id })),
         });
 
         await transazione.servizio.createMany({
@@ -104,7 +120,8 @@ export class InstallazioneServizio {
     }
 
     this.logger.log(
-      `Installazione configurata: profilo ${dati.profilo}, ${dati.servizi.length} servizi.`,
+      `Installazione configurata: profilo ${dati.profilo}, ${dati.servizi.length} servizi, ` +
+        `${configurazione.aperturaPredefinita.length} fasce di apertura predefinite.`,
     );
   }
 

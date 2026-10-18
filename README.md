@@ -147,7 +147,10 @@ Tutte le rotte hanno prefisso `/api`. L'autorizzazione è sempre verificata lato
 | `PUT`    | `/orari/operatori/:id`             | solo titolare                                                                                                          | `200` orari sostituiti, `400` fuori dagli orari di apertura                                            |
 | `GET`    | `/orari/assenze`                   | sessione (personale)                                                                                                   | `200` assenze, filtrabili per operatore e periodo                                                      |
 | `POST`   | `/orari/assenze`                   | solo titolare                                                                                                          | `201` assenza registrata, `400` intervallo non valido o sovrapposto                                    |
-| `DELETE` | `/orari/assenze/:id`               | solo titolare                                                                                                          | `204`, `404`                                                                                           |
+| `DELETE` | `/orari/assenze/:id`               | solo titolare                                                                                                          | `204`, `404`, `400` se la riga fa parte di una chiusura                                                |
+| `GET`    | `/orari/chiusure`                  | sessione (personale)                                                                                                   | `200` chiusure raggruppate per periodo e motivo                                                        |
+| `POST`   | `/orari/chiusure`                  | solo titolare                                                                                                          | `201` chiusura registrata per tutti gli operatori, `400` periodo non valido o già occupato             |
+| `DELETE` | `/orari/chiusure`                  | solo titolare                                                                                                          | `204` chiusura rimossa per tutti, `404`                                                                |
 
 ### Clienti e agenda (fase 3)
 
@@ -239,18 +242,23 @@ assieme ai dump.
    dipendente sceglie la propria password: il titolare non la conosce mai. Dalla fase 5 il
    link verrà inviato automaticamente per e-mail.
 6. **Orari**: il titolare definisce le fasce di apertura del salone e, dentro quelle, gli
-   orari di lavoro di ciascun operatore; ferie e assenze si registrano per periodo.
-7. **Scheda cliente dal personale**: bastano nome, cognome e numero WhatsApp. Il sistema
+   orari di lavoro di ciascun operatore; ferie e assenze si registrano per periodo. Una nuova
+   installazione parte con apertura da martedì a sabato: **domenica e lunedì sono chiusi**
+   (un giorno è chiuso quando non ha fasce), e il titolare può cambiarlo subito.
+7. **Chiusure del salone**: per festività e chiusure dell'intera attività un unico flusso
+   rende occupati tutti gli operatori nel periodo indicato. Chi viene assunto dopo eredita le
+   chiusure future.
+8. **Scheda cliente dal personale**: bastano nome, cognome e numero WhatsApp. Il sistema
    genera un link di attivazione: è il cliente a scegliere la propria password, che il personale
    non conosce mai. Un numero già presente non crea un duplicato: la scheda esistente viene
    segnalata.
-8. **Prenotazione dal personale**: si scelgono cliente, operatore e servizi; il sistema
+9. **Prenotazione dal personale**: si scelgono cliente, operatore e servizi; il sistema
    propone solo gli orari realmente liberi, calcolati su orari di lavoro, assenze e
    appuntamenti esistenti. Nessun preavviso minimo, flag "senza caparra" disponibile solo al
    personale, registrazione possibile fino a 7 giorni nel passato e 60 giorni in avanti.
-9. **Agenda**: viste giornaliera (una colonna per operatore) e settimanale; il giorno
-   mostrato è nell'indirizzo, quindi l'agenda di una data è condivisibile.
-10. **Chiusura dell'appuntamento**: il personale lo sposta, lo annulla indicando se l'avviso
+10. **Agenda**: viste giornaliera (una colonna per operatore) e settimanale; il giorno
+    mostrato è nell'indirizzo, quindi l'agenda di una data è condivisibile.
+11. **Chiusura dell'appuntamento**: il personale lo sposta, lo annulla indicando se l'avviso
     del cliente è stato tempestivo o tardivo, segna la mancata presentazione oppure lo
     completa a mano. Ogni passaggio è tracciato con autore e momento.
 

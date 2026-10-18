@@ -66,6 +66,8 @@ export class PersonaleServizio {
       },
     });
 
+    await this.estendiChiusureFuture(creato.id);
+
     const invito = await this.inviti.crea(creato.id);
 
     return {
@@ -73,6 +75,31 @@ export class PersonaleServizio {
       token: invito.token,
       scadeIl: invito.scadeIl,
     };
+  }
+
+  /**
+   * Le chiusure del salone valgono per tutti: un operatore aggiunto dopo ne
+   * eredita quelle future, altrimenti risulterebbe prenotabile a salone chiuso.
+   */
+  private async estendiChiusureFuture(operatoreId: string): Promise<void> {
+    const chiusure = await this.prisma.assenza.groupBy({
+      by: ['inizio', 'fine', 'note'],
+      where: { tipo: 'chiusura', fine: { gt: new Date() } },
+    });
+
+    if (chiusure.length === 0) {
+      return;
+    }
+
+    await this.prisma.assenza.createMany({
+      data: chiusure.map((chiusura) => ({
+        operatoreId,
+        tipo: 'chiusura' as const,
+        inizio: chiusura.inizio,
+        fine: chiusura.fine,
+        note: chiusura.note,
+      })),
+    });
   }
 
   async modifica(id: string, dati: DatiModificaOperatore): Promise<Operatore> {

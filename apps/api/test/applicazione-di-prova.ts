@@ -79,6 +79,11 @@ export async function rimuoviDatiDiProva(contesto: ContestoDiProva): Promise<voi
 
 /** Riporta l'installazione allo stato "primo avvio". */
 export async function azzeraInstallazione(contesto: ContestoDiProva): Promise<void> {
+  // La procedura guidata crea anche gli orari di apertura: vanno rimossi,
+  // altrimenti si sommano a ogni esecuzione.
+  await contesto.prisma.appuntamento.deleteMany();
+  await contesto.prisma.assenza.deleteMany();
+  await contesto.prisma.orarioApertura.deleteMany();
   await contesto.prisma.servizio.deleteMany();
   await contesto.prisma.installazione.deleteMany();
   await contesto.prisma.utente.deleteMany({ where: { ruolo: 'titolare' } });

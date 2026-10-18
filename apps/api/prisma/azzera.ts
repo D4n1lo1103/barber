@@ -24,6 +24,11 @@ async function esegui(): Promise<void> {
     // Gli appuntamenti trattengono clienti e operatori (vincolo RESTRICT):
     // vanno rimossi prima degli utenti.
     await prisma.appuntamento.deleteMany();
+    await prisma.assenza.deleteMany();
+    // Gli orari di apertura non dipendono dagli utenti: vanno rimossi a parte,
+    // altrimenti la procedura guidata trova già le fasce predefinite.
+    await prisma.orarioApertura.deleteMany();
+    await prisma.orarioOperatore.deleteMany();
     await prisma.servizio.deleteMany();
     await prisma.sessione.deleteMany();
     await prisma.utente.deleteMany();

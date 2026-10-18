@@ -260,6 +260,17 @@ describe('Agenda del personale', () => {
       await prenota(dipendente).expect(409);
     });
 
+    it('rifiuta un orario dentro una chiusura del salone', async () => {
+      await come(
+        titolare,
+        chiama().post('/api/orari/chiusure').send({ dal: giorno, al: giorno, motivo: 'Festività' }),
+      ).expect(201);
+
+      // La chiusura rende occupati tutti gli operatori, non solo uno.
+      await prenota(dipendente).expect(409);
+      await prenota(dipendente, { operatoreId: idTitolare, inizio: alle(10) }).expect(409);
+    });
+
     it('rifiuta le date oltre i limiti consentiti', async () => {
       const fraTreMesi = new Date(Date.now() + 90 * GIORNO_IN_MILLISECONDI);
       const dieciGiorniFa = new Date(Date.now() - 10 * GIORNO_IN_MILLISECONDI);

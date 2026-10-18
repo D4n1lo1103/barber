@@ -142,6 +142,24 @@ describe('Procedura guidata al primo avvio', () => {
     expect(servizi[0]?.nome).toBe('Taglio uomo');
   });
 
+  it('propone gli orari di apertura predefiniti, con domenica e lunedì chiusi', async () => {
+    await inviaProcedura(datiValidi()).expect(204);
+
+    const apertura = await contesto.prisma.orarioApertura.findMany();
+    const titolare = await contesto.prisma.utente.findUniqueOrThrow({
+      where: { email: EMAIL_TITOLARE },
+    });
+    const orariTitolare = await contesto.prisma.orarioOperatore.findMany({
+      where: { operatoreId: titolare.id },
+    });
+    const giorniAperti = [...new Set(apertura.map((fascia) => fascia.giornoSettimana))].sort();
+
+    expect(giorniAperti).toEqual([2, 3, 4, 5, 6]);
+    expect(apertura).toHaveLength(CONFIGURAZIONI_PROFILO.barbiere.aperturaPredefinita.length);
+    // Il titolare è anche operatore: lavora in tutte le fasce di apertura.
+    expect(orariTitolare).toHaveLength(apertura.length);
+  });
+
   it('permette al titolare creato di accedere subito', async () => {
     await inviaProcedura(datiValidi()).expect(204);
 

@@ -1,15 +1,18 @@
 import type {
   Appuntamento,
   Assenza,
+  Chiusura,
   Cliente,
   DatiAnnullamentoDaPersonale,
   DatiCreazioneAppuntamento,
   DatiCreazioneAssenza,
+  DatiCreazioneChiusura,
   DatiCreazioneCliente,
   DatiCreazioneDipendente,
   DatiCreazioneServizio,
   DatiModificaCliente,
   DatiModificaServizio,
+  DatiRimozioneChiusura,
   DatiSpostamentoAppuntamento,
   DisponibilitaGiorno,
   ElencoClienti,
@@ -103,6 +106,20 @@ export function creaAssenza(dati: DatiCreazioneAssenza): Promise<Assenza> {
 
 export function rimuoviAssenza(id: string): Promise<void> {
   return chiamaApi<void>(`/orari/assenze/${id}`, { metodo: 'DELETE' });
+}
+
+// ─── Chiusure del salone ──────────────────────────────────────────────────────
+
+export function leggiChiusure(): Promise<{ chiusure: Chiusura[] }> {
+  return chiamaApi('/orari/chiusure');
+}
+
+export function creaChiusura(dati: DatiCreazioneChiusura): Promise<Chiusura> {
+  return chiamaApi<Chiusura>('/orari/chiusure', { metodo: 'POST', corpo: dati });
+}
+
+export function rimuoviChiusura(dati: DatiRimozioneChiusura): Promise<void> {
+  return chiamaApi<void>('/orari/chiusure', { metodo: 'DELETE', corpo: dati });
 }
 
 // ─── Clienti ──────────────────────────────────────────────────────────────────
