@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { timingSafeEqual } from 'node:crypto';
 import {
   configurazioneProfilo,
+  ORE_LIMITE_PREAVVISO_PREDEFINITO,
   type DatiProceduraGuidata,
   type StatoInstallazione,
 } from '@barber/shared';
@@ -34,6 +35,8 @@ export class InstallazioneServizio {
         nomeSalone: null,
         venditaOnlineAttiva: false,
         granularitaSlotMinuti: GRANULARITA_PREDEFINITA,
+        oreLimitePreavviso: ORE_LIMITE_PREAVVISO_PREDEFINITO,
+        spostamentoComeAnnullamento: false,
       };
     }
 
@@ -43,6 +46,9 @@ export class InstallazioneServizio {
       nomeSalone: installazione.configurata ? installazione.nomeSalone : null,
       venditaOnlineAttiva: installazione.venditaOnlineAttiva,
       granularitaSlotMinuti: installazione.granularitaSlotMin,
+      // L'area clienti mostra entro quando si può annullare o spostare.
+      oreLimitePreavviso: installazione.oreLimitePreavviso,
+      spostamentoComeAnnullamento: installazione.spostamentoComeAnnullamento,
     };
   }
 

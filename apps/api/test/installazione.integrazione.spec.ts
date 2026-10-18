@@ -74,6 +74,8 @@ describe('Procedura guidata al primo avvio', () => {
       nomeSalone: null,
       venditaOnlineAttiva: false,
       granularitaSlotMinuti: 15,
+      oreLimitePreavviso: 24,
+      spostamentoComeAnnullamento: false,
     });
   });
 
@@ -207,6 +209,9 @@ describe('Procedura guidata al primo avvio', () => {
       venditaOnlineAttiva: false,
       // L'agenda ha bisogno della granularità scelta nella procedura guidata.
       granularitaSlotMinuti: 15,
+      // L'area clienti mostra entro quando si può annullare o spostare.
+      oreLimitePreavviso: 24,
+      spostamentoComeAnnullamento: false,
     });
   });
 });

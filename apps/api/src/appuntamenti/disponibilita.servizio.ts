@@ -155,8 +155,15 @@ export class DisponibilitaServizio {
     return [...appuntamenti, ...assenze];
   }
 
-  /** Slot liberi per operatore, servizi e intervallo di giorni richiesti. */
-  async calcola(dati: DatiRichiestaDisponibilita): Promise<DisponibilitaGiorno[]> {
+  /**
+   * Slot liberi per operatore, servizi e intervallo di giorni richiesti.
+   * `oreMinimePreavviso` serve all'area clienti, che non può prenotare per
+   * le due ore successive; il personale non ha preavviso minimo.
+   */
+  async calcola(
+    dati: DatiRichiestaDisponibilita,
+    opzioni: { oreMinimePreavviso?: number } = {},
+  ): Promise<DisponibilitaGiorno[]> {
     await this.verificaOperatore(dati.operatoreId);
 
     if (!partiData(dati.dal)) {
@@ -171,6 +178,9 @@ export class DisponibilitaServizio {
     const occupazioni = await this.occupazioni(dati.operatoreId, da, a, dati.escludiAppuntamentoId);
     const fascePerGiorno = await this.fasceLavoroPerGiorni(dati.operatoreId, giorni);
     const adesso = new Date();
+    const nonPrimaDi = new Date(
+      adesso.getTime() + (opzioni.oreMinimePreavviso ?? 0) * 60 * 60 * 1000,
+    );
     const limiteFuturo = new Date(
       adesso.getTime() + GIORNI_MASSIMI_PRENOTAZIONE * 24 * 60 * 60 * 1000,
     );
@@ -183,7 +193,7 @@ export class DisponibilitaServizio {
         granularitaMinuti,
         fasceLavoro: fascePerGiorno.get(giorno) ?? [],
         occupazioni,
-        nonPrimaDi: adesso,
+        nonPrimaDi,
         nonDopoDi: limiteFuturo,
       }).map((istante) => istante.toISOString()),
     }));
