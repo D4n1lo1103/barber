@@ -12,7 +12,15 @@ import 'dotenv/config';
 import * as argon2 from 'argon2';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaClient } from '@prisma/client';
-import { configurazioneProfilo, PROFILI, type Profilo } from '@barber/shared';
+import {
+  configurazioneProfilo,
+  dataLocale,
+  giornoSettimanaLocale,
+  istanteDaDataLocale,
+  PROFILI,
+  type Profilo,
+  type StatoAppuntamento,
+} from '@barber/shared';
 
 const PASSWORD_DEMO = process.env.PASSWORD_DEMO ?? 'password-demo-salone';
 
@@ -86,6 +94,113 @@ function leggiProfilo(): Profilo {
   return richiesto as Profilo;
 }
 
+/**
+ * Appuntamenti demo distribuiti fra ieri e la settimana prossima, in stati
+ * diversi: quelli passati sono chiusi (completati o mancata presentazione),
+ * quelli futuri confermati, più un annullamento per mostrare la gestione.
+ * Gli orari seguono gli orari di lavoro di ciascun operatore, così restano
+ * validi anche per i controlli dell'agenda.
+ */
+async function creaAppuntamentiDemo(
+  prisma: PrismaClient,
+  dati: {
+    personale: { id: string }[];
+    clienti: { id: string }[];
+    servizi: { id: string; nome: string; prezzoCentesimi: number; durataMinuti: number }[];
+    granularitaMinuti: number;
+  },
+): Promise<number> {
+  const { personale, clienti, servizi, granularitaMinuti } = dati;
+
+  await prisma.appuntamento.deleteMany();
+
+  if (personale.length === 0 || clienti.length === 0 || servizi.length === 0) {
+    return 0;
+  }
+
+  const orari = await prisma.orarioOperatore.findMany();
+  let creati = 0;
+
+  for (let scostamento = -3; scostamento <= 7; scostamento += 1) {
+    const giorno = dataLocale(new Date(Date.now() + scostamento * 24 * 60 * 60 * 1000));
+    const giornoSettimana = giornoSettimanaLocale(istanteDaDataLocale(giorno, 0)!);
+
+    for (const [posizione, operatore] of personale.entries()) {
+      const fascia = orari
+        .filter(
+          (voce) => voce.operatoreId === operatore.id && voce.giornoSettimana === giornoSettimana,
+        )
+        .sort((primo, secondo) => primo.minutoInizio - secondo.minutoInizio)[0];
+
+      if (!fascia) {
+        continue;
+      }
+
+      // Due appuntamenti per operatore: a inizio fascia e un'ora più tardi.
+      for (const ritardo of [0, 60]) {
+        const scelti = [servizi[(posizione + ritardo) % servizi.length]!];
+
+        if (ritardo === 60 && servizi.length > 1) {
+          scelti.push(servizi[(posizione + 1) % servizi.length]!);
+        }
+
+        const durataMinuti = scelti.reduce((somma, servizio) => somma + servizio.durataMinuti, 0);
+        const minutoInizio =
+          fascia.minutoInizio + Math.ceil(ritardo / granularitaMinuti) * granularitaMinuti;
+
+        if (minutoInizio + durataMinuti > fascia.minutoFine) {
+          continue;
+        }
+
+        const inizio = istanteDaDataLocale(giorno, minutoInizio)!;
+        const cliente = clienti[(creati + posizione) % clienti.length]!;
+        const passato = scostamento < 0;
+        const stato: StatoAppuntamento = passato
+          ? creati % 5 === 0
+            ? 'mancata_presentazione'
+            : 'completato'
+          : creati % 7 === 0
+            ? 'annullato'
+            : 'confermato';
+
+        await prisma.appuntamento.create({
+          data: {
+            clienteId: cliente.id,
+            operatoreId: operatore.id,
+            inizio,
+            fine: new Date(inizio.getTime() + durataMinuti * 60_000),
+            durataMinuti,
+            prezzoTotaleCentesimi: scelti.reduce(
+              (somma, servizio) => somma + servizio.prezzoCentesimi,
+              0,
+            ),
+            stato,
+            motivoAnnullamento: stato === 'annullato' ? 'tempestivo' : null,
+            annullatoIl: stato === 'annullato' ? new Date() : null,
+            completatoIl: stato === 'completato' ? inizio : null,
+            senzaCaparra: creati % 4 === 0,
+            note: '',
+            creatoDaId: personale[0]!.id,
+            servizi: {
+              create: scelti.map((servizio, indice) => ({
+                servizioId: servizio.id,
+                nome: servizio.nome,
+                prezzoCentesimi: servizio.prezzoCentesimi,
+                durataMinuti: servizio.durataMinuti,
+                ordine: indice,
+              })),
+            },
+          },
+        });
+
+        creati += 1;
+      }
+    }
+  }
+
+  return creati;
+}
+
 async function esegui(): Promise<void> {
   if (process.env.NODE_ENV === 'production') {
     throw new Error('I dati demo non possono essere inseriti in produzione.');
@@ -110,6 +225,7 @@ async function esegui(): Promise<void> {
 
   try {
     // I dati demo sostituiscono quelli esistenti, così il seed è ripetibile.
+    await prisma.appuntamento.deleteMany();
     await prisma.servizio.deleteMany();
     await prisma.installazione.deleteMany();
 
@@ -194,10 +310,23 @@ async function esegui(): Promise<void> {
       });
     }
 
+    const clienti = await prisma.utente.findMany({
+      where: { ruolo: 'cliente' },
+      orderBy: { creatoIl: 'asc' },
+    });
+    const servizi = await prisma.servizio.findMany({ orderBy: { ordine: 'asc' } });
+    const appuntamentiCreati = await creaAppuntamentiDemo(prisma, {
+      personale,
+      clienti,
+      servizi,
+      granularitaMinuti: configurazione.granularitaSlotMinuti,
+    });
+
     console.warn(
       `Dati demo inseriti per il profilo "${profilo}": ${salone.nome}, ` +
         `${configurazione.catalogoIniziale.length} servizi, ${PERSONALE_DEMO.length} membri del personale, ` +
-        `${CLIENTI_DEMO.length} clienti, orari di apertura e di lavoro.`,
+        `${CLIENTI_DEMO.length} clienti, orari di apertura e di lavoro, ` +
+        `${appuntamentiCreati} appuntamenti.`,
     );
   } finally {
     await prisma.$disconnect();

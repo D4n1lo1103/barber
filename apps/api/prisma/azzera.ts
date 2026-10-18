@@ -21,6 +21,9 @@ async function esegui(): Promise<void> {
   const prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString }) });
 
   try {
+    // Gli appuntamenti trattengono clienti e operatori (vincolo RESTRICT):
+    // vanno rimossi prima degli utenti.
+    await prisma.appuntamento.deleteMany();
     await prisma.servizio.deleteMany();
     await prisma.sessione.deleteMany();
     await prisma.utente.deleteMany();

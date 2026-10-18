@@ -1,6 +1,8 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import {
   fasciaContenutaIn,
+  giornoSettimanaLocale,
+  minutiDelGiornoLocali,
   NOMI_GIORNI,
   orarioDaMinuti,
   type Assenza,
@@ -68,6 +70,8 @@ export class OrariServizio {
       }
     }
 
+    await this.verificaAppuntamentiFuturiCompatibili(operatoreId, fasce);
+
     await this.prisma.$transaction([
       this.prisma.orarioOperatore.deleteMany({ where: { operatoreId } }),
       this.prisma.orarioOperatore.createMany({
@@ -100,6 +104,11 @@ export class OrariServizio {
 
   async creaAssenza(dati: DatiCreazioneAssenza): Promise<Assenza> {
     await this.verificaOperatore(dati.operatoreId);
+    await this.verificaNessunAppuntamentoNelPeriodo(
+      dati.operatoreId,
+      new Date(dati.inizio),
+      new Date(dati.fine),
+    );
 
     try {
       const creata = await this.prisma.assenza.create({
@@ -162,6 +171,69 @@ export class OrariServizio {
             'Aggiorna prima gli orari di lavoro.',
         );
       }
+    }
+  }
+
+  /**
+   * Gli appuntamenti già fissati non possono finire fuori dagli orari di
+   * lavoro: la modifica viene rifiutata finché restano in agenda.
+   */
+  private async verificaAppuntamentiFuturiCompatibili(
+    operatoreId: string,
+    fasce: FasciaSettimanale[],
+  ): Promise<void> {
+    const appuntamenti = await this.prisma.appuntamento.findMany({
+      where: {
+        operatoreId,
+        stato: { in: ['in_attesa_pagamento', 'confermato'] },
+        inizio: { gte: new Date() },
+      },
+      orderBy: { inizio: 'asc' },
+      select: { inizio: true, durataMinuti: true },
+    });
+
+    for (const appuntamento of appuntamenti) {
+      const minutoInizio = minutiDelGiornoLocali(appuntamento.inizio);
+      const giorno = giornoSettimanaLocale(appuntamento.inizio);
+      const fasceDelGiorno = fasce.filter((fascia) => fascia.giornoSettimana === giorno);
+
+      if (
+        !fasciaContenutaIn(
+          { minutoInizio, minutoFine: minutoInizio + appuntamento.durataMinuti },
+          fasceDelGiorno,
+        )
+      ) {
+        throw new BadRequestException(
+          `I nuovi orari lascerebbero fuori un appuntamento già fissato di ` +
+            `${NOMI_GIORNI[giorno].toLowerCase()} alle ${orarioDaMinuti(minutoInizio)}. ` +
+            'Spostalo o annullalo prima di cambiare gli orari.',
+        );
+      }
+    }
+  }
+
+  /** Un'assenza non può coprire appuntamenti ancora in agenda. */
+  private async verificaNessunAppuntamentoNelPeriodo(
+    operatoreId: string,
+    inizio: Date,
+    fine: Date,
+  ): Promise<void> {
+    const appuntamento = await this.prisma.appuntamento.findFirst({
+      where: {
+        operatoreId,
+        stato: { in: ['in_attesa_pagamento', 'confermato'] },
+        inizio: { lt: fine },
+        fine: { gt: inizio },
+      },
+      orderBy: { inizio: 'asc' },
+      select: { inizio: true },
+    });
+
+    if (appuntamento) {
+      throw new BadRequestException(
+        'In quel periodo ci sono appuntamenti in agenda: spostali o annullali prima di ' +
+          'registrare l’assenza.',
+      );
     }
   }
 

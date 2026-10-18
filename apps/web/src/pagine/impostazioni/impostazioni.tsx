@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { motion } from 'motion/react';
 import { Link } from 'react-router';
-import { CONFIGURAZIONI_PROFILO } from '@barber/shared';
 import { Pulsante } from '../../componenti/pulsante';
 import { usaInstallazione } from '../../installazione/contesto-installazione';
 import { SchedaOrari } from './scheda-orari';
@@ -15,9 +14,8 @@ type Scheda = (typeof SCHEDE)[number];
 export function PaginaImpostazioni() {
   const { stato } = usaInstallazione();
   const [scheda, impostaScheda] = useState<Scheda>('Servizi');
-  const granularita = stato?.profilo
-    ? CONFIGURAZIONI_PROFILO[stato.profilo].granularitaSlotMinuti
-    : 15;
+  // La granularità effettiva è quella scelta nella procedura guidata.
+  const granularita = stato?.granularitaSlotMinuti ?? 15;
 
   return (
     <main className="mx-auto max-w-3xl px-4 py-10">

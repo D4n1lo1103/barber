@@ -41,3 +41,31 @@ export function formattaDurata(minuti: number): string {
 
   return resto === 0 ? `${ore} h` : `${ore} h ${resto} min`;
 }
+
+const FORMATO_ORA = new Intl.DateTimeFormat('it-IT', {
+  hour: '2-digit',
+  minute: '2-digit',
+  timeZone: 'Europe/Rome',
+});
+
+const FORMATO_DATA_BREVE = new Intl.DateTimeFormat('it-IT', {
+  weekday: 'short',
+  day: '2-digit',
+  month: 'short',
+  timeZone: 'Europe/Rome',
+});
+
+/** Ora nel fuso del salone, es. "09:30". */
+export function formattaOra(valore: string | Date): string {
+  return FORMATO_ORA.format(typeof valore === 'string' ? new Date(valore) : valore);
+}
+
+/** Data breve nel fuso del salone, es. "mer 15 lug". */
+export function formattaDataBreve(valore: string | Date): string {
+  return FORMATO_DATA_BREVE.format(typeof valore === 'string' ? new Date(valore) : valore);
+}
+
+/** Intervallo di un appuntamento, es. "09:00–09:45". */
+export function formattaIntervallo(inizio: string | Date, fine: string | Date): string {
+  return `${formattaOra(inizio)}–${formattaOra(fine)}`;
+}

@@ -61,15 +61,25 @@ export function PaginaPannello() {
           </div>
 
           <p className="mt-6 text-sm text-testo-tenue">
-            {utente.ruolo === 'titolare'
-              ? 'Da qui gestisci servizi, personale e orari. L’agenda arriva nella prossima fase.'
-              : 'L’agenda e le prenotazioni arrivano nella prossima fase.'}
+            {utente.ruolo === 'cliente'
+              ? 'L’area clienti, con prenotazione online, arriva nella prossima fase.'
+              : 'Da qui apri l’agenda, le schede clienti e, se sei il titolare, le impostazioni del salone.'}
           </p>
 
           <div className="mt-8 flex flex-wrap gap-3">
+            {utente.ruolo !== 'cliente' && (
+              <>
+                <Link to="/agenda">
+                  <Pulsante>Agenda</Pulsante>
+                </Link>
+                <Link to="/clienti">
+                  <Pulsante variante="secondario">Clienti</Pulsante>
+                </Link>
+              </>
+            )}
             {utente.ruolo === 'titolare' && (
               <Link to="/impostazioni">
-                <Pulsante>Impostazioni del salone</Pulsante>
+                <Pulsante variante="secondario">Impostazioni del salone</Pulsante>
               </Link>
             )}
             <Pulsante variante="secondario" onClick={() => void esci()}>

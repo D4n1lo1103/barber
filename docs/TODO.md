@@ -4,17 +4,23 @@ Stato dello sviluppo per fasi (vedi la roadmap in `CLAUDE.md`).
 
 ## In corso
 
-Nessuna attività in corso: le fasi 0, 1 e 2 sono completate.
+Nessuna attività in corso: le fasi 0, 1, 2 e 3 sono completate.
 
-## Da fare — Fase 3: Agenda lato personale
+## Da fare — Fase 4: Area cliente
 
-- [ ] `TODO` Calcolo della disponibilità: combinare orari di apertura, orari dell'operatore,
-      assenze e appuntamenti esistenti, con attenzione ai giorni di cambio dell'ora legale.
-- [ ] `TODO` Agenda per operatore con viste giornaliera e settimanale (react-big-calendar).
-- [ ] `TODO` Prenotazione inserita dal personale, con flag "senza caparra".
-- [ ] `TODO` Vincolo di esclusione PostgreSQL contro le doppie prenotazioni dello stesso
-      operatore, più controllo applicativo e test di concorrenza.
-- [ ] `TODO` Schede clienti create dal personale, annullamenti e mancate presentazioni.
+- [ ] `TODO` Registrazione autonoma del cliente con consensi GDPR separati (trattamento dei
+      dati e messaggi WhatsApp) e verifica del numero di telefono.
+- [ ] `TODO` Collegamento alla scheda esistente quando il numero è già presente.
+- [ ] `TODO` Attivazione dell'account per le schede create dal personale: se la scheda non ha
+      e-mail, il cliente la indica in fase di attivazione (oggi la rotta di attivazione
+      imposta solo la password).
+- [ ] `TODO` Prenotazione online: almeno 2 ore di preavviso, non oltre 60 giorni, senza
+      opzione "senza caparra".
+- [ ] `TODO` Spostamento e annullamento dall'app secondo la regola scelta dal titolare, con
+      il pulsante di annullamento che scompare dopo il limite di preavviso.
+- [ ] `TODO` Consultazione e richiesta di cancellazione dei propri dati (GDPR).
+- [ ] `TODO` Impostazioni del titolare ancora da esporre nell'interfaccia: limite di
+      preavviso, regola di spostamento, forma di restituzione della caparra.
 
 ## Da definire con il titolare
 
@@ -44,6 +50,64 @@ Nessuna attività in corso: le fasi 0, 1 e 2 sono completate.
 - [ ] `BLOCCATO` Prova reale della procedura di ripristino dei backup.
   - Blocco: richiede un server di prova con un'installazione attiva. Gli script sono
     pronti e documentati; manca la verifica end-to-end su dati reali.
+
+## Completato — Fase 3: Agenda lato personale
+
+### Decisioni prese con il titolare (18/10/2026)
+
+1. **Fuori orario**: il personale **non** può inserire appuntamenti fuori dagli orari di
+   lavoro dell'operatore, a salone chiuso o durante un'assenza.
+2. **Agende dei colleghi**: ogni membro del personale gestisce tutte le agende.
+3. **Nel passato**: inserimento consentito fino a 7 giorni indietro, 60 giorni in avanti.
+4. **Completamento**: sempre manuale, nessun automatismo.
+5. **Scheda cliente dal personale**: bastano nome, cognome e numero WhatsApp; l'e-mail
+   dell'utente è diventata facoltativa (unica quando presente).
+6. **Agenda**: `react-big-calendar` con localizzatore `date-fns` (dipendenza approvata).
+
+### Attività
+
+- [x] `COMPLETATO` Dominio condiviso: conversioni fra UTC e ora locale del salone
+      (`dominio/fuso.ts`) e calcolo della disponibilità (`dominio/disponibilita.ts`),
+      con test sui giorni di cambio dell'ora legale.
+- [x] `COMPLETATO` Schemi Zod condivisi per appuntamenti e schede clienti.
+- [x] `COMPLETATO` Modello dati `appuntamenti` e `appuntamenti_servizi`, con copia di nome,
+      prezzo e durata dei servizi al momento della prenotazione.
+- [x] `COMPLETATO` Migrazione SQL manuale con vincolo di esclusione contro le doppie
+      prenotazioni, `CHECK` di coerenza fra stato e motivo dell'annullamento, indici.
+- [x] `COMPLETATO` Backend disponibilità: slot liberi per operatore, giorno e servizi.
+- [x] `COMPLETATO` Backend appuntamenti: creazione dal personale con flag "senza caparra",
+      spostamento, annullamento con motivo, mancata presentazione, completamento manuale.
+- [x] `COMPLETATO` Backend clienti: creazione della scheda senza password, invito di
+      attivazione, nessun duplicato sul numero, ricerca paginata, note interne, storico.
+- [x] `COMPLETATO` Orari e assenze: rifiuto delle modifiche che lascerebbero fuori orario
+      appuntamenti ancora in agenda.
+- [x] `COMPLETATO` Frontend: agenda (giorno con una colonna per operatore e settimana),
+      pannello nuovo appuntamento, azioni di stato, pagine clienti e scheda cliente.
+      Il giorno mostrato è nell'indirizzo, quindi condivisibile.
+- [x] `COMPLETATO` Granularità degli slot esposta nello stato pubblico dell'installazione:
+      serve alla griglia dell'agenda.
+- [x] `COMPLETATO` Agenda caricata a richiesta (`lazy`): il calendario e `date-fns` non
+      appesantiscono l'accesso e la procedura guidata.
+- [x] `COMPLETATO` Seed esteso con appuntamenti demo in stati diversi; `azzera` aggiornato.
+- [x] `COMPLETATO` Test di integrazione su permessi, orari, stati, limiti di data e
+      concorrenza (due prenotazioni simultanee sullo stesso slot).
+- [x] `COMPLETATO` Test end-to-end del flusso critico: scheda cliente, prenotazione,
+      completamento, storico.
+- [x] `COMPLETATO` ADR 0005 sul modello degli appuntamenti e sul vincolo di esclusione.
+- [x] `COMPLETATO` `MANUALE-DUSO.md` (nuovo) e aggiornamento del `README.md`.
+
+### Controlli eseguiti al termine della fase 3
+
+| Controllo            | Comando                                       | Esito                                 |
+| -------------------- | --------------------------------------------- | ------------------------------------- |
+| Formattazione        | `pnpm format:check`                           | superato                              |
+| Lint                 | `pnpm lint`                                   | superato                              |
+| Tipi                 | `pnpm type-check`                             | superato                              |
+| Test unitari         | `pnpm test`                                   | 50 condivisi, 21 backend, 35 frontend |
+| Test di integrazione | `pnpm --filter @barber/api test:integrazione` | 104 test superati                     |
+| Test end-to-end      | `pnpm --filter @barber/web test:e2e`          | 27 superati, 1 saltato per scelta     |
+| Build                | `pnpm build`                                  | superato                              |
+| Verifica manuale     | flusso completo coperto dai test end-to-end   | superata                              |
 
 ## Completato — Fase 2: Personale, servizi e orari
 
