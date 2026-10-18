@@ -17,6 +17,7 @@ già completate. Le parti ancora da sviluppare sono elencate in fondo, in
   - [Servizi](#servizi)
   - [Personale](#personale)
   - [Orari e assenze](#orari-e-assenze)
+  - [Chiusure del salone](#chiusure-del-salone)
 - [Clienti](#clienti)
 - [Agenda](#agenda)
   - [Inserire un appuntamento](#inserire-un-appuntamento)
@@ -103,6 +104,9 @@ Orari. I dipendenti non vedono questa pagina.
 
 - **Orari di apertura**: per ogni giorno della settimana si indicano una o più fasce
   (es. 9:00–13:00 e 15:00–19:00). Un giorno senza fasce è un giorno di chiusura.
+  Un'installazione nuova parte aperta **da martedì a sabato**: domenica e lunedì sono chiusi.
+  Per cambiare i giorni di chiusura abituali basta aggiungere o togliere le fasce di quel
+  giorno.
 - **Orari di lavoro**: per ciascun operatore, dentro le fasce di apertura. Il sistema
   rifiuta un orario di lavoro quando il salone è chiuso.
 - **Restringere gli orari di apertura** è rifiutato se lascerebbe un operatore al lavoro
@@ -111,6 +115,27 @@ Orari. I dipendenti non vedono questa pagina.
   Durante un'assenza l'operatore non è prenotabile.
 - Orari e assenze non possono lasciare fuori appuntamenti già in agenda: in quel caso il
   salvataggio viene rifiutato e indica l'appuntamento da spostare o annullare.
+
+### Chiusure del salone
+
+Per le **festività** e le chiusure dell'intera attività, nella scheda _Orari_ c'è il
+riquadro **Chiusure del salone**: un solo flusso, valido per tutti.
+
+1. Si indicano **primo giorno**, **ultimo giorno** (compreso) e il **motivo** (es. «Natale»).
+2. Premendo **Registra chiusura** tutti gli operatori risultano occupati in quei giorni:
+   nessuno è prenotabile, né dal personale né dall'area clienti.
+3. La chiusura appare nell'elenco con il periodo, il motivo e il numero di operatori
+   coinvolti. **Rimuovi** la cancella per tutti e riapre il salone.
+
+Dettagli utili:
+
+- La chiusura non si può registrare se in quei giorni ci sono **appuntamenti in agenda**:
+  il messaggio indica l'operatore da sistemare, così si spostano o si annullano prima.
+- Non si può registrare una chiusura sovrapposta a un'altra chiusura o a un'assenza già
+  presente.
+- Un dipendente **assunto dopo** eredita automaticamente le chiusure future.
+- Le chiusure non si smontano una persona alla volta: la singola assenza che le compone non
+  è rimovibile, si rimuove la chiusura.
 
 ## Clienti
 
@@ -216,8 +241,12 @@ Sì: chi è in negozio o al telefono gestisce qualsiasi agenda. Le impostazioni 
 dati economici restano riservati al titolare.
 
 **Perché non riesco a inserire un appuntamento alle 14:00?**
-Perché in quella fascia l'operatore non lavora (pausa, giorno di riposo, assenza o salone
-chiuso). Il messaggio indica gli orari di lavoro di quel giorno.
+Perché in quella fascia l'operatore non lavora (pausa, giorno di riposo, assenza, chiusura
+del salone o giorno di chiusura). Il messaggio indica gli orari di lavoro di quel giorno.
+
+**Come chiudo il salone per una festività?**
+Dalle impostazioni, scheda _Orari_, riquadro **Chiusure del salone**: un'unica registrazione
+rende occupati tutti gli operatori. Vedi [Chiusure del salone](#chiusure-del-salone).
 
 **Perché un orario non appare fra quelli disponibili?**
 Non c'è spazio sufficiente per la durata totale dei servizi scelti, oppure l'orario è

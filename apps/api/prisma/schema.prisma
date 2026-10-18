@@ -120,6 +120,9 @@ model Servizio {
 enum TipoAssenza {
   ferie
   riposo
+  /// Chiusura straordinaria del salone: registrata per tutti gli operatori
+  /// dall'unico flusso delle chiusure.
+  chiusura
   altro
 }
 

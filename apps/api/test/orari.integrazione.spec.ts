@@ -265,4 +265,179 @@ describe('Orari del salone, degli operatori e assenze', () => {
       expect(await contesto.prisma.assenza.count()).toBe(0);
     });
   });
+
+  describe('Chiusure del salone', () => {
+    const FORMATO = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'Europe/Rome',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    });
+
+    /** Data locale del salone fra `scostamento` giorni. */
+    function giorno(scostamento: number): string {
+      return FORMATO.format(new Date(Date.now() + scostamento * 24 * 60 * 60 * 1000));
+    }
+
+    beforeEach(async () => {
+      await impostaApertura().expect(200);
+    });
+
+    it('rende occupati tutti gli operatori con un solo flusso', async () => {
+      const risposta = await comeTitolare(
+        chiama()
+          .post('/api/orari/chiusure')
+          .send({ dal: giorno(10), al: giorno(12), motivo: 'Chiusura per ferie' }),
+      ).expect(201);
+
+      expect(risposta.body.motivo).toBe('Chiusura per ferie');
+      // Titolare e dipendente creati nel setup del file.
+      expect(risposta.body.operatoriCoinvolti).toBeGreaterThanOrEqual(2);
+
+      const assenze = await contesto.prisma.assenza.findMany({ where: { tipo: 'chiusura' } });
+      expect(assenze).toHaveLength(risposta.body.operatoriCoinvolti);
+      // Giorni interi: dalla mezzanotte locale del primo giorno a quella
+      // successiva all'ultimo.
+      expect(
+        new Date(risposta.body.fine).getTime() - new Date(risposta.body.inizio).getTime(),
+      ).toBe(3 * 24 * 60 * 60 * 1000);
+    });
+
+    it('elenca le chiusure raggruppate e le rimuove per tutti', async () => {
+      const creata = await comeTitolare(
+        chiama()
+          .post('/api/orari/chiusure')
+          .send({ dal: giorno(20), al: giorno(20), motivo: 'Festività' }),
+      ).expect(201);
+
+      const elenco = await chiama()
+        .get('/api/orari/chiusure')
+        .set('Cookie', dipendente.cookie)
+        .expect(200);
+      expect(elenco.body.chiusure).toHaveLength(1);
+      expect(elenco.body.chiusure[0].motivo).toBe('Festività');
+
+      await comeTitolare(
+        chiama()
+          .delete('/api/orari/chiusure')
+          .send({ inizio: creata.body.inizio, fine: creata.body.fine }),
+      ).expect(204);
+
+      expect(await contesto.prisma.assenza.count({ where: { tipo: 'chiusura' } })).toBe(0);
+    });
+
+    it('un dipendente le consulta ma non le registra', async () => {
+      await chiama()
+        .post('/api/orari/chiusure')
+        .set('Cookie', dipendente.cookie)
+        .set('x-csrf-token', dipendente.tokenCsrf)
+        .send({ dal: giorno(10), al: giorno(10), motivo: 'Non consentito' })
+        .expect(403);
+    });
+
+    it('valida le date e il motivo', async () => {
+      await comeTitolare(
+        chiama()
+          .post('/api/orari/chiusure')
+          .send({ dal: giorno(12), al: giorno(10), motivo: 'Periodo al contrario' }),
+      ).expect(400);
+      await comeTitolare(
+        chiama()
+          .post('/api/orari/chiusure')
+          .send({ dal: giorno(10), al: giorno(10), motivo: '' }),
+      ).expect(400);
+      await comeTitolare(
+        chiama()
+          .post('/api/orari/chiusure')
+          .send({ dal: '10/11/2026', al: '10/11/2026', motivo: 'Data non valida' }),
+      ).expect(400);
+    });
+
+    it('rifiuta una chiusura sovrapposta a un’altra', async () => {
+      await comeTitolare(
+        chiama()
+          .post('/api/orari/chiusure')
+          .send({ dal: giorno(30), al: giorno(32), motivo: 'Prima chiusura' }),
+      ).expect(201);
+
+      const risposta = await comeTitolare(
+        chiama()
+          .post('/api/orari/chiusure')
+          .send({ dal: giorno(32), al: giorno(33), motivo: 'Seconda chiusura' }),
+      ).expect(400);
+
+      expect(risposta.body.message).toContain('già una chiusura');
+    });
+
+    it('rifiuta una chiusura sopra un’assenza già registrata', async () => {
+      await comeTitolare(
+        chiama()
+          .post('/api/orari/assenze')
+          .send({
+            operatoreId: idDipendente,
+            tipo: 'ferie',
+            inizio: `${giorno(40)}T08:00:00.000Z`,
+            fine: `${giorno(41)}T08:00:00.000Z`,
+          }),
+      ).expect(201);
+
+      const risposta = await comeTitolare(
+        chiama()
+          .post('/api/orari/chiusure')
+          .send({ dal: giorno(40), al: giorno(41), motivo: 'Sovrapposta a ferie' }),
+      ).expect(400);
+
+      expect(risposta.body.message).toContain('assenza');
+    });
+
+    it('non si crea né si smonta una chiusura dal flusso delle assenze singole', async () => {
+      await comeTitolare(
+        chiama()
+          .post('/api/orari/assenze')
+          .send({
+            operatoreId: idDipendente,
+            tipo: 'chiusura',
+            inizio: `${giorno(50)}T08:00:00.000Z`,
+            fine: `${giorno(51)}T08:00:00.000Z`,
+          }),
+      ).expect(400);
+
+      await comeTitolare(
+        chiama()
+          .post('/api/orari/chiusure')
+          .send({ dal: giorno(50), al: giorno(50), motivo: 'Ponte' }),
+      ).expect(201);
+
+      const riga = await contesto.prisma.assenza.findFirst({ where: { tipo: 'chiusura' } });
+      const risposta = await comeTitolare(chiama().delete(`/api/orari/assenze/${riga!.id}`)).expect(
+        400,
+      );
+
+      expect(risposta.body.message).toContain('chiusura del salone');
+    });
+
+    it('un operatore aggiunto dopo eredita le chiusure future', async () => {
+      await comeTitolare(
+        chiama()
+          .post('/api/orari/chiusure')
+          .send({ dal: giorno(60), al: giorno(60), motivo: 'Chiusura futura' }),
+      ).expect(201);
+
+      const creato = await comeTitolare(
+        chiama()
+          .post('/api/personale')
+          .send({
+            nome: 'Nuovo',
+            cognome: 'Operatore',
+            email: `nuovo-${Date.now()}@prova.integrazione`,
+          }),
+      ).expect(201);
+
+      const assenze = await contesto.prisma.assenza.findMany({
+        where: { tipo: 'chiusura', operatoreId: creato.body.operatore.id },
+      });
+      expect(assenze).toHaveLength(1);
+      expect(assenze[0]!.note).toBe('Chiusura futura');
+    });
+  });
 });

@@ -123,4 +123,25 @@ test.describe('Impostazioni del salone', () => {
 
     await expect(page.getByRole('alert')).toContainText('fuori dagli orari di apertura');
   });
+
+  test('registra una chiusura del salone e poi la rimuove', async ({ page }) => {
+    const motivo = `Chiusura di prova ${Date.now()}`;
+    // Data lontana, per non interferire con gli appuntamenti degli altri test.
+    const fra90Giorni = new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+
+    await page.goto('/impostazioni');
+    await page.getByRole('button', { name: 'Orari' }).click();
+
+    await page.getByLabel('Dal').fill(fra90Giorni);
+    await page.getByLabel('Al (compreso)').fill(fra90Giorni);
+    await page.getByLabel('Motivo').fill(motivo);
+    await page.getByRole('button', { name: 'Registra chiusura' }).click();
+
+    const voce = page.locator('li', { hasText: motivo });
+    await expect(voce).toContainText('operatori');
+
+    await voce.getByRole('button', { name: /Rimuovi la chiusura/ }).click();
+
+    await expect(page.locator('li', { hasText: motivo })).toHaveCount(0);
+  });
 });

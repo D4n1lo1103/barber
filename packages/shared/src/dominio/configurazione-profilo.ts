@@ -1,3 +1,4 @@
+import type { Fascia, GiornoSettimana } from './orari.js';
 import type { Profilo } from './profilo.js';
 
 /** Servizio del catalogo iniziale proposto dalla procedura guidata. */
@@ -17,6 +18,11 @@ export interface AccentoProfilo {
   testoSuAccento: string;
 }
 
+/** Fascia di apertura predefinita, legata a un giorno della settimana. */
+export interface AperturaPredefinita extends Fascia {
+  giornoSettimana: GiornoSettimana;
+}
+
 export interface ConfigurazioneProfilo {
   profilo: Profilo;
   /** Nome del profilo mostrato nell'interfaccia. */
@@ -30,7 +36,24 @@ export interface ConfigurazioneProfilo {
   minutiBloccoSlot: number;
   accento: AccentoProfilo;
   catalogoIniziale: readonly ServizioPredefinito[];
+  /** Orari di apertura proposti al primo avvio, modificabili dal titolare. */
+  aperturaPredefinita: readonly AperturaPredefinita[];
 }
+
+/**
+ * Giorni di chiusura predefiniti: domenica e lunedì. Non sono una regola
+ * cablata, ma il punto di partenza proposto dalla procedura guidata: un giorno
+ * è chiuso semplicemente perché non ha fasce di apertura.
+ */
+export const GIORNI_CHIUSURA_PREDEFINITI: readonly GiornoSettimana[] = [7, 1];
+
+/** Da martedì a sabato, 9:00–13:00 e 15:00–19:00. */
+const APERTURA_PREDEFINITA: readonly AperturaPredefinita[] = ([2, 3, 4, 5, 6] as const).flatMap(
+  (giornoSettimana) => [
+    { giornoSettimana, minutoInizio: 9 * 60, minutoFine: 13 * 60 },
+    { giornoSettimana, minutoInizio: 15 * 60, minutoFine: 19 * 60 },
+  ],
+);
 
 /**
  * Granularità selezionabili nella procedura guidata.
@@ -136,6 +159,7 @@ export const CONFIGURAZIONI_PROFILO: Readonly<Record<Profilo, ConfigurazioneProf
       testoSuAccento: 'oklch(0.98 0.005 25)',
     },
     catalogoIniziale: CATALOGO_BARBIERE,
+    aperturaPredefinita: APERTURA_PREDEFINITA,
   },
   parrucchiere: {
     profilo: 'parrucchiere',
@@ -152,6 +176,7 @@ export const CONFIGURAZIONI_PROFILO: Readonly<Record<Profilo, ConfigurazioneProf
       testoSuAccento: 'oklch(0.16 0.02 310)',
     },
     catalogoIniziale: CATALOGO_PARRUCCHIERE,
+    aperturaPredefinita: APERTURA_PREDEFINITA,
   },
 };
 

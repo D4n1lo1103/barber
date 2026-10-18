@@ -22,14 +22,6 @@ Nessuna attività in corso: le fasi 0, 1, 2 e 3 sono completate.
 - [ ] `TODO` Impostazioni del titolare ancora da esporre nell'interfaccia: limite di
       preavviso, regola di spostamento, forma di restituzione della caparra.
 
-## Da definire con il titolare
-
-- [ ] `BLOCCATO` Chiusure straordinarie del salone (festività, chiusura per ferie
-      dell'intera attività).
-  - Blocco: i requisiti elencano orari di apertura e assenze dei singoli operatori, non le
-    chiusure dell'intero salone. Proposta: una tabella `chiusure` con intervallo di date e
-    motivo, che l'agenda tratta come indisponibilità di tutti gli operatori. Serve conferma.
-
 ## Da fare — attività trasversali già individuate
 
 - [ ] `TODO` Collegare `SessioniServizio.rimuoviScadute()` a un'attività periodica pg-boss
@@ -50,6 +42,23 @@ Nessuna attività in corso: le fasi 0, 1, 2 e 3 sono completate.
 - [ ] `BLOCCATO` Prova reale della procedura di ripristino dei backup.
   - Blocco: richiede un server di prova con un'installazione attiva. Gli script sono
     pronti e documentati; manca la verifica end-to-end su dati reali.
+
+## Completato — Chiusure del salone (18/10/2026)
+
+Decisione del titolare: le chiusure abituali sono **domenica e lunedì**; per le festività si
+registra un periodo che rende occupati tutti gli operatori, con **un unico flusso**.
+
+- [x] `COMPLETATO` Apertura predefinita nella configurazione del profilo (da martedì a
+      sabato) applicata dalla procedura guidata, con gli orari di lavoro del titolare.
+- [x] `COMPLETATO` Nuovo tipo di assenza `chiusura` (migrazione dell'enum) e flusso unico
+      `GET`/`POST`/`DELETE /orari/chiusure`, riservato al titolare per le modifiche.
+- [x] `COMPLETATO` Rifiuto delle chiusure sopra appuntamenti o assenze, e delle rimozioni
+      della singola assenza che compone una chiusura.
+- [x] `COMPLETATO` Gli operatori aggiunti dopo ereditano le chiusure future.
+- [x] `COMPLETATO` Interfaccia: riquadro «Chiusure del salone» nella scheda Orari.
+- [x] `COMPLETATO` Test di integrazione (chiusure, permessi, conflitti, eredità) e test
+      end-to-end della registrazione e rimozione; `azzera` ripulisce anche orari e assenze.
+- [x] `COMPLETATO` ADR 0006, README e `MANUALE-DUSO.md` aggiornati.
 
 ## Completato — Fase 3: Agenda lato personale
 

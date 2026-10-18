@@ -1,12 +1,17 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import {
   fasciaContenutaIn,
+  fineGiornoLocale,
   giornoSettimanaLocale,
+  inizioGiornoLocale,
   minutiDelGiornoLocali,
   NOMI_GIORNI,
   orarioDaMinuti,
   type Assenza,
+  type Chiusura,
   type DatiCreazioneAssenza,
+  type DatiCreazioneChiusura,
+  type DatiRimozioneChiusura,
   type FasciaSettimanale,
   type GiornoSettimana,
 } from '@barber/shared';
@@ -146,6 +151,13 @@ export class OrariServizio {
       throw new NotFoundException('Assenza non trovata.');
     }
 
+    if (assenza.tipo === 'chiusura') {
+      throw new BadRequestException(
+        'Questa assenza fa parte di una chiusura del salone: rimuovi la chiusura, ' +
+          'così vale per tutti gli operatori.',
+      );
+    }
+
     await this.prisma.assenza.delete({ where: { id } });
   }
 
@@ -171,6 +183,134 @@ export class OrariServizio {
             'Aggiorna prima gli orari di lavoro.',
         );
       }
+    }
+  }
+
+  /**
+   * Chiusure straordinarie del salone: assenze di tipo `chiusura` registrate in
+   * blocco per tutti gli operatori. Vengono raggruppate per periodo e motivo,
+   * così il titolare vede una voce per chiusura e non una per operatore.
+   */
+  async elencaChiusure(): Promise<Chiusura[]> {
+    const righe = await this.prisma.assenza.groupBy({
+      by: ['inizio', 'fine', 'note'],
+      where: { tipo: 'chiusura' },
+      _count: { _all: true },
+      orderBy: { inizio: 'asc' },
+    });
+
+    return righe.map((riga) => ({
+      inizio: riga.inizio.toISOString(),
+      fine: riga.fine.toISOString(),
+      motivo: riga.note,
+      operatoriCoinvolti: riga._count._all,
+    }));
+  }
+
+  /**
+   * Un unico flusso rende tutti gli operatori occupati nel periodo indicato
+   * (es. festività o chiusura per ferie dell'intera attività). I giorni sono
+   * interi: dalla mezzanotte del primo giorno a quella successiva all'ultimo.
+   */
+  async creaChiusura(dati: DatiCreazioneChiusura): Promise<Chiusura> {
+    const inizio = inizioGiornoLocale(dati.dal);
+    const fine = fineGiornoLocale(dati.al);
+
+    if (!inizio || !fine) {
+      throw new BadRequestException('Date della chiusura non valide.');
+    }
+
+    const operatori = await this.prisma.utente.findMany({
+      where: { ruolo: { in: ['titolare', 'dipendente'] }, attivo: true },
+      select: { id: true, nome: true, cognome: true },
+    });
+
+    if (operatori.length === 0) {
+      throw new BadRequestException('Nessun operatore in servizio da rendere occupato.');
+    }
+
+    await this.verificaPeriodoLiberoPerTutti(operatori, inizio, fine);
+
+    await this.prisma.assenza.createMany({
+      data: operatori.map((operatore) => ({
+        operatoreId: operatore.id,
+        tipo: 'chiusura' as const,
+        inizio,
+        fine,
+        note: dati.motivo,
+      })),
+    });
+
+    return {
+      inizio: inizio.toISOString(),
+      fine: fine.toISOString(),
+      motivo: dati.motivo,
+      operatoriCoinvolti: operatori.length,
+    };
+  }
+
+  /** Riapre il salone: rimuove la chiusura per tutti gli operatori. */
+  async rimuoviChiusura(dati: DatiRimozioneChiusura): Promise<void> {
+    const rimosse = await this.prisma.assenza.deleteMany({
+      where: { tipo: 'chiusura', inizio: new Date(dati.inizio), fine: new Date(dati.fine) },
+    });
+
+    if (rimosse.count === 0) {
+      throw new NotFoundException('Chiusura non trovata.');
+    }
+  }
+
+  /**
+   * Una chiusura non può nascere sopra appuntamenti in agenda né sopra assenze
+   * già registrate: il messaggio indica l'operatore da sistemare per primo.
+   */
+  private async verificaPeriodoLiberoPerTutti(
+    operatori: { id: string; nome: string; cognome: string }[],
+    inizio: Date,
+    fine: Date,
+  ): Promise<void> {
+    const identificativi = operatori.map((operatore) => operatore.id);
+    const nome = (operatoreId: string) => {
+      const operatore = operatori.find((voce) => voce.id === operatoreId);
+
+      return operatore ? `${operatore.nome} ${operatore.cognome}` : 'un operatore';
+    };
+
+    const appuntamento = await this.prisma.appuntamento.findFirst({
+      where: {
+        operatoreId: { in: identificativi },
+        stato: { in: ['in_attesa_pagamento', 'confermato'] },
+        inizio: { lt: fine },
+        fine: { gt: inizio },
+      },
+      orderBy: { inizio: 'asc' },
+      select: { operatoreId: true },
+    });
+
+    if (appuntamento) {
+      throw new BadRequestException(
+        `In quel periodo ci sono appuntamenti in agenda, a partire da quelli di ` +
+          `${nome(appuntamento.operatoreId)}: spostali o annullali prima di registrare la chiusura.`,
+      );
+    }
+
+    const assenza = await this.prisma.assenza.findFirst({
+      where: {
+        operatoreId: { in: identificativi },
+        inizio: { lt: fine },
+        fine: { gt: inizio },
+      },
+      orderBy: { inizio: 'asc' },
+      select: { operatoreId: true, tipo: true },
+    });
+
+    if (assenza) {
+      throw new BadRequestException(
+        assenza.tipo === 'chiusura'
+          ? 'Esiste già una chiusura che si sovrappone a questo periodo.'
+          : `In quel periodo ${nome(assenza.operatoreId)} ha già un'assenza registrata: ` +
+              'rimuovila prima di registrare la chiusura.',
+      );
     }
   }
 

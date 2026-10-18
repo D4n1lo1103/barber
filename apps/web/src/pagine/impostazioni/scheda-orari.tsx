@@ -9,6 +9,7 @@ import {
   type Operatore,
 } from '@barber/shared';
 import { Avviso } from '../../componenti/avviso';
+import { ChiusureSalone } from './chiusure-salone';
 import { Pulsante } from '../../componenti/pulsante';
 import { Superficie } from '../../componenti/superficie';
 import { ErroreApi } from '../../servizi/client-api';
@@ -270,6 +271,8 @@ export function SchedaOrari() {
         inSalvataggio={inSalvataggio}
         onSalva={() => void salva(apertura, salvaOrariApertura, impostaApertura)}
       />
+
+      <ChiusureSalone />
 
       <Superficie className="p-6">
         <h2 className="text-lg font-semibold">Orari di lavoro degli operatori</h2>
