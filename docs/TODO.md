@@ -11,9 +11,17 @@ pagamenti Stripe.
 
 - [ ] `TODO` Analisi: movimenti della caparra (pagata, rimborsata, convertita in credito,
       trattenuta, scalata dal saldo, restituita in via discrezionale) e registro di audit.
-- [ ] `TODO` Decisioni da prendere con il titolare prima di implementare:
-      percentuale iniziale della caparra, forma di restituzione predefinita (rimborso o
-      credito) e se la caparra vada attivata dalla procedura guidata o dalle impostazioni.
+- [x] `COMPLETATO` Decisione del titolare (18/10/2026): **la caparra si governa dalle
+      impostazioni dell'applicativo**, non dalla procedura guidata. Il singolo salone
+      stabilisce sia **se applicarla** (attiva/disattiva) sia la **percentuale**, nella
+      scheda _Regole_ accanto al limite di preavviso e alla regola di spostamento.
+      Nessun valore cablato nel codice: solo un valore iniziale nel database.
+- [ ] `TODO` Attivazione e percentuale della caparra nella scheda _Regole_, con il rifiuto
+      delle prenotazioni online senza pagamento quando la caparra è attiva.
+- [ ] `TODO` Decisione ancora aperta: **forma di restituzione predefinita** per un
+      annullamento tempestivo (rimborso sul metodo di pagamento oppure credito). È
+      un'impostazione del titolare: serve solo il valore con cui parte un'installazione
+      nuova.
 
 ## Da fare — attività trasversali già individuate
 
