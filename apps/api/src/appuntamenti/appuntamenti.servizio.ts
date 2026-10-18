@@ -7,6 +7,8 @@ import {
 } from '@nestjs/common';
 import {
   azioniDelCliente,
+  caparraPagataDaMovimenti,
+  caparraTrattenutaDaMovimenti,
   dataLocale,
   fineGiornoLocale,
   giorniConsecutivi,
@@ -24,11 +26,15 @@ import {
   type DatiRicercaAgenda,
   type DatiPrenotazioneCliente,
   type DatiSpostamentoAppuntamento,
+  type MovimentoPerTotali,
   type StatoAppuntamento,
 } from '@barber/shared';
 import { ClientiServizio } from '../clienti/clienti.servizio.js';
 import { ImpostazioniServizio } from '../impostazioni/impostazioni.servizio.js';
 import { NotificheServizio } from '../notifiche/notifiche.servizio.js';
+import { CaparraServizio } from '../pagamenti/caparra.servizio.js';
+import { PagamentiServizio } from '../pagamenti/pagamenti.servizio.js';
+import { ScadenzaBloccoAttivita } from '../pagamenti/scadenza-blocco.attivita.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { DisponibilitaServizio } from './disponibilita.servizio.js';
 
@@ -39,6 +45,8 @@ const INCLUDI_COLLEGAMENTI = {
   cliente: { select: { id: true, nome: true, cognome: true, numeroWhatsapp: true } },
   operatore: { select: { id: true, nome: true, cognome: true } },
   servizi: { orderBy: { ordine: 'asc' } },
+  // Serve a calcolare la caparra già pagata senza una query per appuntamento.
+  movimentiCaparra: { select: { tipo: true, importoCentesimi: true } },
 } as const;
 
 @Injectable()
@@ -51,6 +59,9 @@ export class AppuntamentiServizio {
     private readonly clienti: ClientiServizio,
     private readonly notifiche: NotificheServizio,
     private readonly impostazioni: ImpostazioniServizio,
+    private readonly pagamenti: PagamentiServizio,
+    private readonly caparra: CaparraServizio,
+    private readonly scadenzaBlocco: ScadenzaBloccoAttivita,
   ) {}
 
   /** Appuntamenti dell'intervallo di giorni richiesto, per l'agenda. */
@@ -108,7 +119,16 @@ export class AppuntamentiServizio {
     );
   }
 
-  /** Spostamento chiesto dal cliente: consentito solo entro il preavviso. */
+  /**
+   * Spostamento chiesto dal cliente: consentito solo entro il preavviso.
+   *
+   * Se il titolare ha scelto che lo spostamento sia **trattato come un
+   * annullamento** e c'è una caparra pagata, lo spostamento non muove
+   * l'appuntamento: annulla quello vecchio, restituendo la caparra secondo le
+   * regole, e ne crea uno nuovo sull'orario scelto, che richiede una nuova
+   * caparra. Con la regola dello spostamento libero, o senza caparra pagata,
+   * l'appuntamento si sposta e la caparra resta dov'è.
+   */
   async spostaComeCliente(id: string, clienteId: string, inizio: string): Promise<Appuntamento> {
     const appuntamento = await this.verificaAzioneDelCliente(id, clienteId, 'spostare');
     const nuovoInizio = new Date(inizio);
@@ -120,7 +140,58 @@ export class AppuntamentiServizio {
       );
     }
 
+    const regole = await this.impostazioni.leggiRegole();
+    const caparraPagata = await this.caparra.caparraPagata(appuntamento.id);
+
+    if (regole.spostamentoComeAnnullamento && caparraPagata > 0) {
+      return this.riprenotaDopoAnnullamento(appuntamento.id, clienteId, inizio);
+    }
+
     return this.sposta(appuntamento.id, { inizio }, clienteId);
+  }
+
+  /**
+   * Annulla e riprenota: l'annullamento è entro il limite di preavviso, quindi
+   * tempestivo, e la caparra torna al cliente nella forma scelta dal salone.
+   * Il nuovo appuntamento nasce con la propria caparra da pagare, che il
+   * credito copre in tutto o in parte se la restituzione è in credito.
+   */
+  private async riprenotaDopoAnnullamento(
+    id: string,
+    clienteId: string,
+    inizio: string,
+  ): Promise<Appuntamento> {
+    const vecchio = await this.prisma.appuntamento.findUniqueOrThrow({
+      where: { id },
+      select: {
+        operatoreId: true,
+        servizi: { select: { servizioId: true }, orderBy: { ordine: 'asc' } },
+      },
+    });
+
+    const servizioIds = vecchio.servizi
+      .map((servizio) => servizio.servizioId)
+      .filter((servizioId): servizioId is string => servizioId !== null);
+
+    if (servizioIds.length !== vecchio.servizi.length) {
+      throw new BadRequestException(
+        'Uno dei servizi prenotati non è più in catalogo: contatta il salone per lo spostamento.',
+      );
+    }
+
+    // Prima si libera lo slot vecchio, altrimenti il nuovo orario potrebbe
+    // sovrapporsi a quello che si sta lasciando.
+    await this.annulla(
+      id,
+      { motivo: 'tempestivo', note: 'Spostamento chiesto dal cliente.' },
+      clienteId,
+    );
+
+    return this.prenotaComeCliente(clienteId, {
+      operatoreId: vecchio.operatoreId,
+      servizioIds,
+      inizio,
+    });
   }
 
   /**
@@ -220,9 +291,17 @@ export class AppuntamentiServizio {
     const inizio = new Date(dati.inizio);
 
     this.verificaLimitiDiData(inizio);
+    // Uno slot tenuto da un pagamento mai completato non deve bloccare chi
+    // prenota adesso.
+    await this.pagamenti.liberaBlocchiScaduti();
     await this.verificaSlotLibero(dati.operatoreId, inizio, scelti.durataMinuti);
 
     const fine = new Date(inizio.getTime() + scelti.durataMinuti * 60_000);
+    const caparra = await this.caparraPerLaPrenotazione(
+      dati,
+      autoreId,
+      scelti.prezzoTotaleCentesimi,
+    );
 
     try {
       const creato = await this.prisma.appuntamento.create({
@@ -233,10 +312,14 @@ export class AppuntamentiServizio {
           fine,
           durataMinuti: scelti.durataMinuti,
           prezzoTotaleCentesimi: scelti.prezzoTotaleCentesimi,
-          // Finché la caparra non è attiva (fase 6) l'appuntamento inserito dal
-          // personale nasce già confermato.
-          stato: 'confermato',
-          senzaCaparra: dati.senzaCaparra,
+          // Con una caparra da pagare lo slot resta bloccato in attesa del
+          // pagamento; senza caparra l'appuntamento nasce già confermato.
+          // Con una differenza da pagare lo slot resta bloccato in attesa; se
+          // il credito copre tutta la caparra l'appuntamento è già confermato.
+          stato: caparra.scadeIl ? 'in_attesa_pagamento' : 'confermato',
+          caparraCentesimi: caparra.centesimi,
+          bloccoScadeIl: caparra.scadeIl,
+          senzaCaparra: caparra.centesimi === 0,
           note: dati.note,
           // Nullo quando prenota il cliente stesso dall'area clienti.
           creatoDaId: autoreId,
@@ -253,12 +336,66 @@ export class AppuntamentiServizio {
         include: INCLUDI_COLLEGAMENTI,
       });
 
-      await this.inviaConferma(creato);
+      await this.pagamenti.applicaCreditoAllaPrenotazione({
+        appuntamentoId: creato.id,
+        clienteId: creato.clienteId,
+        creditoUsatoCentesimi: caparra.creditoUsato,
+      });
 
-      return this.componi(creato);
+      if (caparra.scadeIl) {
+        await this.scadenzaBlocco.programma(creato.id, caparra.scadeIl);
+      } else {
+        // La conferma si invia a prenotazione confermata: con una differenza
+        // da pagare parte quando il pagamento riesce.
+        await this.inviaConferma(creato);
+      }
+
+      return this.leggi(creato.id);
     } catch (errore) {
       throw this.traduciErroreDiSovrapposizione(errore);
     }
+  }
+
+  /**
+   * Caparra dovuta su una nuova prenotazione e scadenza del blocco dello slot.
+   *
+   * La caparra si paga **online al momento della prenotazione**, quindi la
+   * richiede solo la prenotazione fatta dal cliente: un appuntamento preso al
+   * telefono o in negozio non ha caparra, perché in quel momento il cliente non
+   * può pagare (decisione del titolare del 18/10/2026). Per questo
+   * `senzaCaparra` risulta vero su ogni appuntamento inserito dal personale.
+   */
+  private async caparraPerLaPrenotazione(
+    dati: DatiCreazioneAppuntamento,
+    autoreId: string | null,
+    prezzoTotaleCentesimi: number,
+  ): Promise<{ centesimi: number; creditoUsato: number; scadeIl: Date | null }> {
+    const prenotaIlCliente = autoreId === null;
+
+    if (!prenotaIlCliente || dati.senzaCaparra) {
+      return { centesimi: 0, creditoUsato: 0, scadeIl: null };
+    }
+
+    const caparra = await this.pagamenti.caparraPerPrenotazione(
+      dati.clienteId,
+      prezzoTotaleCentesimi,
+    );
+
+    if (caparra.caparraCentesimi <= 0) {
+      return { centesimi: 0, creditoUsato: 0, scadeIl: null };
+    }
+
+    // Lo slot si blocca solo se resta qualcosa da pagare: con la caparra
+    // coperta dal credito non c'è alcuna attesa.
+    const minutiBlocco = await this.disponibilita.minutiBloccoSlot();
+    const scadeIl =
+      caparra.daPagareCentesimi > 0 ? new Date(Date.now() + minutiBlocco * 60_000) : null;
+
+    return {
+      centesimi: caparra.caparraCentesimi,
+      creditoUsato: caparra.creditoUsatoCentesimi,
+      scadeIl,
+    };
   }
 
   /** Conferma al cliente, se ha un indirizzo e-mail. */
@@ -361,21 +498,53 @@ export class AppuntamentiServizio {
       annullatoDaId: autoreId,
       annullatoIl: new Date(),
       noteAnnullamento: dati.note,
+      bloccoScadeIl: null,
+    });
+
+    await this.pagamenti.applicaTrattamentoAnnullamento({
+      appuntamentoId: appuntamento.id,
+      clienteId: appuntamento.cliente.id,
+      motivo: dati.motivo,
+      autoreId,
     });
 
     this.logger.log(`Appuntamento ${id} annullato (${dati.motivo}) da ${autoreId}.`);
 
-    return appuntamento;
+    return this.leggi(appuntamento.id);
   }
 
-  /** La mancata presentazione la segna il personale: lo slot resta occupato. */
-  segnaMancataPresentazione(id: string, autoreId: string): Promise<Appuntamento> {
-    return this.cambiaStato(id, 'mancata_presentazione', autoreId);
+  /**
+   * La mancata presentazione la segna il personale: lo slot resta occupato e
+   * la caparra viene trattenuta.
+   */
+  async segnaMancataPresentazione(id: string, autoreId: string): Promise<Appuntamento> {
+    const appuntamento = await this.cambiaStato(id, 'mancata_presentazione', autoreId);
+
+    await this.pagamenti.trattieniPerMancataPresentazione({
+      appuntamentoId: appuntamento.id,
+      clienteId: appuntamento.cliente.id,
+      autoreId,
+    });
+
+    return this.leggi(appuntamento.id);
   }
 
-  /** Il completamento è sempre manuale: nessun automatismo a fine orario. */
-  completa(id: string, autoreId: string): Promise<Appuntamento> {
-    return this.cambiaStato(id, 'completato', autoreId, { completatoIl: new Date() });
+  /**
+   * Il completamento è sempre manuale: nessun automatismo a fine orario. A
+   * servizio concluso la caparra viene scalata dal totale.
+   */
+  async completa(id: string, autoreId: string): Promise<Appuntamento> {
+    const appuntamento = await this.cambiaStato(id, 'completato', autoreId, {
+      completatoIl: new Date(),
+    });
+
+    await this.pagamenti.scalaAlCompletamento({
+      appuntamentoId: appuntamento.id,
+      clienteId: appuntamento.cliente.id,
+      autoreId,
+    });
+
+    return this.leggi(appuntamento.id);
   }
 
   private async cambiaStato(
@@ -520,6 +689,8 @@ export class AppuntamentiServizio {
     durataMinuti: number;
     prezzoTotaleCentesimi: number;
     senzaCaparra: boolean;
+    caparraCentesimi: number;
+    bloccoScadeIl: Date | null;
     note: string;
     creatoDaId: string | null;
     creatoIl: Date;
@@ -529,6 +700,7 @@ export class AppuntamentiServizio {
       prezzoCentesimi: number;
       durataMinuti: number;
     }[];
+    movimentiCaparra: MovimentoPerTotali[];
   }): Appuntamento {
     return {
       id: riga.id,
@@ -550,6 +722,10 @@ export class AppuntamentiServizio {
       durataMinuti: riga.durataMinuti,
       prezzoTotaleCentesimi: riga.prezzoTotaleCentesimi,
       senzaCaparra: riga.senzaCaparra,
+      caparraCentesimi: riga.caparraCentesimi,
+      caparraPagataCentesimi: caparraPagataDaMovimenti(riga.movimentiCaparra),
+      caparraTrattenutaCentesimi: caparraTrattenutaDaMovimenti(riga.movimentiCaparra),
+      bloccoScadeIl: riga.bloccoScadeIl?.toISOString() ?? null,
       note: riga.note,
       servizi: riga.servizi.map((servizio) => ({
         servizioId: servizio.servizioId,

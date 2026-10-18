@@ -8,7 +8,9 @@ import { AppModule } from './app.module.js';
 import type { Ambiente } from './configurazione/ambiente.js';
 
 async function avvia(): Promise<void> {
-  const app = await NestFactory.create(AppModule, { bufferLogs: true });
+  // `rawBody` serve a verificare la firma degli eventi di pagamento: la firma
+  // vale sul corpo esatto ricevuto, non su quello ricostruito dal JSON.
+  const app = await NestFactory.create(AppModule, { bufferLogs: true, rawBody: true });
   const configurazione = app.get(ConfigService<Ambiente, true>);
 
   app.use(helmet());

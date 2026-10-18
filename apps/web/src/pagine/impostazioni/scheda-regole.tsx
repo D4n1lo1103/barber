@@ -1,7 +1,10 @@
 import { useEffect, useState } from 'react';
 import {
+  ETICHETTE_FORMA_RESTITUZIONE,
   ETICHETTE_RICHIESTA_CANCELLAZIONE,
+  FORME_RESTITUZIONE,
   schemaRegoleSalone,
+  type FormaRestituzione,
   type RegoleSalone,
   type RichiestaCancellazione,
 } from '@barber/shared';
@@ -19,14 +22,17 @@ import {
 import { formattaData } from '../../utilita/formati';
 
 /**
- * Regole di annullamento e spostamento, più le richieste di cancellazione dei
- * dati inviate dai clienti.
+ * Regole di annullamento, spostamento e caparra, più le richieste di
+ * cancellazione dei dati inviate dai clienti.
  */
 export function SchedaRegole() {
   const [regole, impostaRegole] = useState<RegoleSalone | null>(null);
   const [preavviso, impostaPreavviso] = useState('24');
   const [promemoria, impostaPromemoria] = useState('24');
   const [comeAnnullamento, impostaComeAnnullamento] = useState(false);
+  const [caparraAttiva, impostaCaparraAttiva] = useState(false);
+  const [percentuale, impostaPercentuale] = useState('50');
+  const [restituzione, impostaRestituzione] = useState<FormaRestituzione>('rimborso');
   const [richieste, impostaRichieste] = useState<RichiestaCancellazione[]>([]);
   const [messaggio, impostaMessaggio] = useState<{
     tono: 'errore' | 'conferma';
@@ -42,6 +48,9 @@ export function SchedaRegole() {
         impostaPreavviso(String(lette.oreLimitePreavviso));
         impostaPromemoria(String(lette.oreAnticipoPromemoria));
         impostaComeAnnullamento(lette.spostamentoComeAnnullamento);
+        impostaCaparraAttiva(lette.caparraAttiva);
+        impostaPercentuale(String(lette.caparraPercentuale));
+        impostaRestituzione(lette.restituzioneCaparra);
         impostaRichieste(elenco.richieste);
       })
       .catch((problema: unknown) =>
@@ -58,6 +67,9 @@ export function SchedaRegole() {
       oreLimitePreavviso: Number(preavviso),
       spostamentoComeAnnullamento: comeAnnullamento,
       oreAnticipoPromemoria: Number(promemoria),
+      caparraAttiva,
+      caparraPercentuale: Number(percentuale),
+      restituzioneCaparra: restituzione,
     });
 
     if (!validazione.success) {
@@ -184,6 +196,66 @@ export function SchedaRegole() {
         <Pulsante className="mt-6" onClick={() => void salva()} disabled={inCorso}>
           {inCorso ? 'Salvataggio…' : 'Salva le regole'}
         </Pulsante>
+      </Superficie>
+
+      <Superficie className="p-6">
+        <h2 className="text-lg font-semibold">Caparra</h2>
+        <p className="mt-1 text-sm text-testo-tenue">
+          Con la caparra attiva il cliente paga online una percentuale del prezzo al momento della
+          prenotazione; l’appuntamento è confermato solo a pagamento avvenuto. Il personale può
+          sempre inserire un appuntamento «senza caparra» dall’agenda.
+        </p>
+
+        <label className="mt-4 flex items-start gap-2 text-sm">
+          <input
+            type="checkbox"
+            checked={caparraAttiva}
+            onChange={(evento) => impostaCaparraAttiva(evento.target.checked)}
+            className="mt-0.5 accent-[var(--color-accento)]"
+          />
+          <span>
+            Richiedi la caparra per le prenotazioni online
+            <span className="block text-xs text-testo-tenue">
+              Gli appuntamenti già fissati non cambiano.
+            </span>
+          </span>
+        </label>
+
+        <div className="mt-4 grid gap-4 sm:grid-cols-2">
+          <Campo
+            etichetta="Percentuale della caparra (%)"
+            type="number"
+            min={1}
+            max={100}
+            value={percentuale}
+            onChange={(evento) => impostaPercentuale(evento.target.value)}
+            disabled={!caparraAttiva}
+            suggerimento="Calcolata sul prezzo dei servizi scelti e scalata dal totale a servizio concluso."
+          />
+        </div>
+
+        <fieldset className="mt-4 space-y-2" disabled={!caparraAttiva}>
+          <legend className="text-sm font-medium">
+            Restituzione per un annullamento tempestivo
+          </legend>
+          {FORME_RESTITUZIONE.map((forma) => (
+            <label key={forma} className="flex items-start gap-2 text-sm">
+              <input
+                type="radio"
+                name="forma-restituzione"
+                checked={restituzione === forma}
+                onChange={() => impostaRestituzione(forma)}
+                className="mt-0.5 accent-[var(--color-accento)]"
+              />
+              <span>{ETICHETTE_FORMA_RESTITUZIONE[forma]}</span>
+            </label>
+          ))}
+          <p className="text-xs text-testo-tenue">
+            Un annullamento tardivo e una mancata presentazione trattengono sempre la caparra; un
+            annullamento deciso dal salone la rimborsa sempre per intero. Solo tu puoi restituire
+            una caparra trattenuta, indicando il motivo.
+          </p>
+        </fieldset>
       </Superficie>
 
       <Superficie className="p-6">

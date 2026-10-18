@@ -20,6 +20,7 @@ già completate. Le parti ancora da sviluppare sono elencate in fondo, in
   - [Orari e assenze](#orari-e-assenze)
   - [Chiusure del salone](#chiusure-del-salone)
   - [Regole del salone](#regole-del-salone)
+  - [Caparra](#caparra)
   - [Richieste di cancellazione dei dati](#richieste-di-cancellazione-dei-dati)
 - [Clienti](#clienti)
 - [Agenda](#agenda)
@@ -33,6 +34,7 @@ già completate. Le parti ancora da sviluppare sono elencate in fondo, in
   - [Password dimenticata](#password-dimenticata)
   - [Prenotare online](#prenotare-online)
   - [Spostare o annullare dall'app](#spostare-o-annullare-dallapp)
+  - [Pagare la caparra](#pagare-la-caparra)
   - [Profilo, consensi e dati personali](#profilo-consensi-e-dati-personali)
 - [Aspetto e accessibilità](#aspetto-e-accessibilità)
 - [Domande frequenti](#domande-frequenti)
@@ -51,7 +53,8 @@ già completate. Le parti ancora da sviluppare sono elencate in fondo, in
 | Servizio              | Prestazione con nome, prezzo e durata fissa.                               |
 | Appuntamento          | Prenotazione di uno o più servizi con un operatore, in data e ora.         |
 | Slot                  | Unità minima di tempo dell'agenda (es. 15 minuti).                         |
-| Caparra               | Anticipo pagato online alla prenotazione (dalla fase 6).                   |
+| Caparra               | Anticipo pagato online alla prenotazione, se il salone la richiede.        |
+| Credito               | Importo a favore del cliente, usabile per una prenotazione futura.         |
 | Limite di preavviso   | Ore entro cui un annullamento è considerato tempestivo.                    |
 | Mancata presentazione | Il cliente non si è presentato.                                            |
 
@@ -167,6 +170,38 @@ già presi.
 I due limiti della prenotazione online — almeno **2 ore** di preavviso e non oltre
 **60 giorni** — sono fissi e non si modificano.
 
+### Caparra
+
+Scheda _Regole_, riquadro **Caparra**. Riguarda solo le prenotazioni che il cliente fa da sé
+online: un appuntamento inserito dal personale non prevede caparra, perché al telefono il
+cliente non può pagare.
+
+- **Richiedi la caparra per le prenotazioni online**: la spunta che attiva tutto. Gli
+  appuntamenti già fissati non cambiano.
+- **Percentuale della caparra**: calcolata sul prezzo dei servizi scelti. Con il 50% su un
+  taglio da 20,00 € il cliente paga 10,00 € alla prenotazione e 10,00 € in negozio.
+- **Restituzione per un annullamento tempestivo**: rimborso sul metodo di pagamento oppure
+  credito a favore del cliente.
+
+Le altre regole non si impostano, perché le fissano i requisiti:
+
+| Cosa accade                                  | Fine della caparra                  |
+| -------------------------------------------- | ----------------------------------- |
+| Annullamento tempestivo (entro il preavviso) | restituita nella forma scelta sopra |
+| Annullamento tardivo (oltre il preavviso)    | trattenuta                          |
+| Mancata presentazione                        | trattenuta                          |
+| Annullamento deciso dal salone               | rimborsata per intero, sempre       |
+| Appuntamento completato                      | scalata dal totale da pagare        |
+| Pagamento non completato in tempo            | slot liberato, niente da restituire |
+
+**Restituire una caparra trattenuta** (solo titolare): si apre l'appuntamento in agenda e si
+preme **Restituisci la caparra**, scegliendo fra rimborso e credito e indicando il **motivo**,
+che è obbligatorio. L'operazione resta nei movimenti con data e autore.
+
+**Dove si vedono i movimenti**: nella scheda del cliente, riquadro **Caparre e credito**, con
+il credito disponibile e tutti i movimenti (pagata, rimborsata, convertita in credito,
+trattenuta, scalata, restituita). Sono dati economici: li vede solo il titolare.
+
 ### Richieste di cancellazione dei dati
 
 Nella stessa scheda _Regole_, riquadro **Richieste di cancellazione dei dati**: l'elenco
@@ -220,9 +255,11 @@ Dal pannello, pulsante **Agenda**.
    i servizi vengono erogati uno dopo l'altro, dallo stesso operatore.
 4. **Giorno e orario**: il sistema propone **solo gli orari realmente liberi**, calcolati su
    orari di lavoro, assenze e appuntamenti esistenti.
-5. **Senza caparra**: casella disponibile solo al personale, mai al cliente.
-6. **Note**: indicazioni interne sull'appuntamento.
-7. **Salva appuntamento**.
+5. **Note**: indicazioni interne sull'appuntamento.
+6. **Salva appuntamento**.
+
+Un appuntamento inserito dal personale **non prevede caparra** e nasce già confermato: la
+caparra si paga online e riguarda solo le prenotazioni che il cliente fa da sé.
 
 Regole dell'inserimento dal personale:
 
@@ -244,7 +281,8 @@ Regole dell'inserimento dal personale:
 3. **Conferma spostamento**.
 
 I servizi non cambiano: per cambiarli si annulla l'appuntamento e se ne inserisce un altro.
-Si spostano solo gli appuntamenti confermati o in attesa di pagamento.
+Si spostano solo gli appuntamenti confermati o in attesa di pagamento. Lo spostamento fatto
+dal personale non muove la caparra: resta sull'appuntamento spostato.
 
 ### Annullare un appuntamento
 
@@ -255,17 +293,20 @@ Si spostano solo gli appuntamenti confermati o in attesa di pagamento.
    - **Annullato dal salone**: la decisione è del salone.
 3. Si può aggiungere una nota e si registra.
 
-Lo slot torna disponibile. Il motivo determinerà il trattamento della caparra quando i
-pagamenti saranno attivi (fase 6). L'annullamento resta registrato con autore e momento.
+Lo slot torna disponibile e l'annullamento resta registrato con autore e momento. Il motivo
+decide la fine della caparra: restituita se tempestivo, trattenuta se tardivo, sempre
+rimborsata se la decisione è del salone. Vedi [Caparra](#caparra).
 
 ### Mancata presentazione
 
 Se il cliente non si presenta, si apre l'appuntamento e si preme **Mancata presentazione**.
-Lo slot resta occupato, perché quel tempo è stato comunque impegnato.
+Lo slot resta occupato, perché quel tempo è stato comunque impegnato, e l'eventuale caparra
+viene trattenuta.
 
 ### Completare un appuntamento
 
-A servizio concluso si apre l'appuntamento e si preme **Segna completato**. Non ci sono
+A servizio concluso si apre l'appuntamento e si preme **Segna completato**: l'eventuale
+caparra viene scalata dal totale, e il dettaglio indica quanto resta da saldare. Non ci sono
 automatismi: un appuntamento diventa completato solo quando lo segna il personale.
 Da completato, annullato o mancata presentazione non si torna indietro.
 
@@ -328,7 +369,12 @@ Nella sezione **I miei appuntamenti**, sotto ogni appuntamento futuro:
 - **Sposta**: si sceglie il nuovo orario fra quelli liberi, con gli stessi servizi e lo
   stesso operatore.
 - **Annulla**: libera subito lo slot. Un annullamento fatto dall'app è sempre
-  **tempestivo**.
+  **tempestivo**, quindi la caparra viene restituita nella forma scelta dal salone.
+
+Se il titolare ha scelto che lo spostamento sia **trattato come un annullamento** e c'è una
+caparra pagata, spostare equivale ad annullare e riprenotare: la caparra viene restituita e il
+nuovo orario richiede una nuova caparra (che il credito appena restituito può coprire). Con la
+regola dello spostamento libero la caparra resta sull'appuntamento spostato.
 
 I due pulsanti compaiono solo **entro il limite di preavviso** deciso dal salone (24 ore
 all'inizio). Passato il limite al loro posto si legge che il termine è scaduto: per
@@ -337,10 +383,31 @@ modificare o annullare si chiama il salone, e il personale registra l'operazione
 Lo **Storico** in fondo elenca gli appuntamenti passati, con servizi, operatore, importo e
 stato.
 
+### Pagare la caparra
+
+Compare solo se il salone richiede la caparra.
+
+1. Al passo **Scegli quando** appare il riquadro **Caparra** con l'importo: quanto si paga
+   adesso e quanto resta da saldare in negozio.
+2. Premendo **Prenota e paga la caparra** si viene portati sulla pagina di pagamento. Lo slot
+   resta tenuto per i minuti indicati: se il pagamento non arriva, torna libero e si deve
+   prenotare di nuovo.
+3. L'appuntamento è **confermato solo a pagamento avvenuto**. Finché si attende, nella
+   sezione _I miei appuntamenti_ si legge «In attesa di pagamento» con l'ora entro cui pagare
+   e un pulsante **Paga** per riprendere il pagamento (per esempio se si è chiusa la pagina).
+4. A servizio concluso la caparra viene scalata dal conto: in negozio si paga la differenza.
+
+**Se si ha del credito** (per esempio da un annullamento restituito in credito) viene usato
+subito: copre la caparra in tutto o in parte, e si paga solo la differenza. Il credito non ha
+scadenza e si vede nella sezione _Profilo e dati_. Se la differenza non viene pagata e lo slot
+si libera, il credito usato torna indietro.
+
 ### Profilo, consensi e dati personali
 
 Sezione **Profilo e dati**.
 
+- **Credito**: se il salone ha restituito una caparra in credito, l'importo è indicato qui e
+  viene usato alla prossima prenotazione. Non scade.
 - **I tuoi dati**: e-mail e numero WhatsApp si possono correggere. Un numero già collegato a
   un altro account viene rifiutato.
 - **Consensi**: il consenso ai messaggi WhatsApp si concede e si revoca quando si vuole.
@@ -396,6 +463,12 @@ indesiderata. Dalla sua scheda si genera comunque un nuovo link, che si può anc
 telefono; il precedente smette di funzionare. Dalla fase 7 l'invito arriverà anche via
 WhatsApp.
 
+**Il cliente ha pagato ma l'appuntamento risulta ancora in attesa.**
+La conferma arriva dal fornitore di pagamenti, non dal browser del cliente: di solito è
+questione di secondi. Basta ricaricare la pagina. Se dopo qualche minuto risulta ancora in
+attesa, lo slot viene liberato e l'eventuale importo incassato appare fra i movimenti della
+caparra, da restituire.
+
 **Un cliente dice di non poter annullare dall'app.**
 È passato il limite di preavviso: oltre quel termine i pulsanti scompaiono. L'annullamento lo
 registra il personale dall'agenda, indicando se l'avviso è tempestivo o tardivo.
@@ -410,8 +483,6 @@ Queste funzioni sono previste dalle fasi successive dello sviluppo:
 
 - **Verifica del numero di telefono** (fase 7): oggi l'account si conferma con la sola
   e-mail; la verifica del numero arriverà con i messaggi WhatsApp.
-- **Caparra e pagamenti** (fase 6): pagamento online alla prenotazione, blocco temporaneo
-  dello slot, rimborsi, credito, restituzione discrezionale da parte del titolare.
 - **WhatsApp** (fase 7): conferme, promemoria e inviti, con ripiego sull'e-mail.
 - **Prodotti e magazzino** (fase 8) e **vendita online** (fase 9).
 - **Statistiche e KPI** (fase 10), riservati al titolare.

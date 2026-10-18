@@ -57,7 +57,7 @@ export default defineConfig({
     {
       name: 'chromium',
       use: { ...devices['Desktop Chrome'], storageState: PERCORSO_SESSIONE_TITOLARE },
-      testIgnore: '**/procedura-guidata.e2e.ts',
+      testIgnore: ['**/procedura-guidata.e2e.ts', '**/caparra.e2e.ts'],
       dependencies: ['preparazione'],
     },
     {
@@ -65,8 +65,17 @@ export default defineConfig({
       use: { ...devices['Pixel 7'], storageState: PERCORSO_SESSIONE_TITOLARE },
       // Su mobile si verifica l'accesso: le impostazioni e la procedura
       // guidata modificano dati condivisi e girano una volta sola.
-      testIgnore: ['**/procedura-guidata.e2e.ts', '**/impostazioni.e2e.ts'],
+      testIgnore: ['**/procedura-guidata.e2e.ts', '**/impostazioni.e2e.ts', '**/caparra.e2e.ts'],
       dependencies: ['preparazione'],
+    },
+    {
+      // La caparra è un'impostazione del salone: attivarla cambia il
+      // comportamento di tutte le prenotazioni, quindi gira per ultima e da
+      // sola, e alla fine la rimette come l'ha trovata.
+      name: 'caparra',
+      testMatch: '**/caparra.e2e.ts',
+      use: { ...devices['Desktop Chrome'], storageState: PERCORSO_SESSIONE_TITOLARE },
+      dependencies: ['chromium', 'mobile'],
     },
   ],
   webServer: [

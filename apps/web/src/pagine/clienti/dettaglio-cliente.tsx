@@ -1,21 +1,38 @@
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router';
-import { ETICHETTE_STATO, type Appuntamento, type Cliente } from '@barber/shared';
+import {
+  ETICHETTE_MOVIMENTO_CAPARRA,
+  ETICHETTE_STATO,
+  type Appuntamento,
+  type Cliente,
+  type SituazioneCaparre,
+  type TipoMovimentoCaparra,
+} from '@barber/shared';
 import { Avviso } from '../../componenti/avviso';
 import { Caricamento } from '../../componenti/caricamento';
 import { Pulsante } from '../../componenti/pulsante';
 import { Superficie } from '../../componenti/superficie';
+import { usaSessione } from '../../autenticazione/contesto-sessione';
 import {
+  leggiSituazioneCaparre,
   leggiStoricoCliente,
   leggiCliente,
   modificaCliente,
   rigeneraInvitoCliente,
 } from '../../servizi/gestione';
-import { formattaDataBreve, formattaIntervallo, formattaPrezzo } from '../../utilita/formati';
+import {
+  formattaData,
+  formattaDataBreve,
+  formattaIntervallo,
+  formattaPrezzo,
+} from '../../utilita/formati';
 
 /** Scheda cliente: contatti, note interne e storico degli appuntamenti. */
 export function PaginaDettaglioCliente() {
   const { id } = useParams<{ id: string }>();
+  const { utente } = usaSessione();
+  // Movimenti e credito sono dati economici: li vede solo il titolare.
+  const [situazione, impostaSituazione] = useState<SituazioneCaparre | null>(null);
   const [cliente, impostaCliente] = useState<Cliente | null>(null);
   const [appuntamenti, impostaAppuntamenti] = useState<Appuntamento[]>([]);
   const [note, impostaNote] = useState('');
@@ -31,12 +48,17 @@ export function PaginaDettaglioCliente() {
 
     let annullato = false;
 
-    Promise.all([leggiCliente(id), leggiStoricoCliente(id)])
-      .then(([scheda, storico]) => {
+    Promise.all([
+      leggiCliente(id),
+      leggiStoricoCliente(id),
+      utente?.ruolo === 'titolare' ? leggiSituazioneCaparre(id) : Promise.resolve(null),
+    ])
+      .then(([scheda, storico, caparre]) => {
         if (!annullato) {
           impostaCliente(scheda);
           impostaNote(scheda.note);
           impostaAppuntamenti(storico.appuntamenti);
+          impostaSituazione(caparre);
         }
       })
       .catch((motivo: unknown) => {
@@ -188,6 +210,48 @@ export function PaginaDettaglioCliente() {
         <div className="mt-4">
           <Avviso tono="errore">{errore}</Avviso>
         </div>
+      )}
+
+      {situazione && (
+        <>
+          <h2 className="mt-8 text-lg font-semibold tracking-tight">Caparre e credito</h2>
+          <Superficie className="mt-3 p-5">
+            <p className="text-sm">
+              Credito disponibile:{' '}
+              <strong>{formattaPrezzo(situazione.saldoCreditoCentesimi)}</strong>
+              <span className="block text-xs text-testo-tenue">Il credito non ha scadenza.</span>
+            </p>
+
+            {situazione.movimentiCaparra.length === 0 ? (
+              <p className="mt-4 text-sm text-testo-tenue">Nessun movimento di caparra.</p>
+            ) : (
+              <ul className="mt-4 space-y-2">
+                {situazione.movimentiCaparra.map((movimento) => (
+                  <li
+                    key={movimento.id}
+                    className="border-t border-bordo pt-2 text-sm first:border-0 first:pt-0"
+                  >
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <span className="font-medium">
+                        {ETICHETTE_MOVIMENTO_CAPARRA[movimento.tipo as TipoMovimentoCaparra]} ·{' '}
+                        {formattaPrezzo(movimento.importoCentesimi)}
+                      </span>
+                      <span className="text-xs text-testo-tenue">
+                        {formattaData(movimento.creatoIl)}
+                      </span>
+                    </div>
+                    <p className="text-xs text-testo-tenue">
+                      {movimento.motivo}
+                      {movimento.autore
+                        ? ` — ${movimento.autore.nome} ${movimento.autore.cognome}`
+                        : ' — registrato dal sistema'}
+                    </p>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </Superficie>
+        </>
       )}
 
       <h2 className="mt-8 text-lg font-semibold tracking-tight">Storico appuntamenti</h2>

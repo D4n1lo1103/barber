@@ -40,6 +40,15 @@ const schemaAmbiente = z.object({
   SMTP_MITTENTE: z.string().default('Gestionale salone <no-reply@localhost>'),
   // "true" solo per le porte con TLS implicito (465).
   SMTP_TLS_IMPLICITO: schemaBooleano.default('false'),
+  // ─── Pagamenti ────────────────────────────────────────────────────────────
+  // Senza STRIPE_CHIAVE_SEGRETA i pagamenti non sono reali: viene usato il
+  // fornitore finto, utile in sviluppo e nei test. In produzione la
+  // configurazione mancante è un errore e l'avvio si interrompe.
+  STRIPE_CHIAVE_SEGRETA: z.string().optional(),
+  // Segreto del webhook: serve a verificare la firma di ogni evento.
+  STRIPE_SEGRETO_WEBHOOK: z.string().optional(),
+  // Chiave pubblicabile, esposta al browser: non è un segreto.
+  STRIPE_CHIAVE_PUBBLICABILE: z.string().optional(),
   // Coda delle attività in background (pg-boss). Con "false" le attività
   // vengono eseguite subito, in linea: serve ai test automatici.
   CODA_ATTIVA: schemaBooleano.default('true'),

@@ -34,7 +34,6 @@ export function ModaleNuovoAppuntamento({
   const [giorno, impostaGiorno] = useState(giornoIniziale);
   const [inizio, impostaInizio] = useState<string | null>(orarioIniziale);
   const [cliente, impostaCliente] = useState<Cliente | null>(null);
-  const [senzaCaparra, impostaSenzaCaparra] = useState(false);
   const [note, impostaNote] = useState('');
   const [errore, impostaErrore] = useState<string | null>(null);
   const [inInvio, impostaInvio] = useState(false);
@@ -46,7 +45,6 @@ export function ModaleNuovoAppuntamento({
       impostaInizio(orarioIniziale);
       impostaServizi([]);
       impostaCliente(null);
-      impostaSenzaCaparra(false);
       impostaNote('');
       impostaErrore(null);
     }
@@ -88,7 +86,8 @@ export function ModaleNuovoAppuntamento({
         operatoreId,
         servizioIds,
         inizio,
-        senzaCaparra,
+        // Inserendo dal personale la caparra non si applica.
+        senzaCaparra: true,
         note,
       });
 
@@ -187,20 +186,10 @@ export function ModaleNuovoAppuntamento({
           onScegli={impostaInizio}
         />
 
-        <label className="flex items-start gap-2 text-sm">
-          <input
-            type="checkbox"
-            checked={senzaCaparra}
-            onChange={(evento) => impostaSenzaCaparra(evento.target.checked)}
-            className="mt-0.5 accent-[var(--color-accento)]"
-          />
-          <span>
-            Senza caparra
-            <span className="block text-xs text-testo-tenue">
-              Disponibile solo al personale: il cliente non vede questa opzione.
-            </span>
-          </span>
-        </label>
+        <p className="text-xs text-testo-tenue">
+          Un appuntamento inserito dal personale non prevede caparra: la caparra si paga online e
+          riguarda solo le prenotazioni che il cliente fa da sé.
+        </p>
 
         <div className="space-y-2">
           <label htmlFor="note-appuntamento" className="block text-sm font-medium">

@@ -1,4 +1,5 @@
 export * from './appuntamento.js';
+export * from './caparra.js';
 export * from './configurazione-profilo.js';
 export * from './disponibilita.js';
 export * from './fuso.js';

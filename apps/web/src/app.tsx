@@ -12,6 +12,7 @@ import { PaginaClienti } from './pagine/clienti/clienti';
 import { PaginaDettaglioCliente } from './pagine/clienti/dettaglio-cliente';
 import { PaginaImpostazioni } from './pagine/impostazioni/impostazioni';
 import { PaginaPannello } from './pagine/pannello';
+import { PaginaPagamentoFinto } from './pagine/pagamento-finto';
 import { PaginaPasswordDimenticata } from './pagine/password-dimenticata';
 import { PaginaRegistrazione } from './pagine/registrazione';
 import { PaginaReimpostaPassword } from './pagine/reimposta-password';
@@ -62,6 +63,14 @@ function Instradamento() {
       <Route path="/password-dimenticata" element={<PaginaPasswordDimenticata />} />
       <Route path="/reimposta-password" element={<PaginaReimpostaPassword />} />
       <Route path="/attivazione" element={<PaginaAttivazione />} />
+      <Route
+        path="/pagamento-finto"
+        element={
+          <RottaProtetta ruoliConsentiti={['cliente']}>
+            <PaginaPagamentoFinto />
+          </RottaProtetta>
+        }
+      />
       <Route
         path="/area-cliente"
         element={

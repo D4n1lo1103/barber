@@ -15,6 +15,7 @@ import { InstallazioneModule } from './installazione/installazione.module.js';
 import { ImpostazioniModule } from './impostazioni/impostazioni.module.js';
 import { NotificheModule } from './notifiche/notifiche.module.js';
 import { OrariModule } from './orari/orari.module.js';
+import { PagamentiModule } from './pagamenti/pagamenti.module.js';
 import { PersonaleModule } from './personale/personale.module.js';
 import { PrismaModule } from './prisma/prisma.module.js';
 import { ServiziModule } from './servizi/servizi.module.js';
@@ -38,6 +39,7 @@ import { UtentiModule } from './utenti/utenti.module.js';
     ImpostazioniModule,
     InstallazioneModule,
     OrariModule,
+    PagamentiModule,
     PersonaleModule,
     ServiziModule,
     StatoModule,

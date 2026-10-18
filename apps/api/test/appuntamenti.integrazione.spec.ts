@@ -175,7 +175,10 @@ describe('Agenda del personale', () => {
       expect(appuntamento.prezzoTotaleCentesimi).toBe(3000);
       expect(appuntamento.stato).toBe('confermato');
       expect(appuntamento.creatoDaPersonale).toBe(true);
-      expect(appuntamento.senzaCaparra).toBe(false);
+      // Un appuntamento inserito dal personale non prevede caparra: si paga
+      // online, e al telefono il cliente non può farlo.
+      expect(appuntamento.senzaCaparra).toBe(true);
+      expect(appuntamento.caparraCentesimi).toBe(0);
       expect(appuntamento.servizi.map((servizio) => servizio.nome)).toEqual([
         'Taglio di prova',
         'Barba di prova',
@@ -185,10 +188,24 @@ describe('Agenda del personale', () => {
       );
     });
 
-    it('registra il flag "senza caparra"', async () => {
-      const risposta = await prenota(dipendente, { senzaCaparra: true }).expect(201);
+    it('non chiede la caparra nemmeno con la caparra attiva nelle impostazioni', async () => {
+      await come(
+        titolare,
+        chiama().put('/api/impostazioni/regole').send({
+          oreLimitePreavviso: 24,
+          spostamentoComeAnnullamento: false,
+          oreAnticipoPromemoria: 24,
+          caparraAttiva: true,
+          caparraPercentuale: 50,
+          restituzioneCaparra: 'rimborso',
+        }),
+      ).expect(200);
+
+      const risposta = await prenota(dipendente).expect(201);
 
       expect(risposta.body.senzaCaparra).toBe(true);
+      expect(risposta.body.caparraCentesimi).toBe(0);
+      expect(risposta.body.stato).toBe('confermato');
     });
 
     it('copia nome, prezzo e durata del servizio: il listino può cambiare dopo', async () => {

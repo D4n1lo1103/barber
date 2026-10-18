@@ -24,6 +24,16 @@ function prossimoMercoledi(): string {
   return dataLocale(giorno);
 }
 
+/** Regole di partenza di un'installazione nuova, da modificare nei test. */
+const REGOLE_DI_PARTENZA = {
+  oreLimitePreavviso: 24,
+  spostamentoComeAnnullamento: false,
+  oreAnticipoPromemoria: 24,
+  caparraAttiva: false,
+  caparraPercentuale: 50,
+  restituzioneCaparra: 'rimborso',
+} as const;
+
 describe('Area del cliente', () => {
   let contesto: ContestoDiProva;
   let titolare: { cookie: string; tokenCsrf: string };
@@ -218,10 +228,12 @@ describe('Area del cliente', () => {
       const salvato = await contesto.prisma.appuntamento.findFirstOrThrow({
         where: { clienteId: idCliente },
       });
-      // Prenotazione del cliente: nessun autore fra il personale e caparra
-      // secondo le regole del salone.
+      // Prenotazione del cliente: nessun autore fra il personale. Con la
+      // caparra disattivata (impostazione di partenza) non c'è nulla da pagare
+      // e l'appuntamento nasce confermato.
       expect(salvato.creatoDaId).toBeNull();
-      expect(salvato.senzaCaparra).toBe(false);
+      expect(salvato.caparraCentesimi).toBe(0);
+      expect(salvato.stato).toBe('confermato');
 
       const messaggio = contesto.email.messaggi.at(-1);
       expect(messaggio?.oggetto).toContain('appuntamento confermato');
@@ -241,12 +253,30 @@ describe('Area del cliente', () => {
     });
 
     it('non accetta il flag "senza caparra" nemmeno se inviato', async () => {
-      await prenota({ senzaCaparra: true }).expect(201);
+      await come(
+        titolare,
+        chiama()
+          .put('/api/impostazioni/regole')
+          .send({ ...REGOLE_DI_PARTENZA, caparraAttiva: true, caparraPercentuale: 50 }),
+      ).expect(200);
 
-      const salvato = await contesto.prisma.appuntamento.findFirstOrThrow({
-        where: { clienteId: idCliente },
-      });
-      expect(salvato.senzaCaparra).toBe(false);
+      try {
+        await prenota({ senzaCaparra: true }).expect(201);
+
+        const salvato = await contesto.prisma.appuntamento.findFirstOrThrow({
+          where: { clienteId: idCliente },
+        });
+        // Il flag del personale non ha effetto sulla prenotazione del cliente:
+        // la caparra viene comunque richiesta e lo slot resta in attesa.
+        expect(salvato.caparraCentesimi).toBe(1250);
+        expect(salvato.stato).toBe('in_attesa_pagamento');
+        expect(salvato.bloccoScadeIl).not.toBeNull();
+      } finally {
+        await come(
+          titolare,
+          chiama().put('/api/impostazioni/regole').send(REGOLE_DI_PARTENZA),
+        ).expect(200);
+      }
     });
 
     it('rifiuta un orario già occupato', async () => {
@@ -295,11 +325,12 @@ describe('Area del cliente', () => {
       // Limite di due settimane: l'appuntamento è più vicino, quindi tardivo.
       await come(
         titolare,
-        chiama().put('/api/impostazioni/regole').send({
-          oreLimitePreavviso: 336,
-          spostamentoComeAnnullamento: false,
-          oreAnticipoPromemoria: 24,
-        }),
+        chiama()
+          .put('/api/impostazioni/regole')
+          .send({
+            ...REGOLE_DI_PARTENZA,
+            oreLimitePreavviso: 336,
+          }),
       ).expect(200);
 
       const elenco = await come(cliente, chiama().get('/api/area-cliente/appuntamenti')).expect(
@@ -470,22 +501,28 @@ describe('Area del cliente', () => {
     it('le cambia solo il titolare e rifiuta valori fuori intervallo', async () => {
       await come(
         cliente,
-        chiama().put('/api/impostazioni/regole').send({
-          oreLimitePreavviso: 12,
-          spostamentoComeAnnullamento: true,
-          oreAnticipoPromemoria: 12,
-        }),
+        chiama()
+          .put('/api/impostazioni/regole')
+          .send({
+            ...REGOLE_DI_PARTENZA,
+            oreLimitePreavviso: 12,
+            spostamentoComeAnnullamento: true,
+          }),
       ).expect(403);
 
       const salvate = await come(
         titolare,
-        chiama().put('/api/impostazioni/regole').send({
-          oreLimitePreavviso: 48,
-          spostamentoComeAnnullamento: true,
-          oreAnticipoPromemoria: 12,
-        }),
+        chiama()
+          .put('/api/impostazioni/regole')
+          .send({
+            ...REGOLE_DI_PARTENZA,
+            oreLimitePreavviso: 48,
+            spostamentoComeAnnullamento: true,
+            oreAnticipoPromemoria: 12,
+          }),
       ).expect(200);
       expect(salvate.body).toEqual({
+        ...REGOLE_DI_PARTENZA,
         oreLimitePreavviso: 48,
         spostamentoComeAnnullamento: true,
         oreAnticipoPromemoria: 12,
@@ -493,11 +530,12 @@ describe('Area del cliente', () => {
 
       await come(
         titolare,
-        chiama().put('/api/impostazioni/regole').send({
-          oreLimitePreavviso: 1000,
-          spostamentoComeAnnullamento: false,
-          oreAnticipoPromemoria: 24,
-        }),
+        chiama()
+          .put('/api/impostazioni/regole')
+          .send({
+            ...REGOLE_DI_PARTENZA,
+            oreLimitePreavviso: 1000,
+          }),
       ).expect(400);
 
       // Lo stato pubblico riporta le regole: l'area clienti le mostra.

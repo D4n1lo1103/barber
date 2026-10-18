@@ -6,5 +6,6 @@ export * from './comuni.js';
 export * from './impostazioni.js';
 export * from './installazione.js';
 export * from './orari.js';
+export * from './pagamenti.js';
 export * from './personale.js';
 export * from './servizi.js';

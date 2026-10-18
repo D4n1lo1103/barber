@@ -5,6 +5,8 @@ import { ambienteBooleano, type Ambiente } from '../configurazione/ambiente.js';
 
 /** Nomi delle code: un'attività per nome. */
 export const CODA_EMAIL = 'invio-email';
+/** Scadenza del blocco dello slot durante il pagamento della caparra. */
+export const CODA_BLOCCO_SLOT = 'scadenza-blocco-slot';
 
 type Gestore = (dati: unknown) => Promise<void>;
 
@@ -76,13 +78,28 @@ export class CodaServizio implements OnModuleDestroy {
   }
 
   /**
-   * Accoda un'attività. Senza coda attiva viene eseguita subito: l'errore
-   * risale al chiamante, che decide se farlo fallire o solo registrarlo.
+   * Accoda un'attività, eventualmente differita di qualche secondo.
+   *
+   * Senza coda attiva viene eseguita subito e l'errore risale al chiamante,
+   * che decide se farlo fallire o solo registrarlo. Un'attività differita,
+   * invece, viene saltata: eseguirla subito avrebbe l'effetto opposto a
+   * quello voluto (annullerebbe un blocco ancora valido). Chi ne dipende deve
+   * restare corretto anche se non viene mai eseguita.
    */
-  async accoda(nome: string, dati: object): Promise<void> {
+  async accoda(
+    nome: string,
+    dati: object,
+    opzioni: { ritardoSecondi?: number } = {},
+  ): Promise<void> {
     const boss = await this.avviaSeNecessario();
 
     if (!boss) {
+      if (opzioni.ritardoSecondi) {
+        this.logger.warn(`Coda non attiva: l'attività differita "${nome}" non verrà eseguita.`);
+
+        return;
+      }
+
       const gestore = this.gestori.get(nome);
 
       if (!gestore) {
@@ -95,6 +112,7 @@ export class CodaServizio implements OnModuleDestroy {
     }
 
     await boss.send(nome, dati, {
+      startAfter: opzioni.ritardoSecondi,
       // Un'e-mail che non parte viene ritentata con attese crescenti.
       retryLimit: 5,
       retryDelay: 60,
