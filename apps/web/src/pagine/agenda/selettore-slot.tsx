@@ -3,6 +3,7 @@ import { clsx } from 'clsx';
 import { Avviso } from '../../componenti/avviso';
 import { Caricamento } from '../../componenti/caricamento';
 import { leggiDisponibilita } from '../../servizi/gestione';
+import type { DisponibilitaGiorno } from '@barber/shared';
 import { formattaOra } from '../../utilita/formati';
 
 /**
@@ -17,6 +18,7 @@ export function SelettoreSlot({
   valore,
   onScegli,
   escludiAppuntamentoId,
+  carica = leggiDisponibilita,
 }: {
   operatoreId: string;
   servizioIds: string[];
@@ -25,6 +27,16 @@ export function SelettoreSlot({
   valore: string | null;
   onScegli: (inizio: string) => void;
   escludiAppuntamentoId?: string;
+  /**
+   * Da dove arrivano gli slot: il personale e l'area clienti usano rotte
+   * diverse, con regole di preavviso diverse.
+   */
+  carica?: (dati: {
+    operatoreId: string;
+    servizioIds: string[];
+    dal: string;
+    escludiAppuntamentoId?: string;
+  }) => Promise<{ giorni: DisponibilitaGiorno[] }>;
 }) {
   const [slot, impostaSlot] = useState<string[]>([]);
   const [inCaricamento, impostaCaricamento] = useState(false);
@@ -42,7 +54,7 @@ export function SelettoreSlot({
     impostaCaricamento(true);
     impostaErrore(null);
 
-    leggiDisponibilita({ operatoreId, servizioIds, dal: giorno, escludiAppuntamentoId })
+    carica({ operatoreId, servizioIds, dal: giorno, escludiAppuntamentoId })
       .then((risposta) => {
         if (!annullato) {
           impostaSlot(risposta.giorni[0]?.slot ?? []);
@@ -65,7 +77,7 @@ export function SelettoreSlot({
     return () => {
       annullato = true;
     };
-  }, [operatoreId, servizioIds, giorno, escludiAppuntamentoId]);
+  }, [operatoreId, servizioIds, giorno, escludiAppuntamentoId, carica]);
 
   return (
     <div className="space-y-3">

@@ -4,10 +4,11 @@ import { Link } from 'react-router';
 import { Pulsante } from '../../componenti/pulsante';
 import { usaInstallazione } from '../../installazione/contesto-installazione';
 import { SchedaOrari } from './scheda-orari';
+import { SchedaRegole } from './scheda-regole';
 import { SchedaPersonale } from './scheda-personale';
 import { SchedaServizi } from './scheda-servizi';
 
-const SCHEDE = ['Servizi', 'Personale', 'Orari'] as const;
+const SCHEDE = ['Servizi', 'Personale', 'Orari', 'Regole'] as const;
 
 type Scheda = (typeof SCHEDE)[number];
 
@@ -59,6 +60,7 @@ export function PaginaImpostazioni() {
         {scheda === 'Servizi' && <SchedaServizi granularitaSlotMinuti={granularita} />}
         {scheda === 'Personale' && <SchedaPersonale />}
         {scheda === 'Orari' && <SchedaOrari />}
+        {scheda === 'Regole' && <SchedaRegole />}
       </motion.div>
     </main>
   );

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
 import { motion } from 'motion/react';
-import { schemaPassword } from '@barber/shared';
+import { schemaEmail, schemaPassword } from '@barber/shared';
 import { Avviso } from '../componenti/avviso';
 import { Campo } from '../componenti/campo';
 import { Pulsante } from '../componenti/pulsante';
@@ -16,6 +16,7 @@ export function PaginaAttivazione() {
   const token = parametri.get('token') ?? '';
   const [password, impostaPassword] = useState('');
   const [conferma, impostaConferma] = useState('');
+  const [email, impostaEmail] = useState('');
   const [errore, impostaErrore] = useState<string | null>(null);
   const [inInvio, impostaInInvio] = useState(false);
   const [completata, impostaCompletata] = useState(false);
@@ -38,10 +39,22 @@ export function PaginaAttivazione() {
       return;
     }
 
+    const indirizzo = email.trim();
+
+    if (indirizzo !== '') {
+      const validazioneEmail = schemaEmail.safeParse(indirizzo);
+
+      if (!validazioneEmail.success) {
+        impostaErrore(validazioneEmail.error.issues[0]?.message ?? 'Indirizzo non valido.');
+
+        return;
+      }
+    }
+
     impostaInInvio(true);
 
     try {
-      await attivaAccount(token, password);
+      await attivaAccount(token, password, indirizzo === '' ? undefined : indirizzo);
       impostaCompletata(true);
       setTimeout(() => void naviga('/accesso'), 1500);
     } catch (problema) {
@@ -64,7 +77,7 @@ export function PaginaAttivazione() {
         <Superficie className="p-8">
           <h1 className="text-2xl font-semibold tracking-tight">Attiva il tuo account</h1>
           <p className="mt-1 text-sm text-testo-tenue">
-            Scegli la password che userai per accedere.
+            Scegli la password che userai per accedere: il salone non la conosce.
           </p>
 
           {token.length === 0 ? (
@@ -79,6 +92,15 @@ export function PaginaAttivazione() {
             </div>
           ) : (
             <form onSubmit={invia} className="mt-8 space-y-5" noValidate>
+              <Campo
+                etichetta="E-mail"
+                type="email"
+                autoComplete="email"
+                value={email}
+                onChange={(evento) => impostaEmail(evento.target.value)}
+                suggerimento="Indicala se il salone non l’ha già registrata: ti servirà per accedere e per recuperare la password."
+              />
+
               <Campo
                 etichetta="Password"
                 type="password"

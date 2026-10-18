@@ -1,0 +1,114 @@
+import { Injectable, Logger, OnModuleDestroy } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { PgBoss } from 'pg-boss';
+import { ambienteBooleano, type Ambiente } from '../configurazione/ambiente.js';
+
+/** Nomi delle code: un'attività per nome. */
+export const CODA_EMAIL = 'invio-email';
+
+type Gestore = (dati: unknown) => Promise<void>;
+
+/**
+ * Attività in background su pg-boss, nello stesso PostgreSQL
+ * dell'applicazione: nessun servizio aggiuntivo da gestire.
+ *
+ * Con `CODA_ATTIVA=false` le attività vengono eseguite subito, in linea:
+ * i test automatici restano deterministici e lo sviluppo non richiede la coda.
+ */
+@Injectable()
+export class CodaServizio implements OnModuleDestroy {
+  private readonly logger = new Logger(CodaServizio.name);
+  private readonly gestori = new Map<string, Gestore>();
+  private boss: PgBoss | null = null;
+  private avvio: Promise<PgBoss | null> | null = null;
+
+  constructor(private readonly configurazione: ConfigService<Ambiente, true>) {}
+
+  private get attiva(): boolean {
+    return ambienteBooleano(this.configurazione.get('CODA_ATTIVA', { infer: true }));
+  }
+
+  /**
+   * Avvia pg-boss alla prima necessità, una sola volta: evita di dipendere
+   * dall'ordine di inizializzazione dei moduli.
+   */
+  private avviaSeNecessario(): Promise<PgBoss | null> {
+    if (!this.attiva) {
+      return Promise.resolve(null);
+    }
+
+    this.avvio ??= (async () => {
+      const boss = new PgBoss({
+        connectionString: this.configurazione.get('DATABASE_URL', { infer: true }),
+        schema: 'coda',
+      });
+
+      boss.on('error', (errore) => this.logger.error('Errore della coda.', errore));
+      await boss.start();
+      this.boss = boss;
+      this.logger.log('Coda delle attività avviata.');
+
+      return boss;
+    })();
+
+    return this.avvio;
+  }
+
+  /**
+   * Registra chi esegue un'attività. Va chiamato all'avvio del modulo che la
+   * gestisce, prima che arrivino lavori da svolgere.
+   */
+  async registra(nome: string, gestore: Gestore): Promise<void> {
+    this.gestori.set(nome, gestore);
+
+    const boss = await this.avviaSeNecessario();
+
+    if (!boss) {
+      return;
+    }
+
+    await boss.createQueue(nome);
+    await boss.work(nome, { batchSize: 1 }, async (lavori) => {
+      for (const lavoro of lavori) {
+        await gestore(lavoro.data);
+      }
+    });
+  }
+
+  /**
+   * Accoda un'attività. Senza coda attiva viene eseguita subito: l'errore
+   * risale al chiamante, che decide se farlo fallire o solo registrarlo.
+   */
+  async accoda(nome: string, dati: object): Promise<void> {
+    const boss = await this.avviaSeNecessario();
+
+    if (!boss) {
+      const gestore = this.gestori.get(nome);
+
+      if (!gestore) {
+        throw new Error(`Nessun gestore registrato per l'attività "${nome}".`);
+      }
+
+      await gestore(dati);
+
+      return;
+    }
+
+    await boss.send(nome, dati, {
+      // Un'e-mail che non parte viene ritentata con attese crescenti.
+      retryLimit: 5,
+      retryDelay: 60,
+      retryBackoff: true,
+      expireInSeconds: 600,
+    });
+  }
+
+  async onModuleDestroy(): Promise<void> {
+    if (this.boss) {
+      // Chiusura ordinata: i lavori in corso finiscono, i nuovi non partono.
+      await this.boss.stop({ graceful: true, close: true, timeout: 5000 });
+      this.boss = null;
+      this.avvio = null;
+    }
+  }
+}

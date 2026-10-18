@@ -4,32 +4,40 @@ Stato dello sviluppo per fasi (vedi la roadmap in `CLAUDE.md`).
 
 ## In corso
 
-Nessuna attività in corso: le fasi 0, 1, 2 e 3 sono completate.
+Nessuna attività in corso: le fasi da 0 a 5 sono completate. Prossima: fase 6 — caparra e
+pagamenti Stripe.
 
-## Da fare — Fase 4: Area cliente
+## Da fare — Fase 6: Caparra e pagamenti Stripe
 
-- [ ] `TODO` Registrazione autonoma del cliente con consensi GDPR separati (trattamento dei
-      dati e messaggi WhatsApp) e verifica del numero di telefono.
-- [ ] `TODO` Collegamento alla scheda esistente quando il numero è già presente.
-- [ ] `TODO` Attivazione dell'account per le schede create dal personale: se la scheda non ha
-      e-mail, il cliente la indica in fase di attivazione (oggi la rotta di attivazione
-      imposta solo la password).
-- [ ] `TODO` Prenotazione online: almeno 2 ore di preavviso, non oltre 60 giorni, senza
-      opzione "senza caparra".
-- [ ] `TODO` Spostamento e annullamento dall'app secondo la regola scelta dal titolare, con
-      il pulsante di annullamento che scompare dopo il limite di preavviso.
-- [ ] `TODO` Consultazione e richiesta di cancellazione dei propri dati (GDPR).
-- [ ] `TODO` Impostazioni del titolare ancora da esporre nell'interfaccia: limite di
-      preavviso, regola di spostamento, forma di restituzione della caparra.
+- [ ] `TODO` Analisi: movimenti della caparra (pagata, rimborsata, convertita in credito,
+      trattenuta, scalata dal saldo, restituita in via discrezionale) e registro di audit.
+- [x] `COMPLETATO` Decisione del titolare (18/10/2026): **la caparra si governa dalle
+      impostazioni dell'applicativo**, non dalla procedura guidata. Il singolo salone
+      stabilisce sia **se applicarla** (attiva/disattiva) sia la **percentuale**, nella
+      scheda _Regole_ accanto al limite di preavviso e alla regola di spostamento.
+      Nessun valore cablato nel codice: solo un valore iniziale nel database.
+- [ ] `TODO` Attivazione e percentuale della caparra nella scheda _Regole_, con il rifiuto
+      delle prenotazioni online senza pagamento quando la caparra è attiva.
+- [x] `COMPLETATO` Decisione del titolare (18/10/2026): la **forma di restituzione** della
+      caparra per un annullamento tempestivo la decide il salone dalle impostazioni, con due
+      opzioni, **rimborso** sul metodo di pagamento oppure **credito**. Un'installazione
+      nuova parte da _rimborso_: per un annullamento tempestivo è l'opzione meno
+      contestabile verso il consumatore, e resta modificabile con un clic.
+- [ ] `TODO` Forma di restituzione nella scheda _Regole_ e applicazione della regola
+      all'annullamento tempestivo del cliente (rimborso Stripe oppure credito sul conto del
+      cliente, credito senza scadenza).
 
 ## Da fare — attività trasversali già individuate
 
-- [ ] `TODO` Collegare `SessioniServizio.rimuoviScadute()` a un'attività periodica pg-boss
-      quando verranno introdotte le attività in background (fase 5).
+- [ ] `TODO` Collegare `SessioniServizio.rimuoviScadute()` e la scadenza dei token a
+      un'attività periodica pg-boss: la coda ora esiste, manca la pianificazione ricorrente.
 - [ ] `TODO` Integrare Sentry su frontend e backend con `IDENTIFICATIVO_INSTALLAZIONE`
       su ogni evento e senza dati personali dei clienti.
 - [ ] `TODO` Registro di audit per le operazioni sensibili (movimenti della caparra,
-      restituzioni discrezionali, disattivazione di account): da progettare nella fase 6.
+      restituzioni discrezionali, cancellazione dei dati di un cliente, disattivazione di
+      account): da progettare nella fase 6.
+- [ ] `TODO` Il pacchetto JavaScript del frontend supera i 500 kB: valutare un ulteriore
+      taglio in parti ora che l'area cliente è cresciuta.
 
 ## Bloccato
 
@@ -42,6 +50,62 @@ Nessuna attività in corso: le fasi 0, 1, 2 e 3 sono completate.
 - [ ] `BLOCCATO` Prova reale della procedura di ripristino dei backup.
   - Blocco: richiede un server di prova con un'installazione attiva. Gli script sono
     pronti e documentati; manca la verifica end-to-end su dati reali.
+
+## Completato — Fasi 4 e 5: Area cliente ed e-mail (18/10/2026)
+
+Le due fasi sono state sviluppate in un unico passaggio: nessun flusso dell'area cliente è
+verificabile senza le e-mail di verifica, invito e reimpostazione della password (ADR 0007).
+
+- [x] `COMPLETATO` Invio e-mail dietro l'interfaccia `MittenteEmail`: SMTP in produzione,
+      registro nei log senza `SMTP_HOST`. Nuove variabili d'ambiente documentate.
+- [x] `COMPLETATO` Coda pg-boss (`invio-email`) nello stesso PostgreSQL, con esecuzione in
+      linea quando `CODA_ATTIVA=false` per rendere deterministici i test.
+- [x] `COMPLETATO` Token a uso singolo con solo l'hash nel database, validità per tipo e
+      sostituzione del token precedente: attivazione, verifica e-mail, reset password.
+- [x] `COMPLETATO` Registrazione autonoma del cliente con consensi GDPR separati, verifica
+      dell'indirizzo e rinvio del messaggio di verifica.
+- [x] `COMPLETATO` Collegamento alla scheda esistente sul numero WhatsApp, senza duplicati;
+      conflitto esplicito se numero o e-mail hanno già un account attivo.
+- [x] `COMPLETATO` Attivazione delle schede create dal personale: se la scheda non ha
+      e-mail, il cliente la indica in fase di attivazione.
+- [x] `COMPLETATO` Reimpostazione della password con risposta uniforme su indirizzi
+      inesistenti e revoca di tutte le sessioni.
+- [x] `COMPLETATO` Prenotazione online: almeno 2 ore di preavviso, non oltre 60 giorni,
+      operatore sempre esplicito, nessuna opzione "senza caparra".
+- [x] `COMPLETATO` Spostamento e annullamento dall'app secondo la regola del titolare, con
+      `puoSpostare`/`puoAnnullare` calcolati dal backend (`azioniDelCliente`): oltre il
+      limite i pulsanti scompaiono e la richiesta viene comunque rifiutata.
+- [x] `COMPLETATO` Profilo del cliente: contatti, consenso WhatsApp, copia dei propri dati.
+- [x] `COMPLETATO` Richiesta di cancellazione dei dati e evasione da parte del titolare per
+      anonimizzazione, con rifiuto se restano appuntamenti in agenda.
+- [x] `COMPLETATO` Impostazioni esposte nell'interfaccia (scheda _Regole_): limite di
+      preavviso, regola di spostamento, anticipo del promemoria.
+- [x] `COMPLETATO` Limiti di frequenza su registrazione, verifica, reset, attivazione,
+      prenotazione online e richiesta di cancellazione.
+- [x] `COMPLETATO` Test: unitari su `azioniDelCliente`, 32 test di integrazione su area
+      cliente e registrazione, test end-to-end dei tre flussi del cliente.
+- [x] `COMPLETATO` ADR 0007, README, `.env.example` e `MANUALE-DUSO.md` aggiornati.
+
+### Controlli eseguiti al termine delle fasi 4 e 5
+
+| Controllo            | Comando                                       | Esito                                 |
+| -------------------- | --------------------------------------------- | ------------------------------------- |
+| Formattazione        | `pnpm format:check`                           | superato                              |
+| Lint                 | `pnpm lint`                                   | superato                              |
+| Tipi                 | `pnpm type-check`                             | superato                              |
+| Test unitari         | `pnpm test`                                   | 57 condivisi, 30 backend, 38 frontend |
+| Test di integrazione | `pnpm --filter @barber/api test:integrazione` | 146 test superati                     |
+| Test end-to-end      | `pnpm --filter @barber/web test:e2e`          | 34 superati, 1 saltato per scelta     |
+| Build                | `pnpm build`                                  | superato                              |
+
+### Rinviato con motivazione
+
+- **Verifica del numero di telefono**: richiede un canale di invio, che lo stack prevede solo
+  con WhatsApp Cloud API (fase 7). Fino ad allora `numeroVerificato` resta falso e l'account
+  si conferma con la sola e-mail. Il collegamento alla scheda esistente avviene sul numero
+  indicato in registrazione, confermato dalla verifica della casella (ADR 0007).
+- **Conferme di prenotazione via WhatsApp e promemoria**: fase 7. L'anticipo del promemoria è
+  già configurabile e la conferma di prenotazione parte già via e-mail.
 
 ## Completato — Chiusure del salone (18/10/2026)
 

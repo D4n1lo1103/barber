@@ -5,10 +5,10 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import type { DatiCreazioneDipendente, DatiModificaOperatore, Operatore } from '@barber/shared';
-import { AutenticazioneServizio } from '../autenticazione/autenticazione.servizio.js';
 import { SessioniServizio } from '../autenticazione/sessioni.servizio.js';
 import { PrismaService } from '../prisma/prisma.service.js';
-import { InvitiServizio } from './inviti.servizio.js';
+import { TokenServizio } from '../autenticazione/token.servizio.js';
+import { NotificheServizio } from '../notifiche/notifiche.servizio.js';
 
 interface RigaUtente {
   id: string;
@@ -25,9 +25,9 @@ interface RigaUtente {
 export class PersonaleServizio {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly inviti: InvitiServizio,
+    private readonly token: TokenServizio,
     private readonly sessioni: SessioniServizio,
-    private readonly autenticazione: AutenticazioneServizio,
+    private readonly notifiche: NotificheServizio,
   ) {}
 
   async elenca(): Promise<Operatore[]> {
@@ -68,7 +68,12 @@ export class PersonaleServizio {
 
     await this.estendiChiusureFuture(creato.id);
 
-    const invito = await this.inviti.crea(creato.id);
+    const invito = await this.token.crea(creato.id);
+
+    await this.notifiche.inviaInvitoAttivazione(
+      { nome: creato.nome, email: dati.email },
+      invito.token,
+    );
 
     return {
       operatore: this.componi(creato as RigaUtente),
@@ -157,21 +162,16 @@ export class PersonaleServizio {
       throw new BadRequestException('Il titolare ha già un account attivo.');
     }
 
-    return this.inviti.crea(operatore.id);
-  }
+    const invito = await this.token.crea(operatore.id);
 
-  /** Attivazione dell'account da parte del dipendente invitato. */
-  async attivaAccount(token: string, password: string): Promise<void> {
-    const invito = await this.inviti.risolvi(token);
+    if (operatore.email) {
+      await this.notifiche.inviaInvitoAttivazione(
+        { nome: operatore.nome, email: operatore.email },
+        invito.token,
+      );
+    }
 
-    await this.prisma.utente.update({
-      where: { id: invito.utenteId },
-      data: {
-        passwordHash: await this.autenticazione.calcolaHashPassword(password),
-        emailVerificata: true,
-      },
-    });
-    await this.inviti.segnaUsato(invito.id);
+    return invito;
   }
 
   private async leggiOperatore(id: string) {

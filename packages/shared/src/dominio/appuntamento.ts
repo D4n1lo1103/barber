@@ -72,6 +72,44 @@ export const GIORNI_PASSATO_PERSONALE = 7;
 /** Numero massimo di servizi in un solo appuntamento. */
 export const SERVIZI_MASSIMI_PER_APPUNTAMENTO = 6;
 
+/** Limite di preavviso predefinito, in ore, se l'installazione non lo definisce. */
+export const ORE_LIMITE_PREAVVISO_PREDEFINITO = 24;
+
+/**
+ * Un annullamento è tempestivo se arriva almeno `oreLimitePreavviso` prima
+ * dell'inizio dell'appuntamento; dopo è tardivo.
+ */
+export function annullamentoTempestivo(
+  inizio: Date,
+  adesso: Date,
+  oreLimitePreavviso: number,
+): boolean {
+  return inizio.getTime() - adesso.getTime() >= oreLimitePreavviso * 60 * 60 * 1000;
+}
+
+/**
+ * Cosa può fare il cliente dall'app su un appuntamento.
+ *
+ * Dopo il limite di preavviso il pulsante di annullamento non è più
+ * disponibile: il cliente deve contattare il salone, che registra
+ * l'annullamento tardivo. Lo spostamento segue la regola scelta dal titolare:
+ * se è trattato come un annullamento vale lo stesso limite, altrimenti è
+ * libero solo entro il limite.
+ */
+export function azioniDelCliente(parametri: {
+  stato: StatoAppuntamento;
+  inizio: Date;
+  adesso: Date;
+  oreLimitePreavviso: number;
+}): { puoAnnullare: boolean; puoSpostare: boolean } {
+  const { stato, inizio, adesso, oreLimitePreavviso } = parametri;
+  const modificabile = stato === 'confermato' || stato === 'in_attesa_pagamento';
+  const entroIlPreavviso = annullamentoTempestivo(inizio, adesso, oreLimitePreavviso);
+  const consentito = modificabile && entroIlPreavviso;
+
+  return { puoAnnullare: consentito, puoSpostare: consentito };
+}
+
 /**
  * Transizioni di stato ammesse. Il pagamento della caparra (fase 6) porta da
  * `in_attesa_pagamento` a `confermato`; gli altri passaggi li compie il

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Navigate, useLocation } from 'react-router';
+import { Link, Navigate, useLocation } from 'react-router';
 import { motion } from 'motion/react';
 import { schemaAccesso } from '@barber/shared';
 import { usaSessione } from '../autenticazione/contesto-sessione';
@@ -89,6 +89,20 @@ export function PaginaAccesso() {
               {inInvio ? 'Accesso in corso…' : 'Accedi'}
             </Pulsante>
           </form>
+
+          <div className="mt-6 space-y-2 text-center text-sm">
+            <p>
+              <Link to="/password-dimenticata" className="text-testo-tenue underline">
+                Password dimenticata?
+              </Link>
+            </p>
+            <p className="text-testo-tenue">
+              Sei un cliente?{' '}
+              <Link to="/registrazione" className="font-medium text-testo underline">
+                Crea il tuo account
+              </Link>
+            </p>
+          </div>
         </Superficie>
       </motion.div>
     </main>

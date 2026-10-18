@@ -6,12 +6,14 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import {
+  azioniDelCliente,
   dataLocale,
   fineGiornoLocale,
   giorniConsecutivi,
   GIORNI_MASSIMI_PRENOTAZIONE,
   GIORNI_PASSATO_PERSONALE,
   inizioGiornoLocale,
+  ORE_MINIME_PRENOTAZIONE_CLIENTE,
   orarioDaMinuti,
   partiData,
   transizioneAmmessa,
@@ -20,10 +22,13 @@ import {
   type DatiAnnullamentoDaPersonale,
   type DatiCreazioneAppuntamento,
   type DatiRicercaAgenda,
+  type DatiPrenotazioneCliente,
   type DatiSpostamentoAppuntamento,
   type StatoAppuntamento,
 } from '@barber/shared';
 import { ClientiServizio } from '../clienti/clienti.servizio.js';
+import { ImpostazioniServizio } from '../impostazioni/impostazioni.servizio.js';
+import { NotificheServizio } from '../notifiche/notifiche.servizio.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { DisponibilitaServizio } from './disponibilita.servizio.js';
 
@@ -44,6 +49,8 @@ export class AppuntamentiServizio {
     private readonly prisma: PrismaService,
     private readonly disponibilita: DisponibilitaServizio,
     private readonly clienti: ClientiServizio,
+    private readonly notifiche: NotificheServizio,
+    private readonly impostazioni: ImpostazioniServizio,
   ) {}
 
   /** Appuntamenti dell'intervallo di giorni richiesto, per l'agenda. */
@@ -68,6 +75,109 @@ export class AppuntamentiServizio {
     });
 
     return appuntamenti.map((appuntamento) => this.componi(appuntamento));
+  }
+
+  /**
+   * Prenotazione dall'area clienti: almeno due ore di preavviso, non oltre
+   * 60 giorni, nessuna opzione "senza caparra" e sempre a proprio nome.
+   */
+  async prenotaComeCliente(
+    clienteId: string,
+    dati: DatiPrenotazioneCliente,
+  ): Promise<Appuntamento> {
+    const inizio = new Date(dati.inizio);
+    const minimo = new Date(Date.now() + ORE_MINIME_PRENOTAZIONE_CLIENTE * 60 * 60 * 1000);
+
+    if (inizio < minimo) {
+      throw new BadRequestException(
+        `Le prenotazioni online richiedono almeno ${ORE_MINIME_PRENOTAZIONE_CLIENTE} ore di preavviso. ` +
+          'Per un appuntamento più vicino chiama il salone.',
+      );
+    }
+
+    return this.crea(
+      {
+        clienteId,
+        operatoreId: dati.operatoreId,
+        servizioIds: dati.servizioIds,
+        inizio: dati.inizio,
+        senzaCaparra: false,
+        note: '',
+      },
+      null,
+    );
+  }
+
+  /** Spostamento chiesto dal cliente: consentito solo entro il preavviso. */
+  async spostaComeCliente(id: string, clienteId: string, inizio: string): Promise<Appuntamento> {
+    const appuntamento = await this.verificaAzioneDelCliente(id, clienteId, 'spostare');
+    const nuovoInizio = new Date(inizio);
+    const minimo = new Date(Date.now() + ORE_MINIME_PRENOTAZIONE_CLIENTE * 60 * 60 * 1000);
+
+    if (nuovoInizio < minimo) {
+      throw new BadRequestException(
+        `Scegli un orario almeno ${ORE_MINIME_PRENOTAZIONE_CLIENTE} ore dopo adesso.`,
+      );
+    }
+
+    return this.sposta(appuntamento.id, { inizio }, clienteId);
+  }
+
+  /**
+   * Annullamento dall'app: è possibile solo entro il limite di preavviso,
+   * quindi è sempre tempestivo. Dopo il limite il cliente deve contattare il
+   * salone, che registra l'annullamento tardivo.
+   */
+  async annullaComeCliente(id: string, clienteId: string): Promise<Appuntamento> {
+    const appuntamento = await this.verificaAzioneDelCliente(id, clienteId, 'annullare');
+
+    return this.annulla(appuntamento.id, { motivo: 'tempestivo', note: '' }, clienteId);
+  }
+
+  /** Appuntamenti del cliente con le azioni che può compiere adesso. */
+  async elencaPerAreaCliente(clienteId: string): Promise<Appuntamento[]> {
+    const appuntamenti = await this.prisma.appuntamento.findMany({
+      where: { clienteId },
+      orderBy: { inizio: 'desc' },
+      include: INCLUDI_COLLEGAMENTI,
+    });
+
+    return appuntamenti.map((appuntamento) => this.componi(appuntamento));
+  }
+
+  /**
+   * Verifica che l'appuntamento sia del cliente e che l'azione sia ancora
+   * consentita dalle regole del salone.
+   */
+  private async verificaAzioneDelCliente(
+    id: string,
+    clienteId: string,
+    azione: 'annullare' | 'spostare',
+  ) {
+    const appuntamento = await this.prisma.appuntamento.findUnique({ where: { id } });
+
+    if (!appuntamento || appuntamento.clienteId !== clienteId) {
+      throw new NotFoundException('Appuntamento non trovato.');
+    }
+
+    const regole = await this.impostazioni.leggiRegole();
+    const azioni = azioniDelCliente({
+      stato: appuntamento.stato,
+      inizio: appuntamento.inizio,
+      adesso: new Date(),
+      oreLimitePreavviso: regole.oreLimitePreavviso,
+    });
+
+    const consentita = azione === 'annullare' ? azioni.puoAnnullare : azioni.puoSpostare;
+
+    if (!consentita) {
+      throw new BadRequestException(
+        `Non è più possibile ${azione} questo appuntamento dall'app: ` +
+          `il limite è di ${regole.oreLimitePreavviso} ore prima. Contatta il salone.`,
+      );
+    }
+
+    return appuntamento;
   }
 
   /** Storico del cliente, dal più recente. */
@@ -102,7 +212,7 @@ export class AppuntamentiServizio {
    * deve cadere negli orari di lavoro dell'operatore, fuori dalle sue assenze e
    * su uno slot libero. Il flag "senza caparra" è disponibile solo qui.
    */
-  async crea(dati: DatiCreazioneAppuntamento, autoreId: string): Promise<Appuntamento> {
+  async crea(dati: DatiCreazioneAppuntamento, autoreId: string | null): Promise<Appuntamento> {
     await this.clienti.verificaCliente(dati.clienteId);
     await this.disponibilita.verificaOperatore(dati.operatoreId);
 
@@ -128,6 +238,7 @@ export class AppuntamentiServizio {
           stato: 'confermato',
           senzaCaparra: dati.senzaCaparra,
           note: dati.note,
+          // Nullo quando prenota il cliente stesso dall'area clienti.
           creatoDaId: autoreId,
           servizi: {
             create: scelti.servizi.map((servizio, indice) => ({
@@ -142,10 +253,37 @@ export class AppuntamentiServizio {
         include: INCLUDI_COLLEGAMENTI,
       });
 
+      await this.inviaConferma(creato);
+
       return this.componi(creato);
     } catch (errore) {
       throw this.traduciErroreDiSovrapposizione(errore);
     }
+  }
+
+  /** Conferma al cliente, se ha un indirizzo e-mail. */
+  private async inviaConferma(appuntamento: {
+    inizio: Date;
+    durataMinuti: number;
+    prezzoTotaleCentesimi: number;
+    cliente: { nome: string };
+    operatore: { nome: string; cognome: string };
+    servizi: { nome: string }[];
+    clienteId: string;
+  }): Promise<void> {
+    const cliente = await this.prisma.utente.findUnique({
+      where: { id: appuntamento.clienteId },
+      select: { email: true },
+    });
+
+    if (!cliente?.email) {
+      return;
+    }
+
+    await this.notifiche.inviaConfermaPrenotazione(
+      { nome: appuntamento.cliente.nome, email: cliente.email },
+      appuntamento,
+    );
   }
 
   /**

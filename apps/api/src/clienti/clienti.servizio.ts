@@ -1,4 +1,10 @@
-import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+  Logger,
+  NotFoundException,
+} from '@nestjs/common';
 import type {
   Cliente,
   DatiCreazioneCliente,
@@ -7,7 +13,9 @@ import type {
   ElencoClienti,
 } from '@barber/shared';
 import { PrismaService } from '../prisma/prisma.service.js';
-import { InvitiServizio } from '../personale/inviti.servizio.js';
+import { SessioniServizio } from '../autenticazione/sessioni.servizio.js';
+import { TokenServizio } from '../autenticazione/token.servizio.js';
+import { NotificheServizio } from '../notifiche/notifiche.servizio.js';
 
 interface RigaCliente {
   id: string;
@@ -23,9 +31,13 @@ interface RigaCliente {
 
 @Injectable()
 export class ClientiServizio {
+  private readonly logger = new Logger(ClientiServizio.name);
+
   constructor(
     private readonly prisma: PrismaService,
-    private readonly inviti: InvitiServizio,
+    private readonly token: TokenServizio,
+    private readonly notifiche: NotificheServizio,
+    private readonly sessioni: SessioniServizio,
   ) {}
 
   async elenca(dati: DatiRicercaClienti): Promise<ElencoClienti> {
@@ -107,7 +119,16 @@ export class ClientiServizio {
       },
     });
 
-    const invito = await this.inviti.crea(creato.id);
+    const invito = await this.token.crea(creato.id);
+
+    // Senza e-mail il link resta in mano al personale: dalla fase 7 l'invito
+    // parte via WhatsApp.
+    if (creato.email) {
+      await this.notifiche.inviaInvitoAttivazione(
+        { nome: creato.nome, email: creato.email },
+        invito.token,
+      );
+    }
 
     return { cliente: this.componi(creato), token: invito.token, scadeIl: invito.scadeIl };
   }
@@ -159,7 +180,16 @@ export class ClientiServizio {
       throw new ConflictException('Il cliente ha già attivato il proprio account.');
     }
 
-    return this.inviti.crea(cliente.id);
+    const invito = await this.token.crea(cliente.id);
+
+    if (cliente.email) {
+      await this.notifiche.inviaInvitoAttivazione(
+        { nome: cliente.nome, email: cliente.email },
+        invito.token,
+      );
+    }
+
+    return invito;
   }
 
   /** Usato dal servizio appuntamenti: verifica che il cliente esista e sia attivo. */
@@ -171,6 +201,53 @@ export class ClientiServizio {
     }
 
     return cliente;
+  }
+
+  /**
+   * Anonimizza la scheda su richiesta del cliente: i dati personali vengono
+   * rimossi, l'account disattivato e le sessioni revocate. Gli appuntamenti
+   * restano, senza più riferimenti personali.
+   */
+  async anonimizza(clienteId: string): Promise<void> {
+    const futuri = await this.prisma.appuntamento.count({
+      where: {
+        clienteId,
+        stato: { in: ['in_attesa_pagamento', 'confermato'] },
+        inizio: { gte: new Date() },
+      },
+    });
+
+    if (futuri > 0) {
+      throw new BadRequestException(
+        'Il cliente ha ancora appuntamenti in agenda: annullali o completali prima di ' +
+          'cancellare i dati.',
+      );
+    }
+
+    await this.prisma.$transaction([
+      this.prisma.utente.update({
+        where: { id: clienteId },
+        data: {
+          nome: 'Cliente',
+          cognome: 'cancellato',
+          email: null,
+          numeroWhatsapp: null,
+          note: '',
+          passwordHash: null,
+          emailVerificata: false,
+          numeroVerificato: false,
+          consensoTrattamentoIl: null,
+          consensoWhatsappIl: null,
+          attivo: false,
+          anonimizzataIl: new Date(),
+        },
+      }),
+      this.prisma.tokenUtente.deleteMany({ where: { utenteId: clienteId } }),
+    ]);
+
+    await this.sessioni.revocaTutte(clienteId);
+
+    this.logger.log('Scheda cliente anonimizzata su richiesta di cancellazione.');
   }
 
   private async leggiRiga(id: string): Promise<RigaCliente> {

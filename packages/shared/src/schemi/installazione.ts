@@ -88,6 +88,10 @@ export const schemaStatoInstallazione = z.object({
   venditaOnlineAttiva: z.boolean(),
   /** Granularità degli slot dell'agenda, in minuti: serve alla griglia dell'agenda. */
   granularitaSlotMinuti: z.number().int().positive(),
+  /** Ore entro cui il cliente può annullare dall'app. */
+  oreLimitePreavviso: z.number().int(),
+  /** Se vero lo spostamento segue le regole dell'annullamento. */
+  spostamentoComeAnnullamento: z.boolean(),
 });
 
 export type StatoInstallazione = z.infer<typeof schemaStatoInstallazione>;

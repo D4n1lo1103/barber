@@ -7,10 +7,15 @@ import { RottaProtetta } from './componenti/rotta-protetta';
 import { FornitoreInstallazione, usaInstallazione } from './installazione/contesto-installazione';
 import { PaginaAccesso } from './pagine/accesso';
 import { PaginaAttivazione } from './pagine/attivazione';
+import { PaginaAreaCliente } from './pagine/area-cliente/area-cliente';
 import { PaginaClienti } from './pagine/clienti/clienti';
 import { PaginaDettaglioCliente } from './pagine/clienti/dettaglio-cliente';
 import { PaginaImpostazioni } from './pagine/impostazioni/impostazioni';
 import { PaginaPannello } from './pagine/pannello';
+import { PaginaPasswordDimenticata } from './pagine/password-dimenticata';
+import { PaginaRegistrazione } from './pagine/registrazione';
+import { PaginaReimpostaPassword } from './pagine/reimposta-password';
+import { PaginaVerificaEmail } from './pagine/verifica-email';
 import { PaginaProceduraGuidata } from './pagine/procedura-guidata';
 
 /**
@@ -52,7 +57,19 @@ function Instradamento() {
   return (
     <Routes>
       <Route path="/accesso" element={<PaginaAccesso />} />
+      <Route path="/registrazione" element={<PaginaRegistrazione />} />
+      <Route path="/verifica-email" element={<PaginaVerificaEmail />} />
+      <Route path="/password-dimenticata" element={<PaginaPasswordDimenticata />} />
+      <Route path="/reimposta-password" element={<PaginaReimpostaPassword />} />
       <Route path="/attivazione" element={<PaginaAttivazione />} />
+      <Route
+        path="/area-cliente"
+        element={
+          <RottaProtetta ruoliConsentiti={['cliente']}>
+            <PaginaAreaCliente />
+          </RottaProtetta>
+        }
+      />
       <Route path="/procedura-guidata" element={<Navigate to="/" replace />} />
       <Route
         path="/agenda"

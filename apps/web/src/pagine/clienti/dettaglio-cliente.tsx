@@ -6,7 +6,7 @@ import { Caricamento } from '../../componenti/caricamento';
 import { Pulsante } from '../../componenti/pulsante';
 import { Superficie } from '../../componenti/superficie';
 import {
-  leggiAppuntamentiCliente,
+  leggiStoricoCliente,
   leggiCliente,
   modificaCliente,
   rigeneraInvitoCliente,
@@ -31,7 +31,7 @@ export function PaginaDettaglioCliente() {
 
     let annullato = false;
 
-    Promise.all([leggiCliente(id), leggiAppuntamentiCliente(id)])
+    Promise.all([leggiCliente(id), leggiStoricoCliente(id)])
       .then(([scheda, storico]) => {
         if (!annullato) {
           impostaCliente(scheda);

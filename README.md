@@ -20,7 +20,11 @@ Lo sviluppo procede per fasi (vedi `docs/TODO.md`).
   operatore con viste giornaliera e settimanale, inserimento dal personale con flag "senza
   caparra", spostamenti, annullamenti con motivo, mancate presentazioni, completamento,
   schede clienti con invito di attivazione.
-- Fase 4 — Area cliente: da iniziare.
+- **Fasi 4 e 5 — Area cliente ed e-mail: completate** (unite in un unico passaggio).
+  Registrazione autonoma con consensi GDPR, verifica dell'indirizzo, reimpostazione della
+  password, prenotazione online, spostamento e annullamento secondo le regole del salone,
+  copia e cancellazione dei propri dati; invio e-mail via SMTP con coda pg-boss.
+- Fase 6 — Caparra e pagamenti Stripe: da iniziare.
 
 ## Prerequisiti
 
@@ -67,6 +71,12 @@ docs/            TODO.md e decisioni architetturali (adr/)
 | `CHIAVE_INSTALLAZIONE`         | sì               | almeno 16 caratteri casuali             | Richiesta per completare la procedura guidata al primo avvio    |
 | `DATABASE_URL_OMBRA`           | solo in sviluppo | URL PostgreSQL                          | Database temporaneo usato da Prisma per calcolare le migrazioni |
 
+| `SMTP_HOST` | sì in produzione | host | Server SMTP per l'invio delle e-mail (provider consigliato: Brevo). Senza, i messaggi restano nei log |
+| `SMTP_PORTA` | no (587) | intero | Porta SMTP |
+| `SMTP_UTENTE` / `SMTP_PASSWORD` | no | testo | Credenziali SMTP, se il server le richiede |
+| `SMTP_MITTENTE` | no | `Nome <indirizzo>` | Mittente dei messaggi di servizio |
+| `SMTP_TLS_IMPLICITO` | no (`false`) | `true` \| `false` | `true` solo con TLS implicito (porta 465) |
+| `CODA_ATTIVA` | no (`true`) | `true` \| `false` | Coda pg-boss delle attività in background; con `false` vengono eseguite in linea |
 | `LIMITI_FREQUENZA_DISATTIVI` | no (`false`) | `true` \| `false` | Disattiva i limiti di frequenza nei test; ignorata in produzione |
 | `SENTRY_DSN` | no | URL | Monitoraggio errori |
 | `VITE_URL_API` | sì (frontend) | URL | Indirizzo dell'API usato dal browser |
@@ -118,39 +128,48 @@ Arresto dell'ambiente: `docker compose down` (con `-v` per cancellare anche i da
 
 Tutte le rotte hanno prefisso `/api`. L'autorizzazione è sempre verificata lato backend.
 
-| Metodo   | Percorso                           | Autenticazione                                                                                                         | Risposte                                                                                               |
-| -------- | ---------------------------------- | ---------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
-| `GET`    | `/stato`                           | pubblica                                                                                                               | `200` stato del servizio e del database                                                                |
-| `GET`    | `/installazione`                   | pubblica                                                                                                               | `200` stato dell'installazione (configurata, profilo, nome del salone, vendita online, granularità)    |
-| `GET`    | `/installazione/profili/:profilo`  | pubblica                                                                                                               | `200` impostazioni e catalogo proposti, `400` profilo non riconosciuto                                 |
-| `POST`   | `/installazione/procedura-guidata` | pubblica, con chiave di installazione nell'intestazione `x-chiave-installazione`; max 5 richieste ogni 5 minuti per IP | `204`, `400` dati non validi, `403` chiave errata, `409` già configurata                               |
-| `POST`   | `/autenticazione/accesso`          | pubblica, max 5 richieste al minuto per IP                                                                             | `200` utente, `400` dati non validi, `401` credenziali errate, `429` troppi tentativi                  |
-| `POST`   | `/autenticazione/uscita`           | sessione + token CSRF                                                                                                  | `204`, `403` token CSRF mancante o non valido                                                          |
-| `GET`    | `/autenticazione/io`               | sessione                                                                                                               | `200` utente corrente, `401`                                                                           |
-| `POST`   | `/autenticazione/cambio-password`  | sessione + token CSRF                                                                                                  | `204` (revoca tutte le sessioni), `400`, `401`                                                         |
-| `GET`    | `/utenti/personale`                | sessione, solo titolare                                                                                                | `200` elenco, `401`, `403`                                                                             |
-| `GET`    | `/servizi`                         | sessione (personale)                                                                                                   | `200` catalogo con operatori abilitati                                                                 |
-| `POST`   | `/servizi`                         | solo titolare                                                                                                          | `201` servizio creato, `400` dati non validi o durata incompatibile con gli slot, `409` nome già usato |
-| `PATCH`  | `/servizi/:id`                     | solo titolare                                                                                                          | `200` servizio aggiornato, `404`                                                                       |
-| `DELETE` | `/servizi/:id`                     | solo titolare                                                                                                          | `200` servizio disattivato (mai cancellato)                                                            |
-| `PUT`    | `/servizi/ordine`                  | solo titolare                                                                                                          | `200` catalogo riordinato, `400` elenco incompleto                                                     |
-| `GET`    | `/personale`                       | sessione (personale)                                                                                                   | `200` elenco degli operatori                                                                           |
-| `POST`   | `/personale`                       | solo titolare                                                                                                          | `201` operatore e link di attivazione, `409` e-mail già usata                                          |
-| `PATCH`  | `/personale/:id`                   | solo titolare                                                                                                          | `200` dati aggiornati                                                                                  |
-| `DELETE` | `/personale/:id`                   | solo titolare                                                                                                          | `200` disattivato e sessioni revocate, `400` sul titolare o su sé stessi                               |
-| `POST`   | `/personale/:id/riattivazione`     | solo titolare                                                                                                          | `201` operatore riattivato                                                                             |
-| `POST`   | `/personale/:id/invito`            | solo titolare                                                                                                          | `201` nuovo link di attivazione, che invalida il precedente                                            |
-| `POST`   | `/personale/attivazione`           | pubblica, max 5 richieste ogni 5 minuti per IP                                                                         | `204` password impostata, `400` link non valido o scaduto                                              |
-| `GET`    | `/orari/apertura`                  | sessione (personale)                                                                                                   | `200` fasce di apertura                                                                                |
-| `PUT`    | `/orari/apertura`                  | solo titolare                                                                                                          | `200` orari sostituiti, `400` fasce sovrapposte o operatori lasciati fuori orario                      |
-| `GET`    | `/orari/operatori/:id`             | sessione (personale)                                                                                                   | `200` fasce di lavoro, `404`                                                                           |
-| `PUT`    | `/orari/operatori/:id`             | solo titolare                                                                                                          | `200` orari sostituiti, `400` fuori dagli orari di apertura                                            |
-| `GET`    | `/orari/assenze`                   | sessione (personale)                                                                                                   | `200` assenze, filtrabili per operatore e periodo                                                      |
-| `POST`   | `/orari/assenze`                   | solo titolare                                                                                                          | `201` assenza registrata, `400` intervallo non valido o sovrapposto                                    |
-| `DELETE` | `/orari/assenze/:id`               | solo titolare                                                                                                          | `204`, `404`, `400` se la riga fa parte di una chiusura                                                |
-| `GET`    | `/orari/chiusure`                  | sessione (personale)                                                                                                   | `200` chiusure raggruppate per periodo e motivo                                                        |
-| `POST`   | `/orari/chiusure`                  | solo titolare                                                                                                          | `201` chiusura registrata per tutti gli operatori, `400` periodo non valido o già occupato             |
-| `DELETE` | `/orari/chiusure`                  | solo titolare                                                                                                          | `204` chiusura rimossa per tutti, `404`                                                                |
+| Metodo   | Percorso                                  | Autenticazione                                                                                                         | Risposte                                                                                               |
+| -------- | ----------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| `GET`    | `/stato`                                  | pubblica                                                                                                               | `200` stato del servizio e del database                                                                |
+| `GET`    | `/installazione`                          | pubblica                                                                                                               | `200` stato dell'installazione (configurata, profilo, nome del salone, vendita online, granularità)    |
+| `GET`    | `/installazione/profili/:profilo`         | pubblica                                                                                                               | `200` impostazioni e catalogo proposti, `400` profilo non riconosciuto                                 |
+| `POST`   | `/installazione/procedura-guidata`        | pubblica, con chiave di installazione nell'intestazione `x-chiave-installazione`; max 5 richieste ogni 5 minuti per IP | `204`, `400` dati non validi, `403` chiave errata, `409` già configurata                               |
+| `POST`   | `/autenticazione/accesso`                 | pubblica, max 5 richieste al minuto per IP                                                                             | `200` utente, `400` dati non validi, `401` credenziali errate, `429` troppi tentativi                  |
+| `POST`   | `/autenticazione/uscita`                  | sessione + token CSRF                                                                                                  | `204`, `403` token CSRF mancante o non valido                                                          |
+| `GET`    | `/autenticazione/io`                      | sessione                                                                                                               | `200` utente corrente, `401`                                                                           |
+| `POST`   | `/autenticazione/cambio-password`         | sessione + token CSRF                                                                                                  | `204` (revoca tutte le sessioni), `400`, `401`                                                         |
+| `GET`    | `/utenti/personale`                       | sessione, solo titolare                                                                                                | `200` elenco, `401`, `403`                                                                             |
+| `GET`    | `/servizi`                                | sessione (personale)                                                                                                   | `200` catalogo con operatori abilitati                                                                 |
+| `POST`   | `/servizi`                                | solo titolare                                                                                                          | `201` servizio creato, `400` dati non validi o durata incompatibile con gli slot, `409` nome già usato |
+| `PATCH`  | `/servizi/:id`                            | solo titolare                                                                                                          | `200` servizio aggiornato, `404`                                                                       |
+| `DELETE` | `/servizi/:id`                            | solo titolare                                                                                                          | `200` servizio disattivato (mai cancellato)                                                            |
+| `PUT`    | `/servizi/ordine`                         | solo titolare                                                                                                          | `200` catalogo riordinato, `400` elenco incompleto                                                     |
+| `GET`    | `/personale`                              | sessione (personale)                                                                                                   | `200` elenco degli operatori                                                                           |
+| `POST`   | `/personale`                              | solo titolare                                                                                                          | `201` operatore e link di attivazione, `409` e-mail già usata                                          |
+| `PATCH`  | `/personale/:id`                          | solo titolare                                                                                                          | `200` dati aggiornati                                                                                  |
+| `DELETE` | `/personale/:id`                          | solo titolare                                                                                                          | `200` disattivato e sessioni revocate, `400` sul titolare o su sé stessi                               |
+| `POST`   | `/personale/:id/riattivazione`            | solo titolare                                                                                                          | `201` operatore riattivato                                                                             |
+| `POST`   | `/personale/:id/invito`                   | solo titolare                                                                                                          | `201` nuovo link di attivazione, che invalida il precedente                                            |
+| `POST`   | `/autenticazione/registrazione`           | pubblica, max 5 richieste ogni 5 minuti per IP                                                                         | `201` verifica inviata, `400` dati o consenso mancanti, `409` e-mail o numero già usati                |
+| `POST`   | `/autenticazione/verifica-email`          | pubblica, max 10 richieste ogni 5 minuti per IP                                                                        | `204` indirizzo confermato, `400` link non valido o scaduto                                            |
+| `POST`   | `/autenticazione/verifica-email/rinvio`   | pubblica, max 3 richieste ogni 5 minuti per IP                                                                         | `204` sempre, anche se l'indirizzo non esiste                                                          |
+| `POST`   | `/autenticazione/reset-password`          | pubblica, max 3 richieste ogni 5 minuti per IP                                                                         | `204` sempre, anche se l'indirizzo non esiste                                                          |
+| `POST`   | `/autenticazione/reset-password/conferma` | pubblica, max 5 richieste ogni 5 minuti per IP                                                                         | `204` password cambiata e sessioni revocate, `400` link non valido                                     |
+| `POST`   | `/autenticazione/attivazione`             | pubblica, max 5 richieste ogni 5 minuti per IP                                                                         | `204` account attivato, `400` link non valido o e-mail mancante, `409` e-mail già usata                |
+| `GET`    | `/orari/apertura`                         | sessione (personale)                                                                                                   | `200` fasce di apertura                                                                                |
+| `PUT`    | `/orari/apertura`                         | solo titolare                                                                                                          | `200` orari sostituiti, `400` fasce sovrapposte o operatori lasciati fuori orario                      |
+| `GET`    | `/orari/operatori/:id`                    | sessione (personale)                                                                                                   | `200` fasce di lavoro, `404`                                                                           |
+| `PUT`    | `/orari/operatori/:id`                    | solo titolare                                                                                                          | `200` orari sostituiti, `400` fuori dagli orari di apertura                                            |
+| `GET`    | `/orari/assenze`                          | sessione (personale)                                                                                                   | `200` assenze, filtrabili per operatore e periodo                                                      |
+| `POST`   | `/orari/assenze`                          | solo titolare                                                                                                          | `201` assenza registrata, `400` intervallo non valido o sovrapposto                                    |
+| `DELETE` | `/orari/assenze/:id`                      | solo titolare                                                                                                          | `204`, `404`, `400` se la riga fa parte di una chiusura                                                |
+| `GET`    | `/orari/chiusure`                         | sessione (personale)                                                                                                   | `200` chiusure raggruppate per periodo e motivo                                                        |
+| `POST`   | `/orari/chiusure`                         | solo titolare                                                                                                          | `201` chiusura registrata per tutti gli operatori, `400` periodo non valido o già occupato             |
+| `DELETE` | `/orari/chiusure`                         | solo titolare                                                                                                          | `204` chiusura rimossa per tutti, `404`                                                                |
+| `GET`    | `/impostazioni/regole`                    | sessione (personale)                                                                                                   | `200` limite di preavviso, regola di spostamento, anticipo del promemoria                              |
+| `PUT`    | `/impostazioni/regole`                    | solo titolare                                                                                                          | `200` regole salvate, `400` valori fuori intervallo                                                    |
+| `GET`    | `/cancellazioni`                          | solo titolare                                                                                                          | `200` richieste di cancellazione con gli appuntamenti futuri di ciascun cliente                        |
+| `POST`   | `/cancellazioni/:id/evasione`             | solo titolare                                                                                                          | `201` richiesta chiusa, `400` appuntamenti ancora in agenda, `409` già chiusa                          |
 
 ### Clienti e agenda (fase 3)
 
@@ -174,6 +193,25 @@ con le regole di preavviso previste per i clienti (fase 4).
 | `POST`  | `/appuntamenti/:id/annullamento`          | motivo (`tempestivo`, `tardivo`, `dal_salone`) e nota                                      | `201` appuntamento annullato, `400` motivo mancante o stato non compatibile                   |
 | `POST`  | `/appuntamenti/:id/mancata-presentazione` |                                                                                            | `201` appuntamento segnato, `400` stato non compatibile                                       |
 | `POST`  | `/appuntamenti/:id/completamento`         | sempre manuale                                                                             | `201` appuntamento completato, `400` stato non compatibile                                    |
+
+### Area cliente (fasi 4 e 5)
+
+Rotte riservate al ruolo `cliente`: agiscono sempre e solo sui propri dati, letti dalla
+sessione.
+
+| Metodo  | Percorso                                      | Note                                                            | Risposte                                                                      |
+| ------- | --------------------------------------------- | --------------------------------------------------------------- | ----------------------------------------------------------------------------- |
+| `GET`   | `/area-cliente/catalogo`                      | servizi attivi e operatori in servizio                          | `200`                                                                         |
+| `GET`   | `/area-cliente/appuntamenti`                  | con le azioni ancora consentite                                 | `200`                                                                         |
+| `GET`   | `/area-cliente/disponibilita`                 | come la rotta del personale, ma con due ore di preavviso minimo | `200`, `400`                                                                  |
+| `POST`  | `/area-cliente/appuntamenti`                  | max 10 richieste ogni 5 minuti per IP                           | `201` appuntamento, `400` meno di due ore o fuori orario, `409` slot occupato |
+| `POST`  | `/area-cliente/appuntamenti/:id/spostamento`  | solo entro il limite di preavviso                               | `201`, `400` oltre il limite, `404` non è un proprio appuntamento             |
+| `POST`  | `/area-cliente/appuntamenti/:id/annullamento` | solo entro il limite: è sempre tempestivo                       | `201`, `400` oltre il limite, `404`                                           |
+| `GET`   | `/area-cliente/profilo`                       |                                                                 | `200`                                                                         |
+| `PATCH` | `/area-cliente/profilo`                       | contatti e consenso WhatsApp                                    | `200`, `409` numero di un altro account                                       |
+| `GET`   | `/area-cliente/dati`                          | copia dei propri dati (diritto di accesso)                      | `200`                                                                         |
+| `GET`   | `/area-cliente/cancellazione`                 | stato dell'ultima richiesta                                     | `200`                                                                         |
+| `POST`  | `/area-cliente/cancellazione`                 | max 3 richieste all'ora per IP                                  | `201` richiesta registrata, `409` richiesta già in attesa                     |
 
 Le richieste che modificano dati devono inviare il valore del cookie `csrf`
 nell'intestazione `x-csrf-token`.
@@ -262,8 +300,26 @@ assieme ai dump.
     del cliente è stato tempestivo o tardivo, segna la mancata presentazione oppure lo
     completa a mano. Ogni passaggio è tracciato con autore e momento.
 
-Il manuale d'uso completo, pensato per il titolare e per i dipendenti, è in
-`MANUALE-DUSO.md`. I flussi di area cliente, caparra e vendita arrivano nelle fasi successive.
+12. **Registrazione del cliente**: il cliente crea l'account indicando nome, cognome,
+    e-mail, numero WhatsApp e i consensi (trattamento obbligatorio, WhatsApp facoltativo).
+    Riceve un'e-mail di verifica e può accedere solo dopo la conferma. Se il numero è già in
+    una scheda creata dal personale, la registrazione riprende quella scheda con il suo
+    storico, senza creare duplicati.
+13. **Prenotazione online**: almeno due ore di preavviso, non oltre 60 giorni, operatore
+    sempre esplicito e nessuna opzione "senza caparra".
+14. **Spostamento e annullamento dall'app**: possibili solo entro il limite di preavviso
+    (24 ore come valore iniziale, modificabile dal titolare). Dopo il limite i pulsanti
+    scompaiono e il cliente contatta il salone.
+15. **Diritti sui dati**: il cliente scarica una copia dei propri dati e può chiederne la
+    cancellazione. La richiesta la evade il titolare: i dati personali vengono rimossi,
+    l'account disattivato e lo storico resta in forma anonima.
+16. **E-mail di servizio**: verifica dell'indirizzo, reimpostazione della password, inviti
+    ad attivare l'account e conferme di prenotazione, inviate via SMTP attraverso la coda
+    pg-boss, così un invio fallito viene ritentato.
+
+Il manuale d'uso completo, pensato per il titolare, per i dipendenti e per i clienti, è in
+`MANUALE-DUSO.md`. I flussi di caparra, pagamenti, WhatsApp e vendita arrivano nelle fasi
+successive.
 
 ## Design system
 
