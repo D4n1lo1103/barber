@@ -21,6 +21,12 @@ async function esegui(): Promise<void> {
   const prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString }) });
 
   try {
+    // Movimenti, pagamenti ed eventi trattengono clienti e appuntamenti
+    // (vincolo RESTRICT): vanno rimossi per primi.
+    await prisma.movimentoCredito.deleteMany();
+    await prisma.movimentoCaparra.deleteMany();
+    await prisma.pagamento.deleteMany();
+    await prisma.eventoPagamento.deleteMany();
     // Gli appuntamenti trattengono clienti e operatori (vincolo RESTRICT):
     // vanno rimossi prima degli utenti.
     await prisma.appuntamento.deleteMany();

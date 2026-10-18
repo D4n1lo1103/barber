@@ -2,24 +2,47 @@
 
 Stato dello sviluppo per fasi (vedi la roadmap in `CLAUDE.md`).
 
-## In corso
+## In corso — Fase 7: WhatsApp
 
-Nessuna attività in corso: le fasi da 0 a 6 sono completate. Prossima: fase 7 — WhatsApp
-(conferme, promemoria, inviti, ripiego via e-mail). Al termine della fase 7 il software è
-utilizzabile da un salone reale.
+Le fasi da 0 a 6 sono completate. Al termine della fase 7 il software è utilizzabile da un
+salone reale (MVP).
 
-## Da fare — Fase 7: WhatsApp
+### Decisioni prese con il titolare (18/10/2026)
 
-- [ ] `TODO` Mittente WhatsApp dietro interfaccia, come già fatto per le e-mail, con
-      WhatsApp Cloud API ufficiale di Meta e modelli approvati.
-- [ ] `TODO` Conferma della prenotazione, promemoria con l'anticipo già configurabile e
-      invito ad attivare l'account.
-- [ ] `TODO` Ripiego via e-mail quando manca il consenso o l'invio fallisce.
-- [ ] `TODO` Verifica del numero di telefono con codice via WhatsApp (rinviata dalla fase 4).
-- [ ] `TODO` Attività periodica dei promemoria su pg-boss.
-- [ ] `TODO` Decisioni da prendere con il titolare: numero di telefono mittente e account
-      Meta, testi dei modelli da far approvare, se il promemoria debba partire anche per gli
-      appuntamenti inseriti dal personale senza e-mail.
+1. **I dati di WhatsApp si impostano in fase di configurazione.** Quello che non è un
+   segreto (attivazione, identificativo del numero mittente, nomi dei modelli approvati) sta
+   nella procedura guidata e nelle impostazioni; il **token resta in `.env`**, come per
+   Stripe e l'SMTP, perché i backup del database vengono scaricati sul PC dello sviluppatore.
+   La procedura guidata dichiara se il token è presente e permette un invio di prova.
+2. **Nessuna credenziale reale disponibile adesso**: servono utenze e dati di prova con cui
+   verificare tutti i flussi, come già fatto per i pagamenti con il fornitore finto.
+
+### Attività
+
+- [ ] `IN CORSO` Interfaccia `MittenteWhatsapp` con due realizzazioni: WhatsApp Cloud API
+      ufficiale di Meta e mittente finto che registra i messaggi, usato senza credenziali.
+- [ ] `TODO` Modelli dei messaggi (approvati da Meta) in un unico posto: conferma della
+      prenotazione, promemoria, invito ad attivare l'account, codice di verifica del numero.
+- [ ] `TODO` Scelta del canale: WhatsApp se c'è il consenso e il numero, altrimenti e-mail;
+      ripiego sull'e-mail anche quando l'invio WhatsApp fallisce.
+- [ ] `TODO` Impostazioni dell'installazione: attivazione, identificativo del numero mittente
+      e nomi dei modelli, nella procedura guidata e nella scheda _Messaggi_.
+- [ ] `TODO` Verifica del numero di telefono con codice via WhatsApp (rinviata dalla fase 4),
+      con limite di frequenza e codice a scadenza breve.
+- [ ] `TODO` Promemoria prima dell'appuntamento, con l'anticipo già configurabile: attività
+      periodica su pg-boss, ripetibile senza inviare due volte lo stesso promemoria.
+- [ ] `TODO` Dati di prova: utenze con e senza consenso WhatsApp, con e senza e-mail, per
+      verificare canale e ripiego; registro dei messaggi consultabile in sviluppo.
+- [ ] `TODO` Test: unitari sui modelli e sulla scelta del canale, integrazione su consenso,
+      ripiego, verifica del numero e promemoria, end-to-end della verifica del numero.
+- [ ] `TODO` Documentazione: ADR 0009, README, `.env.example`, `MANUALE-DUSO.md`.
+
+### Da chiarire quando arriveranno le credenziali
+
+- [ ] `BLOCCATO` Numero di telefono mittente, account Meta e **testi dei modelli da far
+      approvare**: i modelli nel codice sono una proposta, i testi definitivi vanno approvati
+      da Meta prima dell'uso reale.
+  - Blocco: servono l'account Meta del salone e la sua approvazione.
 
 ## Da fare — attività trasversali già individuate
 

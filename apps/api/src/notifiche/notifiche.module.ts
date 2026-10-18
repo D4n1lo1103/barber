@@ -1,11 +1,18 @@
-import { Logger, Module } from '@nestjs/common';
+import { Logger, Module, forwardRef } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { AttivitaModule } from '../attivita/attivita.module.js';
 import { ambienteBooleano, type Ambiente } from '../configurazione/ambiente.js';
+import { PrismaService } from '../prisma/prisma.service.js';
+import { ImpostazioniModule } from '../impostazioni/impostazioni.module.js';
+import { PrismaModule } from '../prisma/prisma.module.js';
 import { MITTENTE_EMAIL, type MittenteEmail } from './mittente-email.js';
 import { MittenteRegistro } from './mittente-registro.js';
 import { MittenteSmtp } from './mittente-smtp.js';
+import { MITTENTE_WHATSAPP, type MittenteWhatsapp } from './mittente-whatsapp.js';
+import { MittenteWhatsappCloud } from './mittente-whatsapp-cloud.js';
+import { MittenteWhatsappRegistro } from './mittente-whatsapp-registro.js';
 import { NotificheServizio } from './notifiche.servizio.js';
+import { PromemoriaAttivita } from './promemoria.attivita.js';
 
 /**
  * Senza `SMTP_HOST` l'invio reale è disattivato e i messaggi restano nei log:
@@ -38,12 +45,53 @@ function creaMittente(configurazione: ConfigService<Ambiente, true>): MittenteEm
   });
 }
 
+/**
+ * Il token di WhatsApp sta nell'ambiente, l'identificativo del numero mittente
+ * nel database: il mittente reale si costruisce solo quando il token c'è. Senza
+ * token i messaggi vengono registrati e tutto arriva via e-mail, che è il
+ * ripiego previsto dai requisiti.
+ *
+ * L'identificativo del numero viene letto all'avvio: cambiandolo dalle
+ * impostazioni serve un riavvio del servizio, operazione da installazione.
+ */
+async function creaMittenteWhatsapp(
+  configurazione: ConfigService<Ambiente, true>,
+  prisma: PrismaService,
+): Promise<MittenteWhatsapp> {
+  const token = configurazione.get('WHATSAPP_TOKEN', { infer: true });
+  const installazione = await prisma.installazione.findFirst({
+    select: { whatsappIdNumero: true },
+  });
+  const idNumero = installazione?.whatsappIdNumero ?? '';
+  const registro = new Logger('NotificheModule');
+
+  if (!token || idNumero === '') {
+    registro.warn(
+      'WhatsApp non configurato: i messaggi vengono registrati nei log e inviati via e-mail.',
+    );
+
+    return new MittenteWhatsappRegistro();
+  }
+
+  return new MittenteWhatsappCloud(
+    token,
+    idNumero,
+    configurazione.get('WHATSAPP_VERSIONE_API', { infer: true }),
+  );
+}
+
 @Module({
-  imports: [AttivitaModule],
+  imports: [AttivitaModule, forwardRef(() => ImpostazioniModule), PrismaModule],
   providers: [
     { provide: MITTENTE_EMAIL, useFactory: creaMittente, inject: [ConfigService] },
+    {
+      provide: MITTENTE_WHATSAPP,
+      useFactory: creaMittenteWhatsapp,
+      inject: [ConfigService, PrismaService],
+    },
     NotificheServizio,
+    PromemoriaAttivita,
   ],
-  exports: [NotificheServizio, MITTENTE_EMAIL],
+  exports: [NotificheServizio, PromemoriaAttivita, MITTENTE_EMAIL, MITTENTE_WHATSAPP],
 })
 export class NotificheModule {}

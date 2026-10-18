@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { FORME_RESTITUZIONE } from '../dominio/caparra.js';
+import { schemaImpostazioniWhatsapp } from './whatsapp.js';
 import { GRANULARITA_SLOT_AMMESSE } from '../dominio/configurazione-profilo.js';
 import { PROFILI } from '../dominio/profilo.js';
 import {
@@ -65,6 +66,12 @@ export const schemaProceduraGuidata = z
       .min(5, 'Il blocco dello slot deve durare almeno 5 minuti.')
       .max(60, 'Il blocco dello slot non può superare i 60 minuti.'),
     venditaOnlineAttiva: z.boolean(),
+    /**
+     * Messaggi WhatsApp: si impostano già al primo avvio, ma restano
+     * modificabili dalle impostazioni. Il token non passa da qui: vive nelle
+     * variabili d'ambiente, come le altre credenziali.
+     */
+    whatsapp: schemaImpostazioniWhatsapp.optional(),
     servizi: z
       .array(schemaServizioIniziale)
       .min(1, 'Seleziona almeno un servizio.')

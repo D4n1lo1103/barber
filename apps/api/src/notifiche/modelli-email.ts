@@ -170,3 +170,78 @@ export function modelloConfermaPrenotazione(
     ),
   };
 }
+
+/**
+ * Promemoria dell'appuntamento. Parte via e-mail quando WhatsApp non è
+ * disponibile: stesso contenuto, canale diverso.
+ */
+export function modelloPromemoria(
+  salone: ContestoSalone,
+  destinatario: DestinatarioEmail,
+  appuntamento: RiepilogoAppuntamento,
+): MessaggioEmail {
+  const righe = [
+    `Quando: ${appuntamento.quando}`,
+    `Servizi: ${appuntamento.servizi}`,
+    `Con: ${appuntamento.operatore}`,
+    `Durata: ${appuntamento.durata}`,
+  ];
+
+  return {
+    a: destinatario.email,
+    oggetto: `${salone.nomeSalone}: promemoria del tuo appuntamento`,
+    testo: [
+      `Ciao ${destinatario.nome},`,
+      '',
+      'ti ricordiamo il tuo prossimo appuntamento.',
+      '',
+      ...righe,
+      '',
+      `Per spostarlo o annullarlo: ${salone.origineWeb}/area-cliente`,
+    ].join('\n'),
+    html: involucro(
+      salone.nomeSalone,
+      'Promemoria del tuo appuntamento',
+      `<p style="margin:0 0 16px;font-size:15px;line-height:1.5">Ciao ${destinatario.nome}, ti ricordiamo il tuo prossimo appuntamento.</p>` +
+        '<table role="presentation" style="font-size:15px;line-height:1.6">' +
+        righe
+          .map((riga) => {
+            const [etichetta, ...resto] = riga.split(': ');
+
+            return `<tr><td style="color:#6b6b70;padding-right:12px">${etichetta}</td><td><strong>${resto.join(': ')}</strong></td></tr>`;
+          })
+          .join('') +
+        '</table>',
+      pulsante(`${salone.origineWeb}/area-cliente`, 'Vai alla tua area'),
+    ),
+  };
+}
+
+/**
+ * Codice di verifica del numero di telefono, inviato per e-mail quando i
+ * messaggi WhatsApp non sono disponibili.
+ */
+export function modelloCodiceVerificaNumero(
+  salone: ContestoSalone,
+  destinatario: DestinatarioEmail,
+  codice: string,
+): MessaggioEmail {
+  return {
+    a: destinatario.email,
+    oggetto: `${salone.nomeSalone}: codice di verifica`,
+    testo: [
+      `Ciao ${destinatario.nome},`,
+      '',
+      `il tuo codice di verifica è ${codice}.`,
+      '',
+      'Vale pochi minuti. Se non hai chiesto tu la verifica, ignora questo messaggio.',
+    ].join('\n'),
+    html: involucro(
+      salone.nomeSalone,
+      'Codice di verifica',
+      `<p style="margin:0 0 16px;font-size:15px;line-height:1.5">Ciao ${destinatario.nome}, il tuo codice di verifica è:</p>` +
+        `<p style="margin:0;font-size:28px;font-weight:700;letter-spacing:6px">${codice}</p>` +
+        '<p style="margin:16px 0 0;font-size:13px;color:#6b6b70">Vale pochi minuti. Se non hai chiesto tu la verifica, ignora questo messaggio.</p>',
+    ),
+  };
+}

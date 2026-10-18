@@ -40,6 +40,14 @@ const schemaAmbiente = z.object({
   SMTP_MITTENTE: z.string().default('Gestionale salone <no-reply@localhost>'),
   // "true" solo per le porte con TLS implicito (465).
   SMTP_TLS_IMPLICITO: schemaBooleano.default('false'),
+  // ─── WhatsApp ─────────────────────────────────────────────────────────────
+  // Token di accesso permanente dell'app di Meta. È un segreto: resta solo
+  // qui, mai nel database, perché i backup del database vengono scaricati.
+  // Senza token i messaggi WhatsApp non partono: vengono solo registrati.
+  WHATSAPP_TOKEN: z.string().optional(),
+  // Versione delle API di Meta: si aggiorna senza toccare il codice.
+  WHATSAPP_VERSIONE_API: z.string().default('v23.0'),
+
   // ─── Pagamenti ────────────────────────────────────────────────────────────
   // Senza STRIPE_CHIAVE_SEGRETA i pagamenti non sono reali: viene usato il
   // fornitore finto, utile in sviluppo e nei test. In produzione la

@@ -117,6 +117,16 @@ model Installazione {
   caparraPercentuale          Int      @default(50)
   /// Forma di restituzione per un annullamento tempestivo del cliente.
   restituzioneCaparra         FormaRestituzione @default(rimborso)
+  /// Messaggi WhatsApp: l'attivazione e i dati non segreti si impostano nella
+  /// procedura guidata e dalle impostazioni. Il token resta nell'ambiente.
+  whatsappAttivo              Boolean  @default(false)
+  /// Identificativo del numero mittente presso Meta: non è un segreto.
+  whatsappIdNumero            String   @default("")
+  /// Nomi dei modelli approvati da Meta, uno per messaggio di servizio.
+  whatsappModelloConferma     String   @default("conferma_prenotazione")
+  whatsappModelloPromemoria   String   @default("promemoria_appuntamento")
+  whatsappModelloInvito       String   @default("invito_attivazione")
+  whatsappModelloVerifica     String   @default("verifica_numero")
   venditaOnlineAttiva         Boolean  @default(false)
   creataIl                    DateTime @default(now())
   aggiornataIl                DateTime @updatedAt
@@ -228,6 +238,8 @@ enum TipoToken {
   verifica_email
   /// Reimpostazione della password dimenticata.
   reset_password
+  /// Codice numerico inviato via WhatsApp per verificare il numero.
+  verifica_numero
 }
 
 /// Token a uso singolo inviato per e-mail. Nel database è memorizzato solo
@@ -319,6 +331,9 @@ model Appuntamento {
   /// Scadenza del blocco dello slot durante il pagamento: oltre questo
   /// istante un appuntamento ancora `in_attesa_pagamento` viene annullato.
   bloccoScadeIl         DateTime?
+  /// Momento in cui è stato inviato il promemoria: evita di inviarlo due
+  /// volte quando l'attività periodica ripassa.
+  promemoriaInviatoIl   DateTime?
   note                  String              @default("")
   /// Operatore o dipendente che ha inserito l'appuntamento; nullo quando ha
   /// prenotato il cliente stesso dall'area clienti.

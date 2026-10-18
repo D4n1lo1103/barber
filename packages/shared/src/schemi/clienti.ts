@@ -12,6 +12,12 @@ export const schemaCreazioneCliente = z.object({
   cognome: schemaCognome,
   numeroWhatsapp: schemaNumeroWhatsapp,
   email: schemaEmail.optional(),
+  /**
+   * Consenso ai messaggi WhatsApp dichiarato dal cliente al telefono o in
+   * negozio: senza, l'invito ad attivare l'account e gli altri messaggi di
+   * servizio vanno via e-mail. Il cliente può cambiarlo dalla propria area.
+   */
+  consensoWhatsapp: z.boolean().default(false),
   note: z.string().trim().max(500, 'Le note sono troppo lunghe.').default(''),
 });
 
@@ -46,6 +52,8 @@ export const schemaCliente = z.object({
   attivo: z.boolean(),
   /** Vero quando il cliente ha scelto la password e può accedere da solo. */
   accountAttivato: z.boolean(),
+  /** Vero quando il cliente ha acconsentito ai messaggi WhatsApp. */
+  consensoWhatsapp: z.boolean(),
   creatoIl: z.string(),
 });
 
