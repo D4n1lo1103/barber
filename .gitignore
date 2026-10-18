@@ -14,3 +14,6 @@ packages/shared/dist/
 playwright-report/
 test-results/
 backup/
+
+# File di stato dei build TypeScript: generati, non versionati.
+*.tsbuildinfo
