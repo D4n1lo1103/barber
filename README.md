@@ -30,6 +30,13 @@ Lo sviluppo procede per fasi (vedi `docs/TODO.md`).
   slot, rimborsi, credito senza scadenza, restituzione discrezionale del titolare e registro
   dei movimenti. Senza le chiavi di Stripe i pagamenti non sono reali: viene usato un
   fornitore finto (vedi ADR 0008).
+- **Fase 7 — WhatsApp: completata.** Conferme, promemoria e inviti su WhatsApp con ripiego
+  via e-mail, verifica del numero con un codice, impostazioni nella procedura guidata e nella
+  scheda _Messaggi_. Senza il token di Meta i messaggi non partono: vengono registrati nei log
+  e tutto arriva via e-mail (vedi ADR 0009).
+
+**Con la fase 7 il software è utilizzabile da un salone reale (MVP).** Restano le fasi 8 e 9
+(prodotti, magazzino e vendita online) e la fase 10 (statistiche e KPI).
 
 ## Prerequisiti
 
@@ -85,6 +92,8 @@ docs/            TODO.md e decisioni architetturali (adr/)
 | `STRIPE_CHIAVE_SEGRETA` | sì in produzione | `sk_…` | Chiave segreta Stripe. Senza, i pagamenti sono finti (solo sviluppo e test) |
 | `STRIPE_SEGRETO_WEBHOOK` | sì in produzione | `whsec_…` | Segreto con cui si verifica la firma degli eventi Stripe |
 | `STRIPE_CHIAVE_PUBBLICABILE` | no | `pk_…` | Chiave pubblicabile; non è un segreto |
+| `WHATSAPP_TOKEN` | no | testo | Token dell'app di Meta. Senza, i messaggi WhatsApp non partono e tutto va via e-mail |
+| `WHATSAPP_VERSIONE_API` | no (`v23.0`) | `vXX.Y` | Versione delle API di Meta |
 | `LIMITI_FREQUENZA_DISATTIVI` | no (`false`) | `true` \| `false` | Disattiva i limiti di frequenza nei test; ignorata in produzione |
 | `SENTRY_DSN` | no | URL | Monitoraggio errori |
 | `VITE_URL_API` | sì (frontend) | URL | Indirizzo dell'API usato dal browser |
@@ -174,6 +183,9 @@ Tutte le rotte hanno prefisso `/api`. L'autorizzazione è sempre verificata lato
 | `GET`    | `/orari/chiusure`                         | sessione (personale)                                                                                                   | `200` chiusure raggruppate per periodo e motivo                                                        |
 | `POST`   | `/orari/chiusure`                         | solo titolare                                                                                                          | `201` chiusura registrata per tutti gli operatori, `400` periodo non valido o già occupato             |
 | `DELETE` | `/orari/chiusure`                         | solo titolare                                                                                                          | `204` chiusura rimossa per tutti, `404`                                                                |
+| `GET`    | `/impostazioni/whatsapp`                  | solo titolare                                                                                                          | `200` attivazione, numero mittente, modelli, presenza del token                                        |
+| `PUT`    | `/impostazioni/whatsapp`                  | solo titolare                                                                                                          | `200` salvate, `400` attivo senza numero mittente o nomi di modello non validi                         |
+| `POST`   | `/impostazioni/whatsapp/prova`            | solo titolare                                                                                                          | `201` esito dell'invio di prova                                                                        |
 | `GET`    | `/impostazioni/regole`                    | sessione (personale)                                                                                                   | `200` preavviso, regola di spostamento, promemoria, caparra (attiva, percentuale, restituzione)        |
 | `PUT`    | `/impostazioni/regole`                    | solo titolare                                                                                                          | `200` regole salvate, `400` valori fuori intervallo                                                    |
 | `GET`    | `/cancellazioni`                          | solo titolare                                                                                                          | `200` richieste di cancellazione con gli appuntamenti futuri di ciascun cliente                        |
@@ -215,6 +227,8 @@ sessione.
 | `POST`  | `/area-cliente/appuntamenti`                  | max 10 richieste ogni 5 minuti per IP                           | `201` appuntamento, `400` meno di due ore o fuori orario, `409` slot occupato |
 | `POST`  | `/area-cliente/appuntamenti/:id/spostamento`  | solo entro il limite di preavviso                               | `201`, `400` oltre il limite, `404` non è un proprio appuntamento             |
 | `POST`  | `/area-cliente/appuntamenti/:id/annullamento` | solo entro il limite: è sempre tempestivo                       | `201`, `400` oltre il limite, `404`                                           |
+| `POST`  | `/area-cliente/numero/codice`                 | max 3 richieste ogni 15 minuti per IP                           | `201` canale e scadenza del codice, `409` numero già verificato               |
+| `POST`  | `/area-cliente/numero/verifica`               | max 10 ogni 15 minuti per IP                                    | `204` verificato, `400` codice errato, `409` numero di un altro account       |
 | `GET`   | `/area-cliente/profilo`                       |                                                                 | `200`                                                                         |
 | `PATCH` | `/area-cliente/profilo`                       | contatti e consenso WhatsApp                                    | `200`, `409` numero di un altro account                                       |
 | `GET`   | `/area-cliente/dati`                          | copia dei propri dati (diritto di accesso)                      | `200`                                                                         |
@@ -321,7 +335,19 @@ assieme ai dump.
 15. **Diritti sui dati**: il cliente scarica una copia dei propri dati e può chiederne la
     cancellazione. La richiesta la evade il titolare: i dati personali vengono rimossi,
     l'account disattivato e lo storico resta in forma anonima.
-16. **E-mail di servizio**: verifica dell'indirizzo, reimpostazione della password, inviti
+16. **Caparra**: se il titolare l'attiva, chi prenota online paga una percentuale del prezzo
+    al momento della prenotazione. Lo slot resta bloccato per i minuti scelti in
+    installazione; scaduti, torna libero. La caparra viene scalata dal totale a servizio
+    concluso, restituita (rimborso o credito) per un annullamento tempestivo, trattenuta per
+    un annullamento tardivo o una mancata presentazione, e sempre rimborsata se annulla il
+    salone. Solo il titolare può restituire una caparra trattenuta, con motivazione
+    obbligatoria. Gli appuntamenti inseriti dal personale non prevedono caparra.
+17. **Messaggi WhatsApp**: conferme, promemoria (con l'anticipo scelto dal titolare) e inviti
+    ad attivare l'account vanno su WhatsApp ai clienti che hanno dato il consenso, con modelli
+    approvati da Meta. Senza consenso, senza numero o se l'invio non riesce, il messaggio
+    parte via e-mail. Il cliente può verificare il proprio numero con un codice di sei cifre.
+    Il token di Meta sta nell'ambiente; il resto si imposta in configurazione.
+18. **E-mail di servizio**: verifica dell'indirizzo, reimpostazione della password, inviti
     ad attivare l'account e conferme di prenotazione, inviate via SMTP attraverso la coda
     pg-boss, così un invio fallito viene ritentato.
 
@@ -340,16 +366,8 @@ Lo stato di un pagamento si considera definitivo **solo** dopo l'evento del webh
 ritorno del browser non conferma nulla. Gli eventi sono verificati per firma e registrati per
 identificativo, quindi un reinvio non produce doppi movimenti.
 
-17. **Caparra**: se il titolare l'attiva, chi prenota online paga una percentuale del prezzo
-    al momento della prenotazione. Lo slot resta bloccato per i minuti scelti in
-    installazione; scaduti, torna libero. La caparra viene scalata dal totale a servizio
-    concluso, restituita (rimborso o credito) per un annullamento tempestivo, trattenuta per
-    un annullamento tardivo o una mancata presentazione, e sempre rimborsata se annulla il
-    salone. Solo il titolare può restituire una caparra trattenuta, con motivazione
-    obbligatoria. Gli appuntamenti inseriti dal personale non prevedono caparra.
-
 Il manuale d'uso completo, pensato per il titolare, per i dipendenti e per i clienti, è in
-`MANUALE-DUSO.md`. I flussi di caparra, pagamenti, WhatsApp e vendita arrivano nelle fasi
+`MANUALE-DUSO.md`. I flussi di prodotti, magazzino e vendita online arrivano nelle fasi
 successive.
 
 ## Design system

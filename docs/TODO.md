@@ -2,52 +2,27 @@
 
 Stato dello sviluppo per fasi (vedi la roadmap in `CLAUDE.md`).
 
-## In corso — Fase 7: WhatsApp
+## In corso
 
-Le fasi da 0 a 6 sono completate. Al termine della fase 7 il software è utilizzabile da un
-salone reale (MVP).
+Nessuna attività in corso: le fasi da 0 a 7 sono completate, quindi **il software è
+utilizzabile da un salone reale (MVP)**. Prossima: fase 8 — prodotti e magazzino con vendita
+in negozio.
 
-### Decisioni prese con il titolare (18/10/2026)
+## Da fare — Fase 8: Prodotti e magazzino
 
-1. **I dati di WhatsApp si impostano in fase di configurazione.** Quello che non è un
-   segreto (attivazione, identificativo del numero mittente, nomi dei modelli approvati) sta
-   nella procedura guidata e nelle impostazioni; il **token resta in `.env`**, come per
-   Stripe e l'SMTP, perché i backup del database vengono scaricati sul PC dello sviluppatore.
-   La procedura guidata dichiara se il token è presente e permette un invio di prova.
-2. **Nessuna credenziale reale disponibile adesso**: servono utenze e dati di prova con cui
-   verificare tutti i flussi, come già fatto per i pagamenti con il fornitore finto.
-
-### Attività
-
-- [ ] `IN CORSO` Interfaccia `MittenteWhatsapp` con due realizzazioni: WhatsApp Cloud API
-      ufficiale di Meta e mittente finto che registra i messaggi, usato senza credenziali.
-- [ ] `TODO` Modelli dei messaggi (approvati da Meta) in un unico posto: conferma della
-      prenotazione, promemoria, invito ad attivare l'account, codice di verifica del numero.
-- [ ] `TODO` Scelta del canale: WhatsApp se c'è il consenso e il numero, altrimenti e-mail;
-      ripiego sull'e-mail anche quando l'invio WhatsApp fallisce.
-- [ ] `TODO` Impostazioni dell'installazione: attivazione, identificativo del numero mittente
-      e nomi dei modelli, nella procedura guidata e nella scheda _Messaggi_.
-- [ ] `TODO` Verifica del numero di telefono con codice via WhatsApp (rinviata dalla fase 4),
-      con limite di frequenza e codice a scadenza breve.
-- [ ] `TODO` Promemoria prima dell'appuntamento, con l'anticipo già configurabile: attività
-      periodica su pg-boss, ripetibile senza inviare due volte lo stesso promemoria.
-- [ ] `TODO` Dati di prova: utenze con e senza consenso WhatsApp, con e senza e-mail, per
-      verificare canale e ripiego; registro dei messaggi consultabile in sviluppo.
-- [ ] `TODO` Test: unitari sui modelli e sulla scelta del canale, integrazione su consenso,
-      ripiego, verifica del numero e promemoria, end-to-end della verifica del numero.
-- [ ] `TODO` Documentazione: ADR 0009, README, `.env.example`, `MANUALE-DUSO.md`.
-
-### Da chiarire quando arriveranno le credenziali
-
-- [ ] `BLOCCATO` Numero di telefono mittente, account Meta e **testi dei modelli da far
-      approvare**: i modelli nel codice sono una proposta, i testi definitivi vanno approvati
-      da Meta prima dell'uso reale.
-  - Blocco: servono l'account Meta del salone e la sua approvazione.
+- [ ] `TODO` Catalogo prodotti con descrizione, prezzo e giacenza.
+- [ ] `TODO` Vendita in negozio registrata dal personale, anche collegata a un cliente o a un
+      appuntamento.
+- [ ] `TODO` Scarico automatico del magazzino a ogni vendita e avviso di scorta minima.
+- [ ] `TODO` Decisioni da prendere con il titolare: se la giacenza possa andare sotto zero
+      (vendita a scaffale vuoto), chi può correggere le giacenze a mano, e se la vendita in
+      negozio debba produrre un documento per il cliente.
 
 ## Da fare — attività trasversali già individuate
 
-- [ ] `TODO` Collegare `SessioniServizio.rimuoviScadute()` e la scadenza dei token a
-      un'attività periodica pg-boss: la coda ora esiste, manca la pianificazione ricorrente.
+- [ ] `TODO` Collegare `SessioniServizio.rimuoviScadute()` e `TokenServizio.rimuoviScaduti()`
+      a un'attività ricorrente pg-boss: la pianificazione ricorrente ora esiste (promemoria),
+      manca applicarla alla pulizia.
 - [ ] `TODO` Integrare Sentry su frontend e backend con `IDENTIFICATIVO_INSTALLAZIONE`
       su ogni evento e senza dati personali dei clienti.
 - [ ] `TODO` Registro di audit unico per le operazioni sensibili. I movimenti della caparra
@@ -67,6 +42,68 @@ salone reale (MVP).
 - [ ] `BLOCCATO` Prova reale della procedura di ripristino dei backup.
   - Blocco: richiede un server di prova con un'installazione attiva. Gli script sono
     pronti e documentati; manca la verifica end-to-end su dati reali.
+
+## Completato — Fase 7: WhatsApp (18/10/2026) — MVP raggiunto
+
+### Decisioni prese con il titolare (18/10/2026)
+
+1. **I dati di WhatsApp si impostano in fase di configurazione**: attivazione, identificativo
+   del numero mittente e nomi dei modelli stanno nella procedura guidata e nella scheda
+   _Messaggi_. Il **token resta in `.env`**, perché i backup del database vengono scaricati sul
+   PC dello sviluppatore. L'interfaccia dichiara se il token è presente.
+2. **Nessuna credenziale reale disponibile**: tutto è verificabile con un mittente finto e con
+   clienti di prova che coprono ogni combinazione di canale.
+3. **Il consenso delle schede create dal personale lo registra il personale** (casella nel
+   pannello di creazione): il cliente al telefono non può spuntare nulla, e senza consenso
+   l'invito va via e-mail.
+
+### Attività
+
+- [x] `COMPLETATO` Interfaccia `MittenteWhatsapp` con due realizzazioni: WhatsApp Cloud API di
+      Meta e mittente finto che registra i messaggi, mai costruito in produzione.
+- [x] `COMPLETATO` Modelli dei messaggi in un unico posto, con nomi configurabili: conferma,
+      promemoria, invito di attivazione, codice di verifica del numero.
+- [x] `COMPLETATO` Scelta del canale come funzione pura (WhatsApp attivo + consenso + numero,
+      altrimenti e-mail) e ripiego immediato sull'e-mail quando l'invio WhatsApp fallisce,
+      senza ritentare: un evento, un messaggio.
+- [x] `COMPLETATO` Impostazioni nella procedura guidata (passo «Messaggi») e nella scheda
+      _Messaggi_, con invio di prova e vincolo SQL che vieta di attivare WhatsApp senza numero
+      mittente e nomi dei modelli.
+- [x] `COMPLETATO` Verifica del numero con codice di sei cifre: hash legato all'utente,
+      validità di quindici minuti, limite di frequenza, uso singolo, rifiuto se il numero è già
+      verificato altrove.
+- [x] `COMPLETATO` Promemoria come attività ricorrente ogni cinque minuti, con
+      `promemoriaInviatoIl` segnato prima dell'invio: nessun doppio promemoria.
+- [x] `COMPLETATO` Dati di prova: quattro clienti che coprono WhatsApp, ripiego via e-mail,
+      numero da verificare e scheda senza e-mail.
+- [x] `COMPLETATO` Test: unitari sulla scelta del canale, 15 di integrazione su impostazioni,
+      canale, ripiego, verifica del numero e promemoria, end-to-end su scheda _Messaggi_,
+      invio di prova e verifica del numero dall'area cliente.
+- [x] `COMPLETATO` ADR 0009, README, `.env.example` e `MANUALE-DUSO.md` aggiornati.
+
+### Controlli eseguiti al termine della fase 7
+
+| Controllo            | Comando                                       | Esito                                 |
+| -------------------- | --------------------------------------------- | ------------------------------------- |
+| Formattazione        | `pnpm format:check`                           | superato                              |
+| Lint                 | `pnpm lint`                                   | superato                              |
+| Tipi                 | `pnpm type-check`                             | superato                              |
+| Test unitari         | `pnpm test`                                   | 70 condivisi, 34 backend, 38 frontend |
+| Test di integrazione | `pnpm --filter @barber/api test:integrazione` | 180 test superati                     |
+| Test end-to-end      | `pnpm --filter @barber/web test:e2e`          | 41 superati, 1 saltato per scelta     |
+| Build                | `pnpm build`                                  | superato                              |
+
+### Limiti noti e rischi residui
+
+- **I testi dei modelli sono una proposta**: vanno registrati e approvati da Meta, e i nomi
+  riportati nella scheda _Messaggi_. Se un nome non corrisponde, Meta rifiuta il messaggio e il
+  cliente riceve l'e-mail.
+- **Verifica con credenziali reali ancora da fare**: serve l'account Meta del salone, con
+  numero mittente e modelli approvati. Senza, il flusso è coperto dal mittente finto.
+- **L'identificativo del numero mittente si legge all'avvio**: cambiarlo richiede un riavvio
+  del servizio.
+- **Corretto un difetto della fase 6**: lo script `azzera` non ripuliva movimenti, pagamenti
+  ed eventi e, con i vincoli `RESTRICT`, sarebbe fallito.
 
 ## Completato — Fase 6: Caparra e pagamenti Stripe (18/10/2026)
 
