@@ -22,8 +22,10 @@ già completate. Le parti ancora da sviluppare sono elencate in fondo, in
   - [Regole del salone](#regole-del-salone)
   - [Caparra](#caparra)
   - [Messaggi WhatsApp](#messaggi-whatsapp)
+  - [Prodotti e magazzino](#prodotti-e-magazzino)
   - [Richieste di cancellazione dei dati](#richieste-di-cancellazione-dei-dati)
 - [Clienti](#clienti)
+- [Vendite in negozio](#vendite-in-negozio)
 - [Agenda](#agenda)
   - [Inserire un appuntamento](#inserire-un-appuntamento)
   - [Spostare un appuntamento](#spostare-un-appuntamento)
@@ -57,6 +59,8 @@ già completate. Le parti ancora da sviluppare sono elencate in fondo, in
 | Slot                  | Unità minima di tempo dell'agenda (es. 15 minuti).                         |
 | Caparra               | Anticipo pagato online alla prenotazione, se il salone la richiede.        |
 | Credito               | Importo a favore del cliente, usabile per una prenotazione futura.         |
+| Giacenza              | Pezzi di un prodotto presenti in magazzino.                                |
+| Scorta minima         | Soglia sotto cui il personale viene avvisato di riordinare.                |
 | Limite di preavviso   | Ore entro cui un annullamento è considerato tempestivo.                    |
 | Mancata presentazione | Il cliente non si è presentato.                                            |
 
@@ -91,7 +95,7 @@ di attivazione** e scelgono la propria.
 
 ## Impostazioni del salone (solo titolare)
 
-Dal pannello iniziale, pulsante **Impostazioni del salone**. Cinque schede: Servizi,
+Dal pannello iniziale, pulsante **Impostazioni del salone**. Sei schede: Servizi, Prodotti,
 Personale, Orari, Regole e Messaggi. I dipendenti non vedono questa pagina.
 
 ### Servizi
@@ -244,6 +248,31 @@ area: è un obbligo di legge, non una cortesia.
 L'anticipo del **promemoria** si imposta nella scheda _Regole_. Il promemoria parte una volta
 sola per appuntamento e non viene inviato per gli appuntamenti annullati.
 
+### Prodotti e magazzino
+
+Scheda _Prodotti_. Il catalogo e le giacenze li governa **solo il titolare**: il personale
+vende, e vendendo scarica il magazzino, ma non modifica le quantità né i prezzi.
+
+**Aggiungere un prodotto**: nome, prezzo, giacenza iniziale e scorta minima (zero disattiva
+l'avviso). La descrizione è facoltativa.
+
+**Correggere la giacenza**: pulsante **Giacenza** sul prodotto. Non esiste un campo da
+riscrivere: si registra un movimento, indicando
+
+- il **tipo**: _carico_ di merce ricevuta oppure _correzione_ dell'inventario;
+- la **variazione** in pezzi, positiva o negativa;
+- il **motivo**, obbligatorio.
+
+Ogni movimento resta con data, autore e giacenza risultante, e gli ultimi cinque si vedono
+nella stessa finestra. **La giacenza non può andare sotto zero**: un movimento che la
+porterebbe in negativo viene rifiutato.
+
+**Ritirare un prodotto**: pulsante **Ritira**. Esce dal listino del personale ma resta nelle
+vendite già registrate; si rimette in vendita quando si vuole.
+
+**Scorte**: i prodotti arrivati alla scorta minima sono segnalati in cima a questa scheda e
+nella pagina delle vendite. L'avviso non blocca la vendita: finché ci sono pezzi, si vende.
+
 ### Richieste di cancellazione dei dati
 
 Nella stessa scheda _Regole_, riquadro **Richieste di cancellazione dei dati**: l'elenco
@@ -272,6 +301,29 @@ Dal pannello, pulsante **Clienti**: tutto il personale consulta e inserisce le s
 - **Scheda del cliente**: contatti, stato dell'account, **note interne** modificabili e
   **storico degli appuntamenti** con servizi, operatore, importo e stato.
 - **Nuovo link di attivazione**: disponibile finché il cliente non ha attivato l'account.
+
+## Vendite in negozio
+
+Dal pannello, pulsante **Vendite**. La usa tutto il personale.
+
+1. **Prodotti**: per ogni prodotto si indicano i pezzi. Il campo non accetta più pezzi di
+   quelli in magazzino, e un prodotto esaurito non è selezionabile.
+2. **Cliente** (facoltativo): collegando la vendita a un cliente, questa compare nel suo
+   storico, nella scheda cliente.
+3. **Note** (facoltative): un promemoria interno, per esempio «pagato in contanti».
+4. **Registra la vendita**: il totale è la somma dei prodotti scelti e il magazzino si scarica
+   subito.
+
+La vendita **non produce documenti** per il cliente: è una registrazione interna del salone.
+Scontrini e fatture dipendono dalla gestione della cassa, non ancora disponibile.
+
+**Vendita sbagliata**: si annulla dall'elenco delle ultime vendite, con il pulsante
+**Annulla** e un motivo obbligatorio. I pezzi tornano in magazzino e la vendita resta
+registrata come annullata: non si cancella, così i conti del magazzino restano ricostruibili.
+
+**Se un prodotto finisce** mentre si registra la vendita (per esempio perché un collega l'ha
+venduto nello stesso momento), la vendita viene rifiutata con un messaggio chiaro e **nulla**
+viene scaricato: si corregge la quantità e si registra di nuovo.
 
 ## Agenda
 
@@ -540,7 +592,8 @@ farsi rinviare dalla pagina di verifica.
 
 Queste funzioni sono previste dalle fasi successive dello sviluppo:
 
-- **Prodotti e magazzino** (fase 8) e **vendita online** (fase 9).
+- **Vendita online dei prodotti** (fase 9): acquisto dalla web app, ritiro in negozio o
+  spedizione.
 - **Gestione della cassa e pagamenti in negozio** (registratore telematico, POS): da valutare,
   non ancora specificata.
 - **Statistiche e KPI** (fase 10), riservati al titolare.
