@@ -19,6 +19,9 @@ export interface ContestoDiProva {
 /** Suffisso delle e-mail create dai test, usato per la pulizia finale. */
 export const SUFFISSO_PROVA = '@prova.integrazione';
 
+/** Prefisso dei numeri usati nelle prove, per poterli ripulire. */
+export const PREFISSO_NUMERO_PROVA = '+39999';
+
 export async function avviaApplicazioneDiProva(): Promise<ContestoDiProva> {
   const moduloDiProva = await Test.createTestingModule({ imports: [AppModule] }).compile();
   const app = moduloDiProva.createNestApplication();
@@ -42,10 +45,11 @@ export async function creaUtenteDiProva(
   opzioni: { attivo?: boolean } = {},
 ) {
   const passwordHash = await contesto.autenticazione.calcolaHashPassword(password);
+  const email = `${ruolo}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}${SUFFISSO_PROVA}`;
 
-  return contesto.prisma.utente.create({
+  const utente = await contesto.prisma.utente.create({
     data: {
-      email: `${ruolo}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}${SUFFISSO_PROVA}`,
+      email,
       passwordHash,
       nome: 'Utente',
       cognome: 'DiProva',
@@ -54,11 +58,22 @@ export async function creaUtenteDiProva(
       emailVerificata: true,
     },
   });
+
+  // L'e-mail è facoltativa sul modello, ma gli utenti di prova ne hanno sempre una.
+  return { ...utente, email };
 }
 
 export async function rimuoviDatiDiProva(contesto: ContestoDiProva): Promise<void> {
+  // Gli appuntamenti trattengono gli utenti collegati (vincolo RESTRICT),
+  // quindi vanno rimossi per primi.
+  await contesto.prisma.appuntamento.deleteMany();
   await contesto.prisma.utente.deleteMany({
-    where: { email: { endsWith: SUFFISSO_PROVA } },
+    where: {
+      OR: [
+        { email: { endsWith: SUFFISSO_PROVA } },
+        { numeroWhatsapp: { startsWith: PREFISSO_NUMERO_PROVA } },
+      ],
+    },
   });
 }
 

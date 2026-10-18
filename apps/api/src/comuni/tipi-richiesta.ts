@@ -3,7 +3,7 @@ import type { Ruolo } from '@barber/shared';
 
 export interface UtenteRichiesta {
   id: string;
-  email: string;
+  email: string | null;
   nome: string;
   cognome: string;
   ruolo: Ruolo;

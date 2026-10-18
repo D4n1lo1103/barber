@@ -8,6 +8,6 @@ import { PersonaleServizio } from './personale.servizio.js';
   imports: [AutenticazioneModule],
   controllers: [PersonaleController],
   providers: [PersonaleServizio, InvitiServizio],
-  exports: [PersonaleServizio],
+  exports: [PersonaleServizio, InvitiServizio],
 })
 export class PersonaleModule {}

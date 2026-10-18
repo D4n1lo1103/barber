@@ -24,7 +24,8 @@ export type DatiCambioPassword = z.infer<typeof schemaCambioPassword>;
 /** Utente autenticato restituito al frontend: nessun dato sensibile. */
 export const schemaUtenteAutenticato = z.object({
   id: z.uuid(),
-  email: schemaEmail,
+  /** Nulla per i clienti la cui scheda è stata creata dal personale col solo numero. */
+  email: schemaEmail.nullable(),
   nome: schemaNome,
   cognome: schemaCognome,
   ruolo: z.enum(RUOLI),

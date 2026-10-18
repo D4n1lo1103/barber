@@ -14,7 +14,7 @@ interface RigaUtente {
   id: string;
   nome: string;
   cognome: string;
-  email: string;
+  email: string | null;
   numeroWhatsapp: string | null;
   ruolo: 'titolare' | 'dipendente' | 'cliente';
   attivo: boolean;
@@ -164,7 +164,8 @@ export class PersonaleServizio {
       id: utente.id,
       nome: utente.nome,
       cognome: utente.cognome,
-      email: utente.email,
+      // Gli operatori hanno sempre un'e-mail: è con quella che accedono.
+      email: utente.email ?? '',
       numeroWhatsapp: utente.numeroWhatsapp,
       ruolo: utente.ruolo as 'titolare' | 'dipendente',
       attivo: utente.attivo,

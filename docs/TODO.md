@@ -2,19 +2,50 @@
 
 Stato dello sviluppo per fasi (vedi la roadmap in `CLAUDE.md`).
 
-## In corso
+## In corso — Fase 3: Agenda lato personale
 
-Nessuna attività in corso: le fasi 0, 1 e 2 sono completate.
+Branch: `feat/agenda-personale`.
 
-## Da fare — Fase 3: Agenda lato personale
+### Decisioni prese con il titolare (18/10/2026)
 
-- [ ] `TODO` Calcolo della disponibilità: combinare orari di apertura, orari dell'operatore,
-      assenze e appuntamenti esistenti, con attenzione ai giorni di cambio dell'ora legale.
-- [ ] `TODO` Agenda per operatore con viste giornaliera e settimanale (react-big-calendar).
-- [ ] `TODO` Prenotazione inserita dal personale, con flag "senza caparra".
-- [ ] `TODO` Vincolo di esclusione PostgreSQL contro le doppie prenotazioni dello stesso
-      operatore, più controllo applicativo e test di concorrenza.
-- [ ] `TODO` Schede clienti create dal personale, annullamenti e mancate presentazioni.
+1. **Fuori orario**: il personale **non** può inserire appuntamenti fuori dagli orari di
+   lavoro dell'operatore, a salone chiuso o durante un'assenza. Il backend rifiuta.
+2. **Agende dei colleghi**: ogni membro del personale gestisce (crea, sposta, annulla,
+   completa) gli appuntamenti di **tutte** le agende, non solo della propria.
+3. **Nel passato**: il personale può registrare un appuntamento fino a **7 giorni**
+   nel passato; il limite in avanti resta di **60 giorni**.
+4. **Completamento**: segnato **a mano** dal personale, nessun automatismo.
+5. **Scheda cliente creata dal personale**: basta nome, cognome e numero WhatsApp.
+   L'e-mail diventa facoltativa sull'utente, unica quando presente.
+6. **Agenda**: `react-big-calendar` con localizzatore `date-fns` (nuova dipendenza
+   approvata, solo frontend).
+
+### Attività
+
+- [x] `COMPLETATO` Dominio condiviso: conversioni fra UTC e ora locale del salone
+      (`dominio/fuso.ts`) e calcolo della disponibilità (`dominio/disponibilita.ts`),
+      con test sui giorni di cambio dell'ora legale.
+- [ ] `IN CORSO` Schemi Zod condivisi: creazione, spostamento, annullamento e
+      mancata presentazione dell'appuntamento; scheda cliente creata dal personale.
+- [ ] `TODO` Modello dati: `appuntamenti` e `appuntamenti_servizi` (con copia di nome,
+      prezzo e durata al momento della prenotazione), e-mail dell'utente facoltativa.
+- [ ] `TODO` Migrazione SQL manuale con **vincolo di esclusione** contro le doppie
+      prenotazioni dello stesso operatore sugli stati attivi.
+- [ ] `TODO` Backend disponibilità: slot liberi per operatore, giorno e servizi scelti.
+- [ ] `TODO` Backend appuntamenti: creazione dal personale con flag "senza caparra",
+      spostamento, annullamento con motivo, mancata presentazione, completamento.
+- [ ] `TODO` Backend clienti: creazione della scheda dal personale senza impostare la
+      password, ricerca, dettaglio con storico, collegamento al numero già presente.
+- [ ] `TODO` Rifiuto delle modifiche di orari e assenze che lascerebbero fuori orario
+      appuntamenti futuri già fissati.
+- [ ] `TODO` Test unitari del servizio appuntamenti e test di integrazione su permessi,
+      disponibilità, stati e **concorrenza** (due prenotazioni simultanee sullo stesso slot).
+- [ ] `TODO` Frontend: agenda per operatore (giorno/settimana), pannello nuovo
+      appuntamento, azioni di stato, schede clienti.
+- [ ] `TODO` Seed esteso con appuntamenti di esempio in vari stati.
+- [ ] `TODO` ADR sul modello degli appuntamenti e sul vincolo di esclusione.
+- [ ] `TODO` Aggiornamento di `README.md` e `MANUALE-DUSO.md`.
+- [ ] `TODO` Controlli finali: formattazione, lint, tipi, test, build, verifica manuale.
 
 ## Da definire con il titolare
 
