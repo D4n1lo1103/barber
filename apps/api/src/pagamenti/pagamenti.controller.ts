@@ -20,6 +20,7 @@ import {
   type DatiEsitoFinto,
   type DatiRestituzioneDiscrezionale,
   type PagamentoDaCompletare,
+  type SituazioneCaparre,
 } from '@barber/shared';
 import { LimiteDiFrequenza } from '../comuni/decoratori/limite-frequenza.decoratore.js';
 import { Pubblico } from '../comuni/decoratori/pubblico.decoratore.js';
@@ -28,6 +29,7 @@ import { UtenteCorrente } from '../comuni/decoratori/utente-corrente.decoratore.
 import { RuoliGuardia } from '../comuni/guardie/ruoli.guardia.js';
 import type { UtenteRichiesta } from '../comuni/tipi-richiesta.js';
 import { ValidazioneZodPipe } from '../comuni/validazione.pipe.js';
+import { CaparraServizio } from './caparra.servizio.js';
 import { FIRMA_FINTA } from './fornitore-finto.js';
 import { FORNITORE_PAGAMENTI, type FornitorePagamenti } from './fornitore-pagamenti.js';
 import { PagamentiServizio } from './pagamenti.servizio.js';
@@ -48,6 +50,7 @@ const HEADER_FIRMA = 'stripe-signature';
 export class PagamentiController {
   constructor(
     private readonly pagamenti: PagamentiServizio,
+    private readonly caparra: CaparraServizio,
     @Inject(FORNITORE_PAGAMENTI) private readonly fornitore: FornitorePagamenti,
   ) {}
 
@@ -56,6 +59,13 @@ export class PagamentiController {
   @Pubblico()
   leggiConfigurazione(): ConfigurazionePagamenti {
     return { finto: this.fornitore.finto };
+  }
+
+  /** Movimenti e credito di un cliente: dati economici, solo per il titolare. */
+  @Get('clienti/:id/situazione')
+  @Ruoli('titolare')
+  leggiSituazione(@Param('id', ParseUUIDPipe) id: string): Promise<SituazioneCaparre> {
+    return this.caparra.situazioneDelCliente(id);
   }
 
   @Post('webhook')

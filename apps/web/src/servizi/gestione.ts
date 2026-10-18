@@ -11,25 +11,30 @@ import type {
   DatiCreazioneCliente,
   DatiCreazioneDipendente,
   DatiCreazioneServizio,
+  DatiEsitoFinto,
   DatiEvasioneRichiesta,
   DatiModificaCliente,
   DatiModificaProfilo,
   DatiPrenotazioneCliente,
   DatiRegistrazioneCliente,
   DatiRegoleSalone,
+  DatiRestituzioneDiscrezionale,
   DatiModificaServizio,
   DatiRimozioneChiusura,
   DatiSpostamentoAppuntamento,
+  ConfigurazionePagamenti,
   DisponibilitaGiorno,
   ElencoClienti,
   EsitoRegistrazione,
   EsportazioneDati,
   FasciaSettimanale,
   Operatore,
+  PagamentoDaCompletare,
   ProfiloCliente,
   RegoleSalone,
   RichiestaCancellazione,
   Servizio,
+  SituazioneCaparre,
 } from '@barber/shared';
 import { chiamaApi } from './client-api';
 
@@ -222,6 +227,11 @@ export function creaAppuntamento(dati: DatiCreazioneAppuntamento): Promise<Appun
   return chiamaApi<Appuntamento>('/appuntamenti', { metodo: 'POST', corpo: dati });
 }
 
+/** Un singolo appuntamento, per ricaricarlo dopo un'operazione. */
+export function leggiAppuntamento(id: string): Promise<Appuntamento> {
+  return chiamaApi<Appuntamento>(`/appuntamenti/${id}`);
+}
+
 export function spostaAppuntamento(
   id: string,
   dati: DatiSpostamentoAppuntamento,
@@ -374,4 +384,36 @@ export function leggiRichiestaCancellazione(): Promise<{
 
 export function richiediCancellazioneDati(motivo: string): Promise<RichiestaCancellazione> {
   return chiamaApi('/area-cliente/cancellazione', { metodo: 'POST', corpo: { motivo } });
+}
+
+// ─── Pagamenti ────────────────────────────────────────────────────────────────
+
+export function leggiConfigurazionePagamenti(): Promise<ConfigurazionePagamenti> {
+  return chiamaApi('/pagamenti/configurazione');
+}
+
+/** Apre il pagamento della caparra e restituisce l'indirizzo del fornitore. */
+export function avviaPagamentoCaparra(appuntamentoId: string): Promise<PagamentoDaCompletare> {
+  return chiamaApi(`/pagamenti/appuntamenti/${appuntamentoId}`, { metodo: 'POST' });
+}
+
+/** Restituzione discrezionale di una caparra trattenuta: solo il titolare. */
+export function restituisciCaparra(
+  appuntamentoId: string,
+  dati: DatiRestituzioneDiscrezionale,
+): Promise<void> {
+  return chiamaApi(`/pagamenti/appuntamenti/${appuntamentoId}/restituzione`, {
+    metodo: 'POST',
+    corpo: dati,
+  });
+}
+
+/** Movimenti della caparra e credito di un cliente: solo per il titolare. */
+export function leggiSituazioneCaparre(clienteId: string): Promise<SituazioneCaparre> {
+  return chiamaApi(`/pagamenti/clienti/${clienteId}/situazione`);
+}
+
+/** Esito scelto sulla pagina di pagamento finta: esiste solo in sviluppo. */
+export function comunicaEsitoFinto(dati: DatiEsitoFinto): Promise<void> {
+  return chiamaApi('/pagamenti/finto/esito', { metodo: 'POST', corpo: dati });
 }

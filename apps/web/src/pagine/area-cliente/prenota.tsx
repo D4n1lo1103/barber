@@ -1,11 +1,18 @@
 import { useEffect, useMemo, useState } from 'react';
 import { clsx } from 'clsx';
-import type { AppuntamentoCliente, Operatore, Servizio } from '@barber/shared';
+import {
+  calcolaCaparra,
+  type AppuntamentoCliente,
+  type Operatore,
+  type Servizio,
+} from '@barber/shared';
 import { Avviso } from '../../componenti/avviso';
 import { Pulsante } from '../../componenti/pulsante';
 import { Superficie } from '../../componenti/superficie';
+import { usaInstallazione } from '../../installazione/contesto-installazione';
 import { ErroreApi } from '../../servizi/client-api';
 import {
+  avviaPagamentoCaparra,
   leggiCatalogoCliente,
   leggiDisponibilitaCliente,
   prenotaComeCliente,
@@ -19,7 +26,15 @@ import { SelettoreSlot } from '../agenda/selettore-slot';
  * quelli abilitati a tutti i servizi scelti, poi l'orario fra quelli liberi.
  * Non esiste "operatore indifferente".
  */
-export function Prenota({ onPrenotato }: { onPrenotato: (a: AppuntamentoCliente) => void }) {
+export function Prenota({
+  onPrenotato,
+  saldoCreditoCentesimi,
+}: {
+  onPrenotato: (a: AppuntamentoCliente) => void;
+  /** Credito del cliente: copre la caparra in tutto o in parte. */
+  saldoCreditoCentesimi: number;
+}) {
+  const { stato } = usaInstallazione();
   const [servizi, impostaServizi] = useState<Servizio[]>([]);
   const [operatori, impostaOperatori] = useState<Operatore[]>([]);
   const [scelti, impostaScelti] = useState<string[]>([]);
@@ -86,6 +101,15 @@ export function Prenota({ onPrenotato }: { onPrenotato: (a: AppuntamentoCliente)
     try {
       const esito = await prenotaComeCliente({ operatoreId, servizioIds: scelti, inizio });
 
+      if (esito.appuntamento.caparraDaPagareCentesimi > 0) {
+        // Lo slot è tenuto per pochi minuti: si va subito a pagare.
+        const pagamento = await avviaPagamentoCaparra(esito.appuntamento.id);
+
+        window.location.assign(pagamento.urlPagamento);
+
+        return;
+      }
+
       onPrenotato(esito.appuntamento);
       impostaScelti([]);
       impostaInizio(null);
@@ -101,6 +125,16 @@ export function Prenota({ onPrenotato }: { onPrenotato: (a: AppuntamentoCliente)
   if (inCaricamento) {
     return <p className="text-sm text-testo-tenue">Caricamento del catalogo…</p>;
   }
+
+  const prezzoTotale = scelti.reduce(
+    (totale, servizioId) =>
+      totale + (servizi.find((servizio) => servizio.id === servizioId)?.prezzoCentesimi ?? 0),
+    0,
+  );
+  // Stima mostrata prima di prenotare: l'importo vero lo calcola il backend.
+  const caparra = stato?.caparraAttiva ? calcolaCaparra(prezzoTotale, stato.caparraPercentuale) : 0;
+  const creditoUsato = Math.min(saldoCreditoCentesimi, caparra);
+  const daPagare = caparra - creditoUsato;
 
   return (
     <div className="space-y-5">
@@ -201,10 +235,43 @@ export function Prenota({ onPrenotato }: { onPrenotato: (a: AppuntamentoCliente)
         </Superficie>
       )}
 
+      {caparra > 0 && (
+        <Superficie className="p-6">
+          <h2 className="text-lg font-semibold">Caparra</h2>
+          <p className="mt-1 text-sm text-testo-tenue">
+            Il salone chiede una caparra del {stato?.caparraPercentuale}% alla prenotazione:{' '}
+            <strong>{formattaPrezzo(caparra)}</strong> sui {formattaPrezzo(prezzoTotale)} totali. Si
+            paga subito online e viene scalata dal conto a servizio concluso.
+          </p>
+          {creditoUsato > 0 && (
+            <p className="mt-2 text-sm">
+              Il tuo credito copre {formattaPrezzo(creditoUsato)}
+              {daPagare > 0 ? (
+                <>
+                  : da pagare adesso <strong>{formattaPrezzo(daPagare)}</strong>.
+                </>
+              ) : (
+                ': non devi pagare nulla adesso.'
+              )}
+            </p>
+          )}
+          {daPagare > 0 && (
+            <p className="mt-2 text-xs text-testo-tenue">
+              Dopo la conferma vieni portato alla pagina di pagamento. Lo slot resta tenuto per{' '}
+              {stato?.minutiBloccoSlot ?? 10} minuti: se il pagamento non arriva, torna libero.
+            </p>
+          )}
+        </Superficie>
+      )}
+
       {errore && <Avviso tono="errore">{errore}</Avviso>}
 
       <Pulsante disabled={!inizio || inInvio} onClick={() => void prenota()}>
-        {inInvio ? 'Prenotazione…' : 'Conferma la prenotazione'}
+        {inInvio
+          ? 'Prenotazione…'
+          : daPagare > 0
+            ? 'Prenota e paga la caparra'
+            : 'Conferma la prenotazione'}
       </Pulsante>
     </div>
   );

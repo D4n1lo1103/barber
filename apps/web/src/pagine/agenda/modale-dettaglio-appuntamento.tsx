@@ -1,17 +1,23 @@
 import { useEffect, useState } from 'react';
 import {
+  ETICHETTE_FORMA_RESTITUZIONE,
   ETICHETTE_MOTIVO_ANNULLAMENTO,
   ETICHETTE_STATO,
+  FORME_RESTITUZIONE,
   MOTIVI_ANNULLAMENTO_DA_PERSONALE,
   type Appuntamento,
+  type FormaRestituzione,
   type MotivoAnnullamentoDaPersonale,
 } from '@barber/shared';
 import { Avviso } from '../../componenti/avviso';
 import { Modale } from '../../componenti/modale';
 import { Pulsante } from '../../componenti/pulsante';
+import { usaSessione } from '../../autenticazione/contesto-sessione';
 import {
   annullaAppuntamento,
   completaAppuntamento,
+  leggiAppuntamento,
+  restituisciCaparra,
   segnaMancataPresentazione,
   spostaAppuntamento,
 } from '../../servizi/gestione';
@@ -24,7 +30,7 @@ import {
 import { dataDiVista, giornoDaDataDiVista } from '../../utilita/fuso-vista';
 import { SelettoreSlot } from './selettore-slot';
 
-type Azione = 'nessuna' | 'spostamento' | 'annullamento';
+type Azione = 'nessuna' | 'spostamento' | 'annullamento' | 'restituzione';
 
 /** Dettaglio di un appuntamento e azioni del personale. */
 export function ModaleDettaglioAppuntamento({
@@ -36,11 +42,14 @@ export function ModaleDettaglioAppuntamento({
   onChiudi: () => void;
   onAggiornato: (appuntamento: Appuntamento) => void;
 }) {
+  const { utente } = usaSessione();
   const [azione, impostaAzione] = useState<Azione>('nessuna');
   const [giorno, impostaGiorno] = useState('');
   const [nuovoInizio, impostaNuovoInizio] = useState<string | null>(null);
   const [motivo, impostaMotivo] = useState<MotivoAnnullamentoDaPersonale>('tempestivo');
   const [note, impostaNote] = useState('');
+  const [formaRestituzione, impostaFormaRestituzione] = useState<FormaRestituzione>('rimborso');
+  const [motivoRestituzione, impostaMotivoRestituzione] = useState('');
   const [errore, impostaErrore] = useState<string | null>(null);
   const [inCorso, impostaInCorso] = useState(false);
 
@@ -51,6 +60,8 @@ export function ModaleDettaglioAppuntamento({
       impostaNuovoInizio(null);
       impostaMotivo('tempestivo');
       impostaNote('');
+      impostaFormaRestituzione('rimborso');
+      impostaMotivoRestituzione('');
       impostaErrore(null);
     }
   }, [appuntamento]);
@@ -123,6 +134,26 @@ export function ModaleDettaglioAppuntamento({
             </dd>
           </div>
         </dl>
+
+        {appuntamento.caparraPagataCentesimi > 0 && (
+          <p className="text-sm text-testo-tenue">
+            Caparra pagata: {formattaPrezzo(appuntamento.caparraPagataCentesimi)}. A servizio
+            concluso resta da saldare{' '}
+            {formattaPrezzo(
+              Math.max(0, appuntamento.prezzoTotaleCentesimi - appuntamento.caparraPagataCentesimi),
+            )}
+            .
+          </p>
+        )}
+
+        {appuntamento.caparraTrattenutaCentesimi > 0 && (
+          <Avviso tono="avviso">
+            Caparra trattenuta: {formattaPrezzo(appuntamento.caparraTrattenutaCentesimi)}.
+            {utente?.ruolo === 'titolare'
+              ? ' Puoi restituirla, indicando il motivo.'
+              : ' Solo il titolare può restituirla.'}
+          </Avviso>
+        )}
 
         {appuntamento.note && (
           <p className="rounded-[var(--radius-campo)] border border-bordo bg-fondo-elevato px-3 py-2 text-sm">
@@ -219,6 +250,64 @@ export function ModaleDettaglioAppuntamento({
           </div>
         )}
 
+        {azione === 'restituzione' && (
+          <div className="space-y-3 rounded-[var(--radius-campo)] border border-bordo p-3">
+            <fieldset className="space-y-2">
+              <legend className="text-sm font-medium">Come restituire la caparra</legend>
+              {FORME_RESTITUZIONE.map((forma) => (
+                <label key={forma} className="flex items-center gap-2 text-sm">
+                  <input
+                    type="radio"
+                    name="forma-restituzione-caparra"
+                    checked={formaRestituzione === forma}
+                    onChange={() => impostaFormaRestituzione(forma)}
+                    className="accent-[var(--color-accento)]"
+                  />
+                  {ETICHETTE_FORMA_RESTITUZIONE[forma]}
+                </label>
+              ))}
+            </fieldset>
+
+            <div className="space-y-2">
+              <label htmlFor="motivo-restituzione" className="block text-sm font-medium">
+                Motivo (obbligatorio)
+              </label>
+              <textarea
+                id="motivo-restituzione"
+                value={motivoRestituzione}
+                onChange={(evento) => impostaMotivoRestituzione(evento.target.value)}
+                rows={2}
+                maxLength={500}
+                className="w-full rounded-[var(--radius-campo)] border border-bordo bg-fondo-elevato px-3 py-2.5 text-sm focus:border-accento focus:outline-none"
+              />
+              <p className="text-xs text-testo-tenue">
+                L’operazione resta nei movimenti della caparra, con data e autore.
+              </p>
+            </div>
+
+            <div className="flex justify-end gap-3">
+              <Pulsante variante="secondario" onClick={() => impostaAzione('nessuna')}>
+                Indietro
+              </Pulsante>
+              <Pulsante
+                disabled={inCorso || motivoRestituzione.trim().length < 5}
+                onClick={() =>
+                  void esegui(async () => {
+                    await restituisciCaparra(appuntamento.id, {
+                      forma: formaRestituzione,
+                      motivo: motivoRestituzione.trim(),
+                    });
+
+                    return leggiAppuntamento(appuntamento.id);
+                  })
+                }
+              >
+                Restituisci la caparra
+              </Pulsante>
+            </div>
+          </div>
+        )}
+
         {azione === 'nessuna' && (
           <div className="flex flex-wrap justify-end gap-3">
             {modificabile && (
@@ -247,6 +336,11 @@ export function ModaleDettaglioAppuntamento({
                   Segna completato
                 </Pulsante>
               </>
+            )}
+            {utente?.ruolo === 'titolare' && appuntamento.caparraTrattenutaCentesimi > 0 && (
+              <Pulsante variante="secondario" onClick={() => impostaAzione('restituzione')}>
+                Restituisci la caparra
+              </Pulsante>
             )}
             {!modificabile && appuntamento.stato !== 'confermato' && (
               <Pulsante variante="secondario" onClick={onChiudi}>

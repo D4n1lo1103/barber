@@ -1,4 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
+import type { SituazioneCaparre } from '@barber/shared';
 import {
   accreditaCredito,
   caparraPagataDaMovimenti,
@@ -59,6 +60,49 @@ export class CaparraServizio {
     this.logger.log(
       `Movimento ${tipo} di ${importoCentesimi} centesimi sull'appuntamento ${appuntamentoId}.`,
     );
+  }
+
+  /**
+   * Movimenti e credito di un cliente: sono dati economici, quindi li legge
+   * solo il titolare.
+   */
+  async situazioneDelCliente(clienteId: string): Promise<SituazioneCaparre> {
+    const [movimentiCaparra, movimentiCredito, saldoCreditoCentesimi] = await Promise.all([
+      this.prisma.movimentoCaparra.findMany({
+        where: { clienteId },
+        orderBy: { creatoIl: 'desc' },
+        take: 100,
+        include: { autore: { select: { nome: true, cognome: true } } },
+      }),
+      this.prisma.movimentoCredito.findMany({
+        where: { clienteId },
+        orderBy: { creatoIl: 'desc' },
+        take: 100,
+      }),
+      this.saldoCredito(clienteId),
+    ]);
+
+    return {
+      saldoCreditoCentesimi,
+      movimentiCaparra: movimentiCaparra.map((movimento) => ({
+        id: movimento.id,
+        appuntamentoId: movimento.appuntamentoId,
+        tipo: movimento.tipo,
+        importoCentesimi: movimento.importoCentesimi,
+        motivo: movimento.motivo,
+        autore: movimento.autore
+          ? { nome: movimento.autore.nome, cognome: movimento.autore.cognome }
+          : null,
+        creatoIl: movimento.creatoIl.toISOString(),
+      })),
+      movimentiCredito: movimentiCredito.map((movimento) => ({
+        id: movimento.id,
+        importoCentesimi: movimento.importoCentesimi,
+        motivo: movimento.motivo,
+        appuntamentoId: movimento.appuntamentoId,
+        creatoIl: movimento.creatoIl.toISOString(),
+      })),
+    };
   }
 
   /** Accredita o utilizza credito senza passare da un movimento di caparra. */

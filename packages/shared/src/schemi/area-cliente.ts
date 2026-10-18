@@ -79,6 +79,8 @@ export const schemaProfiloCliente = z.object({
   numeroVerificato: z.boolean(),
   consensoTrattamentoIl: z.string().nullable(),
   consensoWhatsappIl: z.string().nullable(),
+  /** Credito a favore del cliente, senza scadenza. */
+  saldoCreditoCentesimi: z.number().int(),
   creatoIl: z.string(),
 });
 

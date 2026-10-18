@@ -8,6 +8,7 @@ import { usaInstallazione } from '../../installazione/contesto-installazione';
 import { ErroreApi } from '../../servizi/client-api';
 import {
   annullaAppuntamentoCliente,
+  avviaPagamentoCaparra,
   leggiDisponibilitaCliente,
   spostaAppuntamentoCliente,
 } from '../../servizi/gestione';
@@ -15,6 +16,7 @@ import {
   formattaDataBreve,
   formattaDurata,
   formattaIntervallo,
+  formattaOra,
   formattaPrezzo,
 } from '../../utilita/formati';
 import { dataDiVista, giornoDaDataDiVista } from '../../utilita/fuso-vista';
@@ -54,6 +56,23 @@ export function MieiAppuntamenti({
     } catch (problema) {
       impostaErrore(problema instanceof ErroreApi ? problema.message : 'Operazione non riuscita.');
     } finally {
+      impostaInCorso(false);
+    }
+  }
+
+  /** Riapre il pagamento della caparra presso il fornitore. */
+  async function paga(appuntamento: AppuntamentoCliente) {
+    impostaInCorso(true);
+    impostaErrore(null);
+
+    try {
+      const pagamento = await avviaPagamentoCaparra(appuntamento.id);
+
+      window.location.assign(pagamento.urlPagamento);
+    } catch (problema) {
+      impostaErrore(
+        problema instanceof ErroreApi ? problema.message : 'Pagamento non disponibile.',
+      );
       impostaInCorso(false);
     }
   }
@@ -98,6 +117,11 @@ export function MieiAppuntamenti({
                     </div>
 
                     <div className="flex flex-wrap gap-2">
+                      {appuntamento.caparraDaPagareCentesimi > 0 && (
+                        <Pulsante disabled={inCorso} onClick={() => void paga(appuntamento)}>
+                          Paga {formattaPrezzo(appuntamento.caparraDaPagareCentesimi)}
+                        </Pulsante>
+                      )}
                       {appuntamento.puoSpostare && (
                         <Pulsante
                           variante="secondario"
@@ -120,7 +144,24 @@ export function MieiAppuntamenti({
                     </div>
                   </div>
 
-                  {!appuntamento.puoAnnullare && (
+                  {appuntamento.stato === 'in_attesa_pagamento' && (
+                    <p className="mt-3 text-xs text-testo-tenue">
+                      In attesa del pagamento della caparra
+                      {appuntamento.bloccoScadeIl
+                        ? `: lo slot è tenuto fino alle ${formattaOra(appuntamento.bloccoScadeIl)}`
+                        : ''}
+                      . Pagata la caparra, l’appuntamento è confermato.
+                    </p>
+                  )}
+
+                  {appuntamento.caparraPagataCentesimi > 0 && (
+                    <p className="mt-3 text-xs text-testo-tenue">
+                      Caparra pagata: {formattaPrezzo(appuntamento.caparraPagataCentesimi)}, che
+                      verrà scalata dal conto a servizio concluso.
+                    </p>
+                  )}
+
+                  {!appuntamento.puoAnnullare && appuntamento.stato !== 'in_attesa_pagamento' && (
                     <p className="mt-3 text-xs text-testo-tenue">
                       Il termine per annullare o spostare online è passato
                       {stato ? ` (${stato.oreLimitePreavviso} ore prima)` : ''}: per modifiche

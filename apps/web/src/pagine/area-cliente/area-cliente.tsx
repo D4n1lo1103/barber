@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router';
 import { motion } from 'motion/react';
 import { CalendarPlus, ListChecks, UserRound } from 'lucide-react';
 import type { AppuntamentoCliente, ProfiloCliente } from '@barber/shared';
@@ -30,6 +31,20 @@ export function PaginaAreaCliente() {
   const [profilo, impostaProfilo] = useState<ProfiloCliente | null>(null);
   const [inCaricamento, impostaCaricamento] = useState(true);
   const [errore, impostaErrore] = useState<string | null>(null);
+  // Il fornitore rimanda qui dopo il pagamento: l'esito vero arriva dal
+  // webhook, quindi questo parametro serve solo a spiegare cosa è successo.
+  const [parametri, impostaParametri] = useSearchParams();
+  const esitoPagamento = parametri.get('pagamento');
+
+  useEffect(() => {
+    if (esitoPagamento) {
+      // Tolto dall'indirizzo: un ricaricamento non deve ripetere l'avviso.
+      const ripuliti = new URLSearchParams(parametri);
+
+      ripuliti.delete('pagamento');
+      impostaParametri(ripuliti, { replace: true });
+    }
+  }, []);
 
   useEffect(() => {
     Promise.all([leggiAppuntamentiCliente(), leggiProfiloCliente()])
@@ -88,6 +103,16 @@ export function PaginaAreaCliente() {
         ))}
       </nav>
 
+      {esitoPagamento && (
+        <div className="mt-4">
+          <Avviso tono={esitoPagamento === 'riuscito' ? 'conferma' : 'avviso'}>
+            {esitoPagamento === 'riuscito'
+              ? 'Pagamento ricevuto. L’appuntamento risulta confermato appena il fornitore ci conferma l’incasso: se qui è ancora in attesa, ricarica fra qualche secondo.'
+              : 'Pagamento non completato. Finché lo slot è tenuto puoi riprovare dal pulsante «Paga».'}
+          </Avviso>
+        </div>
+      )}
+
       {errore && (
         <div className="mt-4">
           <Avviso tono="errore">{errore}</Avviso>
@@ -107,6 +132,7 @@ export function PaginaAreaCliente() {
 
         {scheda === 'prenota' && (
           <Prenota
+            saldoCreditoCentesimi={profilo?.saldoCreditoCentesimi ?? 0}
             onPrenotato={(appuntamento) => {
               sostituisci(appuntamento);
               impostaScheda('appuntamenti');

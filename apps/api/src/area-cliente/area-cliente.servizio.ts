@@ -16,6 +16,7 @@ import {
   type RichiestaCancellazione,
 } from '@barber/shared';
 import { ImpostazioniServizio } from '../impostazioni/impostazioni.servizio.js';
+import { CaparraServizio } from '../pagamenti/caparra.servizio.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 
 @Injectable()
@@ -25,10 +26,12 @@ export class AreaClienteServizio {
   constructor(
     private readonly prisma: PrismaService,
     private readonly impostazioni: ImpostazioniServizio,
+    private readonly caparra: CaparraServizio,
   ) {}
 
   async leggiProfilo(clienteId: string): Promise<ProfiloCliente> {
     const cliente = await this.prisma.utente.findUniqueOrThrow({ where: { id: clienteId } });
+    const saldoCreditoCentesimi = await this.caparra.saldoCredito(clienteId);
 
     return {
       id: cliente.id,
@@ -40,6 +43,7 @@ export class AreaClienteServizio {
       numeroVerificato: cliente.numeroVerificato,
       consensoTrattamentoIl: cliente.consensoTrattamentoIl?.toISOString() ?? null,
       consensoWhatsappIl: cliente.consensoWhatsappIl?.toISOString() ?? null,
+      saldoCreditoCentesimi,
       creatoIl: cliente.creatoIl.toISOString(),
     };
   }

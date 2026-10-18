@@ -8,6 +8,7 @@ import {
 import {
   azioniDelCliente,
   caparraPagataDaMovimenti,
+  caparraTrattenutaDaMovimenti,
   dataLocale,
   fineGiornoLocale,
   giorniConsecutivi,
@@ -723,6 +724,7 @@ export class AppuntamentiServizio {
       senzaCaparra: riga.senzaCaparra,
       caparraCentesimi: riga.caparraCentesimi,
       caparraPagataCentesimi: caparraPagataDaMovimenti(riga.movimentiCaparra),
+      caparraTrattenutaCentesimi: caparraTrattenutaDaMovimenti(riga.movimentiCaparra),
       bloccoScadeIl: riga.bloccoScadeIl?.toISOString() ?? null,
       note: riga.note,
       servizi: riga.servizi.map((servizio) => ({
