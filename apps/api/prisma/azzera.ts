@@ -21,6 +21,11 @@ async function esegui(): Promise<void> {
   const prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString }) });
 
   try {
+    // Magazzino e vendite: le righe trattengono prodotti e clienti.
+    await prisma.movimentoMagazzino.deleteMany();
+    await prisma.rigaVendita.deleteMany();
+    await prisma.vendita.deleteMany();
+    await prisma.prodotto.deleteMany();
     // Movimenti, pagamenti ed eventi trattengono clienti e appuntamenti
     // (vincolo RESTRICT): vanno rimossi per primi.
     await prisma.movimentoCredito.deleteMany();

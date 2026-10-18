@@ -77,6 +77,9 @@ export function PaginaPannello() {
             <Link to="/clienti">
               <Pulsante variante="secondario">Clienti</Pulsante>
             </Link>
+            <Link to="/vendite">
+              <Pulsante variante="secondario">Vendite</Pulsante>
+            </Link>
             {utente.ruolo === 'titolare' && (
               <Link to="/impostazioni">
                 <Pulsante variante="secondario">Impostazioni del salone</Pulsante>

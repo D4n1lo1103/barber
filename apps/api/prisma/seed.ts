@@ -113,6 +113,41 @@ const CLIENTI_DEMO = [
   },
 ];
 
+/**
+ * Prodotti di prova, con giacenze diverse: uno è sotto la scorta minima e uno
+ * è esaurito, per vedere l'avviso delle scorte e il rifiuto della vendita.
+ */
+const PRODOTTI_DEMO = [
+  {
+    nome: 'Shampoo fortificante',
+    descrizione: 'Flacone da 250 ml, per uso quotidiano.',
+    prezzoCentesimi: 1800,
+    giacenza: 12,
+    scortaMinima: 4,
+  },
+  {
+    nome: 'Cera modellante',
+    descrizione: 'Tenuta forte, finitura opaca.',
+    prezzoCentesimi: 1400,
+    giacenza: 3,
+    scortaMinima: 5,
+  },
+  {
+    nome: 'Olio da barba',
+    descrizione: 'Profumazione legnosa, 30 ml.',
+    prezzoCentesimi: 2200,
+    giacenza: 0,
+    scortaMinima: 2,
+  },
+  {
+    nome: 'Pettine in legno',
+    descrizione: 'Denti larghi, faggio naturale.',
+    prezzoCentesimi: 900,
+    giacenza: 20,
+    scortaMinima: 0,
+  },
+];
+
 function leggiProfilo(): Profilo {
   // Il separatore "--" di pnpm può comparire fra gli argomenti: va ignorato.
   const argomento = process.argv.slice(2).find((valore) => valore !== '--');
@@ -358,6 +393,32 @@ async function esegui(): Promise<void> {
       });
     }
 
+    for (const [posizione, prodotto] of PRODOTTI_DEMO.entries()) {
+      const esistente = await prisma.prodotto.findUnique({ where: { nome: prodotto.nome } });
+
+      if (esistente) {
+        continue;
+      }
+
+      const creato = await prisma.prodotto.create({
+        data: { ...prodotto, ordine: posizione + 1 },
+      });
+
+      // La giacenza iniziale è un movimento come gli altri: il magazzino non
+      // ha righe che nascono dal nulla.
+      if (prodotto.giacenza > 0) {
+        await prisma.movimentoMagazzino.create({
+          data: {
+            prodottoId: creato.id,
+            causa: 'carico',
+            quantita: prodotto.giacenza,
+            giacenzaFinale: prodotto.giacenza,
+            motivo: 'Giacenza iniziale dei dati demo.',
+          },
+        });
+      }
+    }
+
     const clienti = await prisma.utente.findMany({
       where: { ruolo: 'cliente' },
       orderBy: { creatoIl: 'asc' },
@@ -373,7 +434,8 @@ async function esegui(): Promise<void> {
     console.warn(
       `Dati demo inseriti per il profilo "${profilo}": ${salone.nome}, ` +
         `${configurazione.catalogoIniziale.length} servizi, ${PERSONALE_DEMO.length} membri del personale, ` +
-        `${CLIENTI_DEMO.length} clienti, orari di apertura e di lavoro, ` +
+        `${CLIENTI_DEMO.length} clienti, ${PRODOTTI_DEMO.length} prodotti, ` +
+        'orari di apertura e di lavoro, ' +
         `${appuntamentiCreati} appuntamenti.`,
     );
   } finally {

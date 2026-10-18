@@ -5,11 +5,12 @@ import { Pulsante } from '../../componenti/pulsante';
 import { usaInstallazione } from '../../installazione/contesto-installazione';
 import { SchedaMessaggi } from './scheda-messaggi';
 import { SchedaOrari } from './scheda-orari';
+import { SchedaProdotti } from './scheda-prodotti';
 import { SchedaRegole } from './scheda-regole';
 import { SchedaPersonale } from './scheda-personale';
 import { SchedaServizi } from './scheda-servizi';
 
-const SCHEDE = ['Servizi', 'Personale', 'Orari', 'Regole', 'Messaggi'] as const;
+const SCHEDE = ['Servizi', 'Prodotti', 'Personale', 'Orari', 'Regole', 'Messaggi'] as const;
 
 type Scheda = (typeof SCHEDE)[number];
 
@@ -59,6 +60,7 @@ export function PaginaImpostazioni() {
         className="mt-6"
       >
         {scheda === 'Servizi' && <SchedaServizi granularitaSlotMinuti={granularita} />}
+        {scheda === 'Prodotti' && <SchedaProdotti />}
         {scheda === 'Personale' && <SchedaPersonale />}
         {scheda === 'Orari' && <SchedaOrari />}
         {scheda === 'Regole' && <SchedaRegole />}

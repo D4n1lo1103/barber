@@ -10,13 +10,17 @@ import type {
   DatiCreazioneChiusura,
   DatiCreazioneCliente,
   DatiCreazioneDipendente,
+  DatiCreazioneProdotto,
   DatiCreazioneServizio,
+  DatiCreazioneVendita,
   DatiEsitoFinto,
   DatiImpostazioniWhatsapp,
   DatiEvasioneRichiesta,
   DatiModificaCliente,
+  DatiModificaProdotto,
   DatiModificaProfilo,
   DatiPrenotazioneCliente,
+  DatiMovimentoGiacenza,
   DatiRegistrazioneCliente,
   DatiRegoleSalone,
   DatiRestituzioneDiscrezionale,
@@ -26,18 +30,22 @@ import type {
   ConfigurazionePagamenti,
   DisponibilitaGiorno,
   ElencoClienti,
+  ElencoVendite,
   EsitoRegistrazione,
   EsitoInvioDiProva,
   EsitoRichiestaCodice,
   EsportazioneDati,
   FasciaSettimanale,
+  MovimentoMagazzino,
   Operatore,
   PagamentoDaCompletare,
   ProfiloCliente,
   RegoleSalone,
   RichiestaCancellazione,
+  Prodotto,
   Servizio,
   StatoWhatsapp,
+  Vendita,
   SituazioneCaparre,
 } from '@barber/shared';
 import { chiamaApi } from './client-api';
@@ -388,6 +396,61 @@ export function leggiRichiestaCancellazione(): Promise<{
 
 export function richiediCancellazioneDati(motivo: string): Promise<RichiestaCancellazione> {
   return chiamaApi('/area-cliente/cancellazione', { metodo: 'POST', corpo: { motivo } });
+}
+
+// ─── Prodotti, magazzino e vendite ────────────────────────────────────────────
+
+export function leggiProdotti(): Promise<Prodotto[]> {
+  return chiamaApi('/prodotti');
+}
+
+/** Prodotti arrivati alla scorta minima: avviso per il personale. */
+export function leggiProdottiSottoScorta(): Promise<Prodotto[]> {
+  return chiamaApi('/prodotti/sotto-scorta');
+}
+
+export function creaProdotto(dati: DatiCreazioneProdotto): Promise<Prodotto> {
+  return chiamaApi('/prodotti', { metodo: 'POST', corpo: dati });
+}
+
+export function modificaProdotto(id: string, dati: DatiModificaProdotto): Promise<Prodotto> {
+  return chiamaApi(`/prodotti/${id}`, { metodo: 'PATCH', corpo: dati });
+}
+
+export function disattivaProdotto(id: string): Promise<Prodotto> {
+  return chiamaApi(`/prodotti/${id}`, { metodo: 'DELETE' });
+}
+
+/** Carico o correzione della giacenza: solo il titolare. */
+export function registraMovimentoGiacenza(
+  id: string,
+  dati: DatiMovimentoGiacenza,
+): Promise<Prodotto> {
+  return chiamaApi(`/prodotti/${id}/movimenti`, { metodo: 'POST', corpo: dati });
+}
+
+export function leggiMovimentiProdotto(id: string): Promise<MovimentoMagazzino[]> {
+  return chiamaApi(`/prodotti/${id}/movimenti`);
+}
+
+export function registraVendita(dati: DatiCreazioneVendita): Promise<Vendita> {
+  return chiamaApi('/vendite', { metodo: 'POST', corpo: dati });
+}
+
+export function leggiVendite(parametri: { clienteId?: string } = {}): Promise<ElencoVendite> {
+  const query = new URLSearchParams();
+
+  if (parametri.clienteId) {
+    query.set('clienteId', parametri.clienteId);
+  }
+
+  const coda = query.toString();
+
+  return chiamaApi(`/vendite${coda === '' ? '' : `?${coda}`}`);
+}
+
+export function annullaVendita(id: string, motivo: string): Promise<Vendita> {
+  return chiamaApi(`/vendite/${id}/annullamento`, { metodo: 'POST', corpo: { motivo } });
 }
 
 // ─── Messaggi WhatsApp ────────────────────────────────────────────────────────
