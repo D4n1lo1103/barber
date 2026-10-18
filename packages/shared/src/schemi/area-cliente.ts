@@ -39,6 +39,11 @@ export const schemaAppuntamentoCliente = z.object({
   prezzoTotaleCentesimi: z.number().int(),
   operatore: z.object({ id: z.uuid(), nome: z.string(), cognome: z.string() }),
   servizi: z.array(z.object({ nome: z.string(), prezzoCentesimi: z.number().int() })),
+  /**
+   * Servizi ancora presenti in catalogo: servono a ricalcolare gli orari
+   * disponibili quando il cliente sposta l'appuntamento.
+   */
+  servizioIds: z.array(z.uuid()),
   puoAnnullare: z.boolean(),
   puoSpostare: z.boolean(),
 });

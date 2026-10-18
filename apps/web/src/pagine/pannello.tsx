@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { motion } from 'motion/react';
-import { Link } from 'react-router';
+import { Link, Navigate } from 'react-router';
 import { CONFIGURAZIONI_PROFILO } from '@barber/shared';
 import { usaSessione } from '../autenticazione/contesto-sessione';
 import { Pulsante } from '../componenti/pulsante';
@@ -25,6 +25,11 @@ export function PaginaPannello() {
 
   if (!utente) {
     return null;
+  }
+
+  // Il cliente ha un'area propria: il pannello è del personale.
+  if (utente.ruolo === 'cliente') {
+    return <Navigate to="/area-cliente" replace />;
   }
 
   const profilo = stato?.profilo ? CONFIGURAZIONI_PROFILO[stato.profilo] : null;
@@ -61,22 +66,17 @@ export function PaginaPannello() {
           </div>
 
           <p className="mt-6 text-sm text-testo-tenue">
-            {utente.ruolo === 'cliente'
-              ? 'L’area clienti, con prenotazione online, arriva nella prossima fase.'
-              : 'Da qui apri l’agenda, le schede clienti e, se sei il titolare, le impostazioni del salone.'}
+            Da qui apri l’agenda, le schede clienti e, se sei il titolare, le impostazioni del
+            salone.
           </p>
 
           <div className="mt-8 flex flex-wrap gap-3">
-            {utente.ruolo !== 'cliente' && (
-              <>
-                <Link to="/agenda">
-                  <Pulsante>Agenda</Pulsante>
-                </Link>
-                <Link to="/clienti">
-                  <Pulsante variante="secondario">Clienti</Pulsante>
-                </Link>
-              </>
-            )}
+            <Link to="/agenda">
+              <Pulsante>Agenda</Pulsante>
+            </Link>
+            <Link to="/clienti">
+              <Pulsante variante="secondario">Clienti</Pulsante>
+            </Link>
             {utente.ruolo === 'titolare' && (
               <Link to="/impostazioni">
                 <Pulsante variante="secondario">Impostazioni del salone</Pulsante>

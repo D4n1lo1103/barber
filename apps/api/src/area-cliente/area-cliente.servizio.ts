@@ -109,6 +109,9 @@ export class AreaClienteServizio {
           nome: servizio.nome,
           prezzoCentesimi: servizio.prezzoCentesimi,
         })),
+        servizioIds: appuntamento.servizi
+          .map((servizio) => servizio.servizioId)
+          .filter((servizioId): servizioId is string => servizioId !== null),
         puoAnnullare: azioni.puoAnnullare,
         puoSpostare: azioni.puoSpostare,
       };

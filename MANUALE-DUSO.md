@@ -1,6 +1,7 @@
 # Manuale d'uso
 
-Guida all'uso del gestionale per il **titolare** e per i **dipendenti** del salone.
+Guida all'uso del gestionale per il **titolare**, per i **dipendenti** e per i **clienti**
+del salone.
 L'interfaccia è in italiano, gli importi in euro e gli orari sempre quelli del salone
 (fuso `Europe/Rome`).
 
@@ -18,6 +19,8 @@ già completate. Le parti ancora da sviluppare sono elencate in fondo, in
   - [Personale](#personale)
   - [Orari e assenze](#orari-e-assenze)
   - [Chiusure del salone](#chiusure-del-salone)
+  - [Regole del salone](#regole-del-salone)
+  - [Richieste di cancellazione dei dati](#richieste-di-cancellazione-dei-dati)
 - [Clienti](#clienti)
 - [Agenda](#agenda)
   - [Inserire un appuntamento](#inserire-un-appuntamento)
@@ -25,6 +28,12 @@ già completate. Le parti ancora da sviluppare sono elencate in fondo, in
   - [Annullare un appuntamento](#annullare-un-appuntamento)
   - [Mancata presentazione](#mancata-presentazione)
   - [Completare un appuntamento](#completare-un-appuntamento)
+- [Area del cliente](#area-del-cliente)
+  - [Creare l'account](#creare-laccount)
+  - [Password dimenticata](#password-dimenticata)
+  - [Prenotare online](#prenotare-online)
+  - [Spostare o annullare dall'app](#spostare-o-annullare-dallapp)
+  - [Profilo, consensi e dati personali](#profilo-consensi-e-dati-personali)
 - [Aspetto e accessibilità](#aspetto-e-accessibilità)
 - [Domande frequenti](#domande-frequenti)
 - [Non ancora disponibile](#non-ancora-disponibile)
@@ -74,8 +83,8 @@ di attivazione** e scelgono la propria.
 
 ## Impostazioni del salone (solo titolare)
 
-Dal pannello iniziale, pulsante **Impostazioni del salone**. Tre schede: Servizi, Personale,
-Orari. I dipendenti non vedono questa pagina.
+Dal pannello iniziale, pulsante **Impostazioni del salone**. Quattro schede: Servizi,
+Personale, Orari e Regole. I dipendenti non vedono questa pagina.
 
 ### Servizi
 
@@ -136,6 +145,42 @@ Dettagli utili:
 - Un dipendente **assunto dopo** eredita automaticamente le chiusure future.
 - Le chiusure non si smontano una persona alla volta: la singola assenza che le compone non
   è rimovibile, si rimuove la chiusura.
+
+### Regole del salone
+
+Scheda _Regole_. Sono le regole che l'area clienti applica da sola, senza che il personale
+debba intervenire.
+
+- **Limite di preavviso (ore)**: entro questo limite il cliente annulla o sposta da solo
+  dall'app, e l'annullamento è **tempestivo**. Oltre il limite i pulsanti scompaiono dalla
+  sua area: deve chiamare il salone e l'annullamento lo registra il personale, scegliendo
+  tempestivo o tardivo. Valore iniziale 24 ore.
+- **Spostamento di un appuntamento**: due possibilità.
+  - _Libero entro il limite di preavviso_: il cliente sposta senza conseguenze.
+  - _Trattato come un annullamento_: seguirà le regole della caparra, quando sarà attiva.
+- **Anticipo del promemoria (ore)**: quanto tempo prima dell'appuntamento parte il
+  promemoria. Serve ai messaggi automatici (e-mail ora, WhatsApp dalla fase 7).
+
+Si salva con **Salva le regole**. Le modifiche valgono subito, anche per gli appuntamenti
+già presi.
+
+I due limiti della prenotazione online — almeno **2 ore** di preavviso e non oltre
+**60 giorni** — sono fissi e non si modificano.
+
+### Richieste di cancellazione dei dati
+
+Nella stessa scheda _Regole_, riquadro **Richieste di cancellazione dei dati**: l'elenco
+delle richieste inviate dai clienti dalla propria area, con la data, il motivo (se indicato)
+e il numero di appuntamenti ancora in agenda. Solo il titolare le vede e le evade.
+
+- **Cancella i dati**: rimuove nome, cognome, contatti e note dalla scheda, disattiva
+  l'account e chiude tutte le sue sessioni. Gli appuntamenti già svolti **restano** nei
+  registri, senza riferimenti personali, come richiedono gli obblighi contabili.
+  **L'operazione non è reversibile.**
+- **Rifiuta**: chiude la richiesta senza toccare i dati.
+
+Se il cliente ha **appuntamenti ancora in agenda** la cancellazione viene rifiutata: vanno
+prima annullati o completati.
 
 ## Clienti
 
@@ -224,6 +269,89 @@ A servizio concluso si apre l'appuntamento e si preme **Segna completato**. Non 
 automatismi: un appuntamento diventa completato solo quando lo segna il personale.
 Da completato, annullato o mancata presentazione non si torna indietro.
 
+## Area del cliente
+
+Questa parte è scritta per il **cliente**: è ciò che vede chi apre l'indirizzo del salone
+dal proprio telefono. Al personale serve per spiegarlo al telefono o in negozio.
+
+Dopo l'accesso il cliente arriva nella propria area, con tre sezioni: **I miei
+appuntamenti**, **Prenota**, **Profilo e dati**. Il pannello e l'agenda del personale non
+gli sono raggiungibili.
+
+### Creare l'account
+
+Servono un account e un indirizzo e-mail confermato: senza, non si prenota.
+
+1. Dalla pagina di accesso, **Crea il tuo account**.
+2. Si indicano nome, cognome, e-mail, numero WhatsApp e una password.
+3. **Consensi**: il trattamento dei dati è obbligatorio, quello ai messaggi WhatsApp è
+   facoltativo e si può cambiare dopo.
+4. Arriva un'e-mail con un link di **conferma dell'indirizzo**, valido 48 ore. Finché non si
+   conferma, l'accesso non funziona. Dalla pagina di verifica si può chiedere un nuovo invio.
+
+Casi particolari:
+
+- **Il salone ha già una scheda con quel numero** (es. cliente che prenotava per telefono):
+  la registrazione **riprende quella scheda**, con tutto lo storico. Non nasce un doppione.
+- **Quel numero o quell'indirizzo hanno già un account attivo**: la registrazione si ferma e
+  invita ad accedere o a reimpostare la password.
+- **Invito ricevuto dal salone**: il link di attivazione porta alla pagina _Attiva il tuo
+  account_, dove si sceglie la password. Se il salone non aveva registrato l'e-mail, la si
+  indica lì: servirà per accedere e per recuperare la password. Il salone non conosce mai la
+  password.
+
+### Password dimenticata
+
+Dalla pagina di accesso, **Password dimenticata?**: si indica l'indirizzo e arriva un link
+valido **2 ore**. Reimpostando la password tutte le sessioni aperte vengono chiuse. Per
+sicurezza la pagina risponde allo stesso modo anche se quell'indirizzo non esiste.
+
+### Prenotare online
+
+Sezione **Prenota**, in tre passi.
+
+1. **Scegli i servizi**: uno o più. La durata e il prezzo totali sono la somma dei servizi
+   scelti.
+2. **Scegli con chi**: compaiono solo gli operatori abilitati a **tutti** i servizi scelti.
+   L'operatore si indica sempre: non esiste l'opzione «operatore indifferente».
+3. **Scegli quando**: giorno e orario fra quelli liberi, calcolati sugli orari
+   dell'operatore e sugli appuntamenti già presenti.
+
+Limiti della prenotazione online: almeno **2 ore** di preavviso e non oltre **60 giorni**.
+Un orario che risultasse occupato nel frattempo viene rifiutato con un messaggio chiaro: si
+sceglie un altro slot.
+
+### Spostare o annullare dall'app
+
+Nella sezione **I miei appuntamenti**, sotto ogni appuntamento futuro:
+
+- **Sposta**: si sceglie il nuovo orario fra quelli liberi, con gli stessi servizi e lo
+  stesso operatore.
+- **Annulla**: libera subito lo slot. Un annullamento fatto dall'app è sempre
+  **tempestivo**.
+
+I due pulsanti compaiono solo **entro il limite di preavviso** deciso dal salone (24 ore
+all'inizio). Passato il limite al loro posto si legge che il termine è scaduto: per
+modificare o annullare si chiama il salone, e il personale registra l'operazione.
+
+Lo **Storico** in fondo elenca gli appuntamenti passati, con servizi, operatore, importo e
+stato.
+
+### Profilo, consensi e dati personali
+
+Sezione **Profilo e dati**.
+
+- **I tuoi dati**: e-mail e numero WhatsApp si possono correggere. Un numero già collegato a
+  un altro account viene rifiutato.
+- **Consensi**: il consenso ai messaggi WhatsApp si concede e si revoca quando si vuole.
+- **I tuoi diritti**:
+  - **Scarica i miei dati**: una copia dei propri dati, appuntamenti compresi.
+  - **Chiedi la cancellazione**: si può aggiungere un motivo. La richiesta la valuta il
+    salone. I dati personali verranno rimossi e l'account disattivato, mentre gli
+    appuntamenti già svolti restano in forma anonima per gli obblighi contabili. Gli
+    appuntamenti futuri vanno annullati prima. Lo stato della richiesta resta visibile in
+    questa sezione.
+
 ## Aspetto e accessibilità
 
 - **Tema scuro** predefinito, tema chiaro disponibile dal pannello. La scelta resta
@@ -257,22 +385,31 @@ Nulla. Conservano prezzo e durata del momento della prenotazione, così lo stori
 fedele.
 
 **Ho sbagliato a creare una scheda cliente: posso cancellarla?**
-Al momento la scheda si corregge, non si cancella: lo storico degli appuntamenti deve
-restare. La cancellazione su richiesta del cliente (GDPR) arriva con l'area clienti.
+La scheda si corregge, non si cancella: lo storico degli appuntamenti deve restare. Su
+richiesta del cliente il titolare può invece rimuoverne i dati personali, dalla scheda
+_Regole_ delle impostazioni. Vedi
+[Richieste di cancellazione dei dati](#richieste-di-cancellazione-dei-dati).
 
 **Il cliente non ha ricevuto il link di attivazione.**
-Dalla sua scheda si genera un nuovo link; il precedente smette di funzionare. Dalla fase 7
-l'invito viene inviato automaticamente via WhatsApp o e-mail.
+Se la scheda ha un'e-mail, l'invito è stato inviato lì: conviene controllare la posta
+indesiderata. Dalla sua scheda si genera comunque un nuovo link, che si può anche dettare al
+telefono; il precedente smette di funzionare. Dalla fase 7 l'invito arriverà anche via
+WhatsApp.
+
+**Un cliente dice di non poter annullare dall'app.**
+È passato il limite di preavviso: oltre quel termine i pulsanti scompaiono. L'annullamento lo
+registra il personale dall'agenda, indicando se l'avviso è tempestivo o tardivo.
+
+**Perché un cliente non riesce ad accedere subito dopo la registrazione?**
+Perché non ha ancora confermato l'indirizzo e-mail. Il link di conferma vale 48 ore e si può
+farsi rinviare dalla pagina di verifica.
 
 ## Non ancora disponibile
 
 Queste funzioni sono previste dalle fasi successive dello sviluppo:
 
-- **Area cliente** (fase 4): registrazione con consensi GDPR, prenotazione online con
-  preavviso minimo di 2 ore, spostamento e annullamento dall'app, consultazione e
-  cancellazione dei propri dati.
-- **E-mail automatiche** (fase 5): verifica dell'account, reset della password, inviti,
-  conferme di prenotazione.
+- **Verifica del numero di telefono** (fase 7): oggi l'account si conferma con la sola
+  e-mail; la verifica del numero arriverà con i messaggi WhatsApp.
 - **Caparra e pagamenti** (fase 6): pagamento online alla prenotazione, blocco temporaneo
   dello slot, rimborsi, credito, restituzione discrezionale da parte del titolare.
 - **WhatsApp** (fase 7): conferme, promemoria e inviti, con ripiego sull'e-mail.

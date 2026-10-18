@@ -1,5 +1,6 @@
 import type {
   Appuntamento,
+  AppuntamentoCliente,
   Assenza,
   Chiusura,
   Cliente,
@@ -10,14 +11,24 @@ import type {
   DatiCreazioneCliente,
   DatiCreazioneDipendente,
   DatiCreazioneServizio,
+  DatiEvasioneRichiesta,
   DatiModificaCliente,
+  DatiModificaProfilo,
+  DatiPrenotazioneCliente,
+  DatiRegistrazioneCliente,
+  DatiRegoleSalone,
   DatiModificaServizio,
   DatiRimozioneChiusura,
   DatiSpostamentoAppuntamento,
   DisponibilitaGiorno,
   ElencoClienti,
+  EsitoRegistrazione,
+  EsportazioneDati,
   FasciaSettimanale,
   Operatore,
+  ProfiloCliente,
+  RegoleSalone,
+  RichiestaCancellazione,
   Servizio,
 } from '@barber/shared';
 import { chiamaApi } from './client-api';
@@ -64,10 +75,10 @@ export function rigeneraInvito(id: string): Promise<{ token: string; scadeIl: st
   return chiamaApi(`/personale/${id}/invito`, { metodo: 'POST' });
 }
 
-export function attivaAccount(token: string, password: string): Promise<void> {
+export function attivaAccount(token: string, password: string, email?: string): Promise<void> {
   return chiamaApi<void>('/autenticazione/attivazione', {
     metodo: 'POST',
-    corpo: { token, password },
+    corpo: { token, password, email },
   });
 }
 
@@ -182,9 +193,7 @@ export function leggiAppuntamenti(dati: {
   return chiamaApi(`/appuntamenti?${parametri.toString()}`);
 }
 
-export function leggiAppuntamentiCliente(
-  clienteId: string,
-): Promise<{ appuntamenti: Appuntamento[] }> {
+export function leggiStoricoCliente(clienteId: string): Promise<{ appuntamenti: Appuntamento[] }> {
   return chiamaApi(`/appuntamenti/cliente/${clienteId}`);
 }
 
@@ -239,4 +248,130 @@ export function segnaMancataPresentazione(id: string): Promise<Appuntamento> {
 
 export function completaAppuntamento(id: string): Promise<Appuntamento> {
   return chiamaApi<Appuntamento>(`/appuntamenti/${id}/completamento`, { metodo: 'POST' });
+}
+
+// ─── Registrazione, verifica e password ───────────────────────────────────────
+
+export function registraCliente(dati: DatiRegistrazioneCliente): Promise<EsitoRegistrazione> {
+  return chiamaApi('/autenticazione/registrazione', { metodo: 'POST', corpo: dati });
+}
+
+export function verificaEmail(token: string): Promise<void> {
+  return chiamaApi<void>('/autenticazione/verifica-email', { metodo: 'POST', corpo: { token } });
+}
+
+export function rinviaVerificaEmail(email: string): Promise<void> {
+  return chiamaApi<void>('/autenticazione/verifica-email/rinvio', {
+    metodo: 'POST',
+    corpo: { email },
+  });
+}
+
+export function richiediResetPassword(email: string): Promise<void> {
+  return chiamaApi<void>('/autenticazione/reset-password', { metodo: 'POST', corpo: { email } });
+}
+
+export function confermaResetPassword(token: string, password: string): Promise<void> {
+  return chiamaApi<void>('/autenticazione/reset-password/conferma', {
+    metodo: 'POST',
+    corpo: { token, password },
+  });
+}
+
+// ─── Regole del salone ────────────────────────────────────────────────────────
+
+export function leggiRegole(): Promise<RegoleSalone> {
+  return chiamaApi<RegoleSalone>('/impostazioni/regole');
+}
+
+export function salvaRegole(dati: DatiRegoleSalone): Promise<RegoleSalone> {
+  return chiamaApi<RegoleSalone>('/impostazioni/regole', { metodo: 'PUT', corpo: dati });
+}
+
+// ─── Richieste di cancellazione (titolare) ────────────────────────────────────
+
+export function leggiRichiesteCancellazione(): Promise<{ richieste: RichiestaCancellazione[] }> {
+  return chiamaApi('/cancellazioni');
+}
+
+export function evadiRichiestaCancellazione(
+  id: string,
+  dati: DatiEvasioneRichiesta,
+): Promise<RichiestaCancellazione> {
+  return chiamaApi(`/cancellazioni/${id}/evasione`, { metodo: 'POST', corpo: dati });
+}
+
+// ─── Area cliente ─────────────────────────────────────────────────────────────
+
+export function leggiCatalogoCliente(): Promise<{ servizi: Servizio[]; operatori: Operatore[] }> {
+  return chiamaApi('/area-cliente/catalogo');
+}
+
+export function leggiAppuntamentiCliente(): Promise<{ appuntamenti: AppuntamentoCliente[] }> {
+  return chiamaApi('/area-cliente/appuntamenti');
+}
+
+export function leggiDisponibilitaCliente(dati: {
+  operatoreId: string;
+  servizioIds: string[];
+  dal: string;
+  giorni?: number;
+  escludiAppuntamentoId?: string;
+}): Promise<{ giorni: DisponibilitaGiorno[] }> {
+  const parametri = new URLSearchParams({
+    operatoreId: dati.operatoreId,
+    servizioIds: dati.servizioIds.join(','),
+    dal: dati.dal,
+    giorni: String(dati.giorni ?? 1),
+  });
+
+  if (dati.escludiAppuntamentoId) {
+    parametri.set('escludiAppuntamentoId', dati.escludiAppuntamentoId);
+  }
+
+  return chiamaApi(`/area-cliente/disponibilita?${parametri.toString()}`);
+}
+
+export function prenotaComeCliente(
+  dati: DatiPrenotazioneCliente,
+): Promise<{ appuntamento: AppuntamentoCliente }> {
+  return chiamaApi('/area-cliente/appuntamenti', { metodo: 'POST', corpo: dati });
+}
+
+export function spostaAppuntamentoCliente(
+  id: string,
+  inizio: string,
+): Promise<{ appuntamento: AppuntamentoCliente }> {
+  return chiamaApi(`/area-cliente/appuntamenti/${id}/spostamento`, {
+    metodo: 'POST',
+    corpo: { inizio },
+  });
+}
+
+export function annullaAppuntamentoCliente(
+  id: string,
+): Promise<{ appuntamento: AppuntamentoCliente }> {
+  return chiamaApi(`/area-cliente/appuntamenti/${id}/annullamento`, { metodo: 'POST' });
+}
+
+export function leggiProfiloCliente(): Promise<ProfiloCliente> {
+  return chiamaApi<ProfiloCliente>('/area-cliente/profilo');
+}
+
+export function modificaProfiloCliente(dati: DatiModificaProfilo): Promise<ProfiloCliente> {
+  return chiamaApi<ProfiloCliente>('/area-cliente/profilo', { metodo: 'PATCH', corpo: dati });
+}
+
+export function esportaDatiCliente(): Promise<EsportazioneDati> {
+  return chiamaApi<EsportazioneDati>('/area-cliente/dati');
+}
+
+export function leggiRichiestaCancellazione(): Promise<{
+  richiesta: RichiestaCancellazione | null;
+}> {
+  return chiamaApi('/area-cliente/cancellazione');
+}
+
+export function richiediCancellazioneDati(motivo: string): Promise<RichiestaCancellazione> {
+  return chiamaApi('/area-cliente/cancellazione', { metodo: 'POST', corpo: { motivo } });
 }
