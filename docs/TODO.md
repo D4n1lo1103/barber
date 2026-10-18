@@ -18,10 +18,14 @@ pagamenti Stripe.
       Nessun valore cablato nel codice: solo un valore iniziale nel database.
 - [ ] `TODO` Attivazione e percentuale della caparra nella scheda _Regole_, con il rifiuto
       delle prenotazioni online senza pagamento quando la caparra è attiva.
-- [ ] `TODO` Decisione ancora aperta: **forma di restituzione predefinita** per un
-      annullamento tempestivo (rimborso sul metodo di pagamento oppure credito). È
-      un'impostazione del titolare: serve solo il valore con cui parte un'installazione
-      nuova.
+- [x] `COMPLETATO` Decisione del titolare (18/10/2026): la **forma di restituzione** della
+      caparra per un annullamento tempestivo la decide il salone dalle impostazioni, con due
+      opzioni, **rimborso** sul metodo di pagamento oppure **credito**. Un'installazione
+      nuova parte da _rimborso_: per un annullamento tempestivo è l'opzione meno
+      contestabile verso il consumatore, e resta modificabile con un clic.
+- [ ] `TODO` Forma di restituzione nella scheda _Regole_ e applicazione della regola
+      all'annullamento tempestivo del cliente (rimborso Stripe oppure credito sul conto del
+      cliente, credito senza scadenza).
 
 ## Da fare — attività trasversali già individuate
 
