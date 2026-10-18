@@ -29,6 +29,8 @@ import {
 import { ClientiServizio } from '../clienti/clienti.servizio.js';
 import { ImpostazioniServizio } from '../impostazioni/impostazioni.servizio.js';
 import { NotificheServizio } from '../notifiche/notifiche.servizio.js';
+import { PagamentiServizio } from '../pagamenti/pagamenti.servizio.js';
+import { ScadenzaBloccoAttivita } from '../pagamenti/scadenza-blocco.attivita.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { DisponibilitaServizio } from './disponibilita.servizio.js';
 
@@ -51,6 +53,8 @@ export class AppuntamentiServizio {
     private readonly clienti: ClientiServizio,
     private readonly notifiche: NotificheServizio,
     private readonly impostazioni: ImpostazioniServizio,
+    private readonly pagamenti: PagamentiServizio,
+    private readonly scadenzaBlocco: ScadenzaBloccoAttivita,
   ) {}
 
   /** Appuntamenti dell'intervallo di giorni richiesto, per l'agenda. */
@@ -220,9 +224,17 @@ export class AppuntamentiServizio {
     const inizio = new Date(dati.inizio);
 
     this.verificaLimitiDiData(inizio);
+    // Uno slot tenuto da un pagamento mai completato non deve bloccare chi
+    // prenota adesso.
+    await this.pagamenti.liberaBlocchiScaduti();
     await this.verificaSlotLibero(dati.operatoreId, inizio, scelti.durataMinuti);
 
     const fine = new Date(inizio.getTime() + scelti.durataMinuti * 60_000);
+    const caparra = await this.caparraPerLaPrenotazione(
+      dati,
+      autoreId,
+      scelti.prezzoTotaleCentesimi,
+    );
 
     try {
       const creato = await this.prisma.appuntamento.create({
@@ -233,9 +245,11 @@ export class AppuntamentiServizio {
           fine,
           durataMinuti: scelti.durataMinuti,
           prezzoTotaleCentesimi: scelti.prezzoTotaleCentesimi,
-          // Finché la caparra non è attiva (fase 6) l'appuntamento inserito dal
-          // personale nasce già confermato.
-          stato: 'confermato',
+          // Con una caparra da pagare lo slot resta bloccato in attesa del
+          // pagamento; senza caparra l'appuntamento nasce già confermato.
+          stato: caparra.centesimi > 0 ? 'in_attesa_pagamento' : 'confermato',
+          caparraCentesimi: caparra.centesimi,
+          bloccoScadeIl: caparra.scadeIl,
           senzaCaparra: dati.senzaCaparra,
           note: dati.note,
           // Nullo quando prenota il cliente stesso dall'area clienti.
@@ -253,12 +267,47 @@ export class AppuntamentiServizio {
         include: INCLUDI_COLLEGAMENTI,
       });
 
-      await this.inviaConferma(creato);
+      if (caparra.scadeIl) {
+        await this.scadenzaBlocco.programma(creato.id, caparra.scadeIl);
+      } else {
+        // La conferma si invia a prenotazione confermata: con la caparra da
+        // pagare parte quando il pagamento riesce.
+        await this.inviaConferma(creato);
+      }
 
       return this.componi(creato);
     } catch (errore) {
       throw this.traduciErroreDiSovrapposizione(errore);
     }
+  }
+
+  /**
+   * Caparra dovuta su una nuova prenotazione e scadenza del blocco dello slot.
+   *
+   * La caparra si paga online, quindi la richiede solo la prenotazione del
+   * cliente: un appuntamento preso al telefono o in negozio nasce confermato,
+   * e il flag «senza caparra» del personale resta tracciato sulla riga.
+   */
+  private async caparraPerLaPrenotazione(
+    dati: DatiCreazioneAppuntamento,
+    autoreId: string | null,
+    prezzoTotaleCentesimi: number,
+  ): Promise<{ centesimi: number; scadeIl: Date | null }> {
+    const prenotaIlCliente = autoreId === null;
+
+    if (!prenotaIlCliente || dati.senzaCaparra) {
+      return { centesimi: 0, scadeIl: null };
+    }
+
+    const centesimi = await this.pagamenti.caparraDovuta(prezzoTotaleCentesimi);
+
+    if (centesimi <= 0) {
+      return { centesimi: 0, scadeIl: null };
+    }
+
+    const minutiBlocco = await this.disponibilita.minutiBloccoSlot();
+
+    return { centesimi, scadeIl: new Date(Date.now() + minutiBlocco * 60_000) };
   }
 
   /** Conferma al cliente, se ha un indirizzo e-mail. */
@@ -361,21 +410,53 @@ export class AppuntamentiServizio {
       annullatoDaId: autoreId,
       annullatoIl: new Date(),
       noteAnnullamento: dati.note,
+      bloccoScadeIl: null,
+    });
+
+    await this.pagamenti.applicaTrattamentoAnnullamento({
+      appuntamentoId: appuntamento.id,
+      clienteId: appuntamento.cliente.id,
+      motivo: dati.motivo,
+      autoreId,
     });
 
     this.logger.log(`Appuntamento ${id} annullato (${dati.motivo}) da ${autoreId}.`);
 
-    return appuntamento;
+    return this.leggi(appuntamento.id);
   }
 
-  /** La mancata presentazione la segna il personale: lo slot resta occupato. */
-  segnaMancataPresentazione(id: string, autoreId: string): Promise<Appuntamento> {
-    return this.cambiaStato(id, 'mancata_presentazione', autoreId);
+  /**
+   * La mancata presentazione la segna il personale: lo slot resta occupato e
+   * la caparra viene trattenuta.
+   */
+  async segnaMancataPresentazione(id: string, autoreId: string): Promise<Appuntamento> {
+    const appuntamento = await this.cambiaStato(id, 'mancata_presentazione', autoreId);
+
+    await this.pagamenti.trattieniPerMancataPresentazione({
+      appuntamentoId: appuntamento.id,
+      clienteId: appuntamento.cliente.id,
+      autoreId,
+    });
+
+    return this.leggi(appuntamento.id);
   }
 
-  /** Il completamento è sempre manuale: nessun automatismo a fine orario. */
-  completa(id: string, autoreId: string): Promise<Appuntamento> {
-    return this.cambiaStato(id, 'completato', autoreId, { completatoIl: new Date() });
+  /**
+   * Il completamento è sempre manuale: nessun automatismo a fine orario. A
+   * servizio concluso la caparra viene scalata dal totale.
+   */
+  async completa(id: string, autoreId: string): Promise<Appuntamento> {
+    const appuntamento = await this.cambiaStato(id, 'completato', autoreId, {
+      completatoIl: new Date(),
+    });
+
+    await this.pagamenti.scalaAlCompletamento({
+      appuntamentoId: appuntamento.id,
+      clienteId: appuntamento.cliente.id,
+      autoreId,
+    });
+
+    return this.leggi(appuntamento.id);
   }
 
   private async cambiaStato(

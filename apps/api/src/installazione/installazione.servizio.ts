@@ -2,6 +2,7 @@ import { ConflictException, ForbiddenException, Injectable, Logger } from '@nest
 import { ConfigService } from '@nestjs/config';
 import { timingSafeEqual } from 'node:crypto';
 import {
+  CAPARRA_PERCENTUALE_PREDEFINITA,
   configurazioneProfilo,
   ORE_LIMITE_PREAVVISO_PREDEFINITO,
   type DatiProceduraGuidata,
@@ -13,6 +14,7 @@ import type { Ambiente } from '../configurazione/ambiente.js';
 
 /** Usata finché la procedura guidata non ha fissato la granularità scelta. */
 const GRANULARITA_PREDEFINITA = 15;
+const MINUTI_BLOCCO_SLOT_PREDEFINITI = 10;
 
 @Injectable()
 export class InstallazioneServizio {
@@ -37,6 +39,10 @@ export class InstallazioneServizio {
         granularitaSlotMinuti: GRANULARITA_PREDEFINITA,
         oreLimitePreavviso: ORE_LIMITE_PREAVVISO_PREDEFINITO,
         spostamentoComeAnnullamento: false,
+        caparraAttiva: false,
+        caparraPercentuale: CAPARRA_PERCENTUALE_PREDEFINITA,
+        restituzioneCaparra: 'rimborso',
+        minutiBloccoSlot: MINUTI_BLOCCO_SLOT_PREDEFINITI,
       };
     }
 
@@ -49,6 +55,11 @@ export class InstallazioneServizio {
       // L'area clienti mostra entro quando si può annullare o spostare.
       oreLimitePreavviso: installazione.oreLimitePreavviso,
       spostamentoComeAnnullamento: installazione.spostamentoComeAnnullamento,
+      // Serve all'area clienti per annunciare la caparra prima di prenotare.
+      caparraAttiva: installazione.caparraAttiva,
+      caparraPercentuale: installazione.caparraPercentuale,
+      restituzioneCaparra: installazione.restituzioneCaparra,
+      minutiBloccoSlot: installazione.minutiBloccoSlot,
     };
   }
 

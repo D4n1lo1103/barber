@@ -18,6 +18,7 @@ import { PrismaService } from '../prisma/prisma.service.js';
 
 /** Granularità usata se l'installazione non è ancora configurata. */
 const GRANULARITA_PREDEFINITA = 15;
+const MINUTI_BLOCCO_SLOT_PREDEFINITI = 10;
 
 export interface ServiziScelti {
   servizi: ServizioDellAppuntamento[];
@@ -32,6 +33,15 @@ export interface ServiziScelti {
 @Injectable()
 export class DisponibilitaServizio {
   constructor(private readonly prisma: PrismaService) {}
+
+  /** Minuti di blocco dello slot durante il pagamento della caparra. */
+  async minutiBloccoSlot(): Promise<number> {
+    const installazione = await this.prisma.installazione.findFirst({
+      select: { minutiBloccoSlot: true },
+    });
+
+    return installazione?.minutiBloccoSlot ?? MINUTI_BLOCCO_SLOT_PREDEFINITI;
+  }
 
   async granularitaSlot(): Promise<number> {
     const installazione = await this.prisma.installazione.findFirst({

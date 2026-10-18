@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { FORME_RESTITUZIONE } from '../dominio/caparra.js';
 import { GRANULARITA_SLOT_AMMESSE } from '../dominio/configurazione-profilo.js';
 import { PROFILI } from '../dominio/profilo.js';
 import {
@@ -92,6 +93,14 @@ export const schemaStatoInstallazione = z.object({
   oreLimitePreavviso: z.number().int(),
   /** Se vero lo spostamento segue le regole dell'annullamento. */
   spostamentoComeAnnullamento: z.boolean(),
+  /** Se vero la prenotazione online richiede il pagamento della caparra. */
+  caparraAttiva: z.boolean(),
+  /** Percentuale della caparra: l'area clienti mostra l'importo prima di pagare. */
+  caparraPercentuale: z.number().int(),
+  /** Forma con cui viene restituita una caparra annullata in tempo. */
+  restituzioneCaparra: z.enum(FORME_RESTITUZIONE),
+  /** Minuti di blocco dello slot durante il pagamento. */
+  minutiBloccoSlot: z.number().int().positive(),
 });
 
 export type StatoInstallazione = z.infer<typeof schemaStatoInstallazione>;

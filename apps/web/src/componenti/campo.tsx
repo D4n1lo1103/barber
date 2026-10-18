@@ -29,6 +29,7 @@ export function Campo({ etichetta, errore, suggerimento, className, ...resto }: 
         className={clsx(
           'w-full rounded-[var(--radius-campo)] border bg-fondo-elevato px-3 py-2.5 text-sm',
           'transition-colors duration-[var(--durata-breve)] outline-none',
+          'disabled:cursor-not-allowed disabled:opacity-60',
           errore ? 'border-errore' : 'border-bordo focus:border-accento',
           className,
         )}

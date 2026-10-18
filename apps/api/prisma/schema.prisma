@@ -59,6 +59,11 @@ model Utente {
   appuntamentiComeOperatore Appuntamento[]           @relation("appuntamentiDellOperatore")
   appuntamentiCreati        Appuntamento[]           @relation("appuntamentiCreati")
   appuntamentiAnnullati     Appuntamento[]           @relation("appuntamentiAnnullati")
+  pagamenti                 Pagamento[]
+  movimentiCaparra          MovimentoCaparra[]        @relation("movimentiDelCliente")
+  movimentiCaparraRegistrati MovimentoCaparra[]       @relation("movimentiRegistrati")
+  movimentiCredito          MovimentoCredito[]        @relation("creditoDelCliente")
+  movimentiCreditoRegistrati MovimentoCredito[]       @relation("creditoRegistrato")
 
   @@index([ruolo, attivo])
   @@map("utenti")
@@ -106,6 +111,12 @@ model Installazione {
   /// Anticipo del promemoria al cliente, in ore (fase 7).
   oreAnticipoPromemoria       Int      @default(24)
   minutiBloccoSlot            Int      @default(10)
+  /// Caparra: il salone decide se applicarla e con quale percentuale sul
+  /// prezzo dei servizi. Nessun valore cablato nel codice.
+  caparraAttiva               Boolean  @default(false)
+  caparraPercentuale          Int      @default(50)
+  /// Forma di restituzione per un annullamento tempestivo del cliente.
+  restituzioneCaparra         FormaRestituzione @default(rimborso)
   venditaOnlineAttiva         Boolean  @default(false)
   creataIl                    DateTime @default(now())
   aggiornataIl                DateTime @updatedAt
@@ -301,6 +312,13 @@ model Appuntamento {
   noteAnnullamento      String              @default("")
   /// Appuntamento inserito dal personale senza richiedere la caparra.
   senzaCaparra          Boolean             @default(false)
+  /// Caparra dovuta, calcolata alla prenotazione sulla percentuale di allora:
+  /// un cambio di impostazione non altera gli appuntamenti già fissati.
+  /// Zero quando la caparra non è richiesta.
+  caparraCentesimi      Int                 @default(0)
+  /// Scadenza del blocco dello slot durante il pagamento: oltre questo
+  /// istante un appuntamento ancora `in_attesa_pagamento` viene annullato.
+  bloccoScadeIl         DateTime?
   note                  String              @default("")
   /// Operatore o dipendente che ha inserito l'appuntamento; nullo quando ha
   /// prenotato il cliente stesso dall'area clienti.
@@ -316,7 +334,10 @@ model Appuntamento {
   creatoDa    Utente? @relation("appuntamentiCreati", fields: [creatoDaId], references: [id], onDelete: SetNull)
   annullatoDa Utente? @relation("appuntamentiAnnullati", fields: [annullatoDaId], references: [id], onDelete: SetNull)
 
-  servizi AppuntamentoServizio[]
+  servizi            AppuntamentoServizio[]
+  pagamenti          Pagamento[]
+  movimentiCaparra   MovimentoCaparra[]
+  movimentiCredito   MovimentoCredito[]
 
   @@index([operatoreId, inizio])
   @@index([clienteId, inizio])
@@ -343,4 +364,125 @@ model AppuntamentoServizio {
   @@index([appuntamentoId, ordine])
   @@index([servizioId])
   @@map("appuntamenti_servizi")
+}
+
+/// Forma con cui il salone restituisce una caparra: rimborso sul metodo di
+/// pagamento oppure credito a favore del cliente.
+enum FormaRestituzione {
+  rimborso
+  credito
+}
+
+/// Stato di un pagamento presso il fornitore esterno. Diventa definitivo solo
+/// con la conferma via webhook.
+enum StatoPagamento {
+  /// Creato presso il fornitore, in attesa che il cliente paghi.
+  avviato
+  riuscito
+  fallito
+  /// Scaduto o abbandonato prima del pagamento.
+  annullato
+  rimborsato
+}
+
+/// Pagamento della caparra presso il fornitore esterno (Stripe). Nessun dato
+/// di carta transita né viene memorizzato: resta solo il riferimento opaco
+/// all'operazione presso il fornitore.
+model Pagamento {
+  id               String         @id @default(uuid()) @db.Uuid
+  appuntamentoId   String         @db.Uuid
+  clienteId        String         @db.Uuid
+  importoCentesimi Int
+  stato            StatoPagamento @default(avviato)
+  /// Identificativo dell'operazione presso il fornitore (es. PaymentIntent).
+  riferimento      String         @unique
+  /// Identificativo del rimborso presso il fornitore, quando emesso.
+  riferimentoRimborso String?
+  /// Motivo dell'ultimo esito negativo, per il supporto al cliente.
+  erroreFornitore  String         @default("")
+  creatoIl         DateTime       @default(now())
+  aggiornatoIl     DateTime       @updatedAt
+
+  appuntamento Appuntamento @relation(fields: [appuntamentoId], references: [id], onDelete: Cascade)
+  cliente      Utente       @relation(fields: [clienteId], references: [id], onDelete: Restrict)
+
+  @@index([appuntamentoId])
+  @@index([clienteId])
+  @@index([stato])
+  @@map("pagamenti")
+}
+
+/// Tipo di movimento della caparra: ogni passaggio di denaro o di diritto
+/// sulla caparra lascia una riga, come richiede l'audit.
+enum TipoMovimentoCaparra {
+  pagata
+  rimborsata
+  convertita_in_credito
+  trattenuta
+  /// Scalata dal totale a servizio concluso.
+  scalata
+  /// Restituita dal titolare in via discrezionale, con motivazione.
+  restituita_discrezionale
+}
+
+/// Movimento della caparra di un appuntamento: data, importo, autore e motivo.
+/// Le righe non si modificano né si cancellano: sono il registro di audit.
+model MovimentoCaparra {
+  id               String               @id @default(uuid()) @db.Uuid
+  appuntamentoId   String               @db.Uuid
+  clienteId        String               @db.Uuid
+  tipo             TipoMovimentoCaparra
+  importoCentesimi Int
+  /// Motivo: obbligatorio per la restituzione discrezionale.
+  motivo           String               @default("")
+  /// Chi ha registrato il movimento; nullo quando l'ha prodotto il sistema
+  /// (pagamento confermato dal webhook, scadenza del blocco).
+  autoreId         String?              @db.Uuid
+  creatoIl         DateTime             @default(now())
+
+  appuntamento Appuntamento @relation(fields: [appuntamentoId], references: [id], onDelete: Cascade)
+  cliente      Utente       @relation("movimentiDelCliente", fields: [clienteId], references: [id], onDelete: Restrict)
+  autore       Utente?      @relation("movimentiRegistrati", fields: [autoreId], references: [id], onDelete: SetNull)
+
+  @@index([appuntamentoId, creatoIl])
+  @@index([clienteId, creatoIl])
+  @@map("movimenti_caparra")
+}
+
+/// Movimento del credito del cliente: positivo quando il credito aumenta,
+/// negativo quando viene speso. Il saldo è la somma dei movimenti e non ha
+/// scadenza.
+model MovimentoCredito {
+  id               String   @id @default(uuid()) @db.Uuid
+  clienteId        String   @db.Uuid
+  /// Positivo in accredito, negativo in utilizzo.
+  importoCentesimi Int
+  motivo           String   @default("")
+  /// Appuntamento che ha generato o speso il credito, quando pertinente.
+  appuntamentoId   String?  @db.Uuid
+  autoreId         String?  @db.Uuid
+  creatoIl         DateTime @default(now())
+
+  cliente      Utente        @relation("creditoDelCliente", fields: [clienteId], references: [id], onDelete: Restrict)
+  appuntamento Appuntamento? @relation(fields: [appuntamentoId], references: [id], onDelete: SetNull)
+  autore       Utente?       @relation("creditoRegistrato", fields: [autoreId], references: [id], onDelete: SetNull)
+
+  @@index([clienteId, creatoIl])
+  @@index([appuntamentoId])
+  @@map("movimenti_credito")
+}
+
+/// Evento ricevuto dal fornitore di pagamenti, registrato per garantire
+/// l'idempotenza: un evento già elaborato viene riconosciuto e ignorato.
+model EventoPagamento {
+  /// Identificativo dell'evento presso il fornitore.
+  id          String    @id
+  tipo        String
+  ricevutoIl  DateTime  @default(now())
+  elaboratoIl DateTime?
+  /// Esito dell'elaborazione, per il troubleshooting.
+  esito       String    @default("")
+
+  @@index([ricevutoIl])
+  @@map("eventi_pagamento")
 }

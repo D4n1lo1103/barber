@@ -76,6 +76,11 @@ describe('Procedura guidata al primo avvio', () => {
       granularitaSlotMinuti: 15,
       oreLimitePreavviso: 24,
       spostamentoComeAnnullamento: false,
+      // La caparra parte disattivata: la decide il salone dalle impostazioni.
+      caparraAttiva: false,
+      caparraPercentuale: 50,
+      restituzioneCaparra: 'rimborso',
+      minutiBloccoSlot: 10,
     });
   });
 
@@ -212,6 +217,11 @@ describe('Procedura guidata al primo avvio', () => {
       // L'area clienti mostra entro quando si può annullare o spostare.
       oreLimitePreavviso: 24,
       spostamentoComeAnnullamento: false,
+      caparraAttiva: false,
+      caparraPercentuale: 50,
+      restituzioneCaparra: 'rimborso',
+      // Minuti di blocco dello slot scelti nella procedura guidata.
+      minutiBloccoSlot: 10,
     });
   });
 });

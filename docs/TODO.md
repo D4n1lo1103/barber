@@ -2,30 +2,61 @@
 
 Stato dello sviluppo per fasi (vedi la roadmap in `CLAUDE.md`).
 
-## In corso
+## In corso — Fase 6: Caparra e pagamenti Stripe
 
-Nessuna attività in corso: le fasi da 0 a 5 sono completate. Prossima: fase 6 — caparra e
-pagamenti Stripe.
+Le fasi da 0 a 5 sono completate.
 
-## Da fare — Fase 6: Caparra e pagamenti Stripe
+### Decisioni prese con il titolare (18/10/2026)
 
-- [ ] `TODO` Analisi: movimenti della caparra (pagata, rimborsata, convertita in credito,
-      trattenuta, scalata dal saldo, restituita in via discrezionale) e registro di audit.
-- [x] `COMPLETATO` Decisione del titolare (18/10/2026): **la caparra si governa dalle
-      impostazioni dell'applicativo**, non dalla procedura guidata. Il singolo salone
-      stabilisce sia **se applicarla** (attiva/disattiva) sia la **percentuale**, nella
-      scheda _Regole_ accanto al limite di preavviso e alla regola di spostamento.
-      Nessun valore cablato nel codice: solo un valore iniziale nel database.
-- [ ] `TODO` Attivazione e percentuale della caparra nella scheda _Regole_, con il rifiuto
-      delle prenotazioni online senza pagamento quando la caparra è attiva.
-- [x] `COMPLETATO` Decisione del titolare (18/10/2026): la **forma di restituzione** della
-      caparra per un annullamento tempestivo la decide il salone dalle impostazioni, con due
-      opzioni, **rimborso** sul metodo di pagamento oppure **credito**. Un'installazione
-      nuova parte da _rimborso_: per un annullamento tempestivo è l'opzione meno
-      contestabile verso il consumatore, e resta modificabile con un clic.
-- [ ] `TODO` Forma di restituzione nella scheda _Regole_ e applicazione della regola
-      all'annullamento tempestivo del cliente (rimborso Stripe oppure credito sul conto del
-      cliente, credito senza scadenza).
+1. **La caparra si governa dalle impostazioni**, non dalla procedura guidata: il salone
+   decide se applicarla e con quale percentuale, nella scheda _Regole_.
+2. **Forma di restituzione** per un annullamento tempestivo: scelta del salone fra rimborso
+   sul metodo di pagamento e credito. Un'installazione nuova parte da _rimborso_.
+3. **Stripe dietro interfaccia**, con un provider finto per i test automatici: lo sviluppo
+   non dipende dalle chiavi, che servono solo alla verifica manuale nel browser.
+
+### Attività
+
+- [ ] `IN CORSO` Modello dati: impostazioni della caparra sull'installazione, importo e
+      scadenza del blocco sull'appuntamento, pagamenti, movimenti della caparra, movimenti
+      del credito del cliente, eventi Stripe già elaborati (idempotenza).
+- [ ] `TODO` Migrazione SQL manuale: vincoli di coerenza fra stato dell'appuntamento e
+      scadenza del blocco, indici per saldo del credito e movimenti.
+- [ ] `TODO` Impostazioni della caparra nella scheda _Regole_ (attiva, percentuale, forma di
+      restituzione), con validazione condivisa.
+- [ ] `TODO` Interfaccia `FornitorePagamenti` con due realizzazioni: Stripe e fornitore
+      finto per test e sviluppo senza chiavi.
+- [ ] `TODO` Prenotazione online con caparra attiva: appuntamento `in_attesa_pagamento`,
+      slot bloccato per i minuti definiti in installazione, pagamento avviato.
+- [ ] `TODO` Webhook Stripe verificato per firma e idempotente: la conferma
+      dell'appuntamento avviene solo qui.
+- [ ] `TODO` Scadenza del blocco su pg-boss: annullamento `pagamento_non_completato` e slot
+      di nuovo libero.
+- [ ] `TODO` Regole di annullamento: tempestivo (rimborso o credito secondo l'impostazione),
+      tardivo e mancata presentazione (trattenuta), dal salone (rimborso integrale).
+- [ ] `TODO` Caparra scalata dal totale al completamento dell'appuntamento.
+- [ ] `TODO` Restituzione discrezionale: solo titolare, motivazione obbligatoria, tracciata.
+- [ ] `TODO` Credito del cliente: saldo, utilizzo per una prenotazione futura, nessuna
+      scadenza.
+- [ ] `TODO` Registro di audit dei movimenti: data, importo, autore e motivo su ogni
+      movimento, visibile al titolare sulla scheda cliente e sull'appuntamento.
+- [ ] `TODO` Interfaccia: pagamento della caparra nell'area cliente, stato del pagamento
+      nell'agenda, movimenti e credito nella scheda cliente, restituzione discrezionale.
+- [ ] `TODO` Test: unitari sul calcolo della caparra e sulle regole di restituzione,
+      integrazione su webhook (firma, idempotenza, ordine degli eventi), scadenza del
+      blocco, permessi; end-to-end del flusso di prenotazione con caparra e annullamento.
+- [ ] `TODO` Documentazione: ADR 0008, README (variabili Stripe e rotte), `.env.example`,
+      `MANUALE-DUSO.md`.
+
+### Da chiarire prima di implementare i flussi
+
+- [ ] `BLOCCATO` **Spostamento quando la regola è «trattato come un annullamento»**: non è
+      definito se lo spostamento debba restituire la caparra e richiederne una nuova, oppure
+      se la caparra già pagata segua l'appuntamento spostato.
+  - Blocco: serve la decisione del titolare.
+- [ ] `BLOCCATO` **Credito inferiore alla caparra dovuta**: non è definito se il credito
+      possa coprire una parte dell'importo, con il resto pagato con carta, o solo l'intero.
+  - Blocco: serve la decisione del titolare.
 
 ## Da fare — attività trasversali già individuate
 

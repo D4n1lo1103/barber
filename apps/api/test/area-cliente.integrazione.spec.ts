@@ -24,6 +24,16 @@ function prossimoMercoledi(): string {
   return dataLocale(giorno);
 }
 
+/** Regole di partenza di un'installazione nuova, da modificare nei test. */
+const REGOLE_DI_PARTENZA = {
+  oreLimitePreavviso: 24,
+  spostamentoComeAnnullamento: false,
+  oreAnticipoPromemoria: 24,
+  caparraAttiva: false,
+  caparraPercentuale: 50,
+  restituzioneCaparra: 'rimborso',
+} as const;
+
 describe('Area del cliente', () => {
   let contesto: ContestoDiProva;
   let titolare: { cookie: string; tokenCsrf: string };
@@ -295,11 +305,12 @@ describe('Area del cliente', () => {
       // Limite di due settimane: l'appuntamento è più vicino, quindi tardivo.
       await come(
         titolare,
-        chiama().put('/api/impostazioni/regole').send({
-          oreLimitePreavviso: 336,
-          spostamentoComeAnnullamento: false,
-          oreAnticipoPromemoria: 24,
-        }),
+        chiama()
+          .put('/api/impostazioni/regole')
+          .send({
+            ...REGOLE_DI_PARTENZA,
+            oreLimitePreavviso: 336,
+          }),
       ).expect(200);
 
       const elenco = await come(cliente, chiama().get('/api/area-cliente/appuntamenti')).expect(
@@ -470,22 +481,28 @@ describe('Area del cliente', () => {
     it('le cambia solo il titolare e rifiuta valori fuori intervallo', async () => {
       await come(
         cliente,
-        chiama().put('/api/impostazioni/regole').send({
-          oreLimitePreavviso: 12,
-          spostamentoComeAnnullamento: true,
-          oreAnticipoPromemoria: 12,
-        }),
+        chiama()
+          .put('/api/impostazioni/regole')
+          .send({
+            ...REGOLE_DI_PARTENZA,
+            oreLimitePreavviso: 12,
+            spostamentoComeAnnullamento: true,
+          }),
       ).expect(403);
 
       const salvate = await come(
         titolare,
-        chiama().put('/api/impostazioni/regole').send({
-          oreLimitePreavviso: 48,
-          spostamentoComeAnnullamento: true,
-          oreAnticipoPromemoria: 12,
-        }),
+        chiama()
+          .put('/api/impostazioni/regole')
+          .send({
+            ...REGOLE_DI_PARTENZA,
+            oreLimitePreavviso: 48,
+            spostamentoComeAnnullamento: true,
+            oreAnticipoPromemoria: 12,
+          }),
       ).expect(200);
       expect(salvate.body).toEqual({
+        ...REGOLE_DI_PARTENZA,
         oreLimitePreavviso: 48,
         spostamentoComeAnnullamento: true,
         oreAnticipoPromemoria: 12,
@@ -493,11 +510,12 @@ describe('Area del cliente', () => {
 
       await come(
         titolare,
-        chiama().put('/api/impostazioni/regole').send({
-          oreLimitePreavviso: 1000,
-          spostamentoComeAnnullamento: false,
-          oreAnticipoPromemoria: 24,
-        }),
+        chiama()
+          .put('/api/impostazioni/regole')
+          .send({
+            ...REGOLE_DI_PARTENZA,
+            oreLimitePreavviso: 1000,
+          }),
       ).expect(400);
 
       // Lo stato pubblico riporta le regole: l'area clienti le mostra.
