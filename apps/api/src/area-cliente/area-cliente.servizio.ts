@@ -114,6 +114,13 @@ export class AreaClienteServizio {
           .filter((servizioId): servizioId is string => servizioId !== null),
         puoAnnullare: azioni.puoAnnullare,
         puoSpostare: azioni.puoSpostare,
+        caparraCentesimi: appuntamento.caparraCentesimi,
+        caparraPagataCentesimi: appuntamento.caparraPagataCentesimi,
+        caparraDaPagareCentesimi: Math.max(
+          0,
+          appuntamento.caparraCentesimi - appuntamento.caparraPagataCentesimi,
+        ),
+        bloccoScadeIl: appuntamento.bloccoScadeIl,
       };
     });
   }

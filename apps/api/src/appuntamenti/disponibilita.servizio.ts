@@ -14,6 +14,7 @@ import {
   type Occupazione,
   type ServizioDellAppuntamento,
 } from '@barber/shared';
+import { PagamentiServizio } from '../pagamenti/pagamenti.servizio.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 
 /** Granularità usata se l'installazione non è ancora configurata. */
@@ -32,7 +33,10 @@ export interface ServiziScelti {
  */
 @Injectable()
 export class DisponibilitaServizio {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly pagamenti: PagamentiServizio,
+  ) {}
 
   /** Minuti di blocco dello slot durante il pagamento della caparra. */
   async minutiBloccoSlot(): Promise<number> {
@@ -179,6 +183,10 @@ export class DisponibilitaServizio {
     if (!partiData(dati.dal)) {
       throw new BadRequestException('Data non valida.');
     }
+
+    // Uno slot tenuto da un pagamento mai completato risulterebbe occupato:
+    // prima di contare gli slot liberi i blocchi scaduti vengono chiusi.
+    await this.pagamenti.liberaBlocchiScaduti();
 
     const { durataMinuti } = await this.leggiServiziScelti(dati.operatoreId, dati.servizioIds);
     const granularitaMinuti = await this.granularitaSlot();

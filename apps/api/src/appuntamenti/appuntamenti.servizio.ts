@@ -31,6 +31,7 @@ import {
 import { ClientiServizio } from '../clienti/clienti.servizio.js';
 import { ImpostazioniServizio } from '../impostazioni/impostazioni.servizio.js';
 import { NotificheServizio } from '../notifiche/notifiche.servizio.js';
+import { CaparraServizio } from '../pagamenti/caparra.servizio.js';
 import { PagamentiServizio } from '../pagamenti/pagamenti.servizio.js';
 import { ScadenzaBloccoAttivita } from '../pagamenti/scadenza-blocco.attivita.js';
 import { PrismaService } from '../prisma/prisma.service.js';
@@ -58,6 +59,7 @@ export class AppuntamentiServizio {
     private readonly notifiche: NotificheServizio,
     private readonly impostazioni: ImpostazioniServizio,
     private readonly pagamenti: PagamentiServizio,
+    private readonly caparra: CaparraServizio,
     private readonly scadenzaBlocco: ScadenzaBloccoAttivita,
   ) {}
 
@@ -116,7 +118,16 @@ export class AppuntamentiServizio {
     );
   }
 
-  /** Spostamento chiesto dal cliente: consentito solo entro il preavviso. */
+  /**
+   * Spostamento chiesto dal cliente: consentito solo entro il preavviso.
+   *
+   * Se il titolare ha scelto che lo spostamento sia **trattato come un
+   * annullamento** e c'è una caparra pagata, lo spostamento non muove
+   * l'appuntamento: annulla quello vecchio, restituendo la caparra secondo le
+   * regole, e ne crea uno nuovo sull'orario scelto, che richiede una nuova
+   * caparra. Con la regola dello spostamento libero, o senza caparra pagata,
+   * l'appuntamento si sposta e la caparra resta dov'è.
+   */
   async spostaComeCliente(id: string, clienteId: string, inizio: string): Promise<Appuntamento> {
     const appuntamento = await this.verificaAzioneDelCliente(id, clienteId, 'spostare');
     const nuovoInizio = new Date(inizio);
@@ -128,7 +139,58 @@ export class AppuntamentiServizio {
       );
     }
 
+    const regole = await this.impostazioni.leggiRegole();
+    const caparraPagata = await this.caparra.caparraPagata(appuntamento.id);
+
+    if (regole.spostamentoComeAnnullamento && caparraPagata > 0) {
+      return this.riprenotaDopoAnnullamento(appuntamento.id, clienteId, inizio);
+    }
+
     return this.sposta(appuntamento.id, { inizio }, clienteId);
+  }
+
+  /**
+   * Annulla e riprenota: l'annullamento è entro il limite di preavviso, quindi
+   * tempestivo, e la caparra torna al cliente nella forma scelta dal salone.
+   * Il nuovo appuntamento nasce con la propria caparra da pagare, che il
+   * credito copre in tutto o in parte se la restituzione è in credito.
+   */
+  private async riprenotaDopoAnnullamento(
+    id: string,
+    clienteId: string,
+    inizio: string,
+  ): Promise<Appuntamento> {
+    const vecchio = await this.prisma.appuntamento.findUniqueOrThrow({
+      where: { id },
+      select: {
+        operatoreId: true,
+        servizi: { select: { servizioId: true }, orderBy: { ordine: 'asc' } },
+      },
+    });
+
+    const servizioIds = vecchio.servizi
+      .map((servizio) => servizio.servizioId)
+      .filter((servizioId): servizioId is string => servizioId !== null);
+
+    if (servizioIds.length !== vecchio.servizi.length) {
+      throw new BadRequestException(
+        'Uno dei servizi prenotati non è più in catalogo: contatta il salone per lo spostamento.',
+      );
+    }
+
+    // Prima si libera lo slot vecchio, altrimenti il nuovo orario potrebbe
+    // sovrapporsi a quello che si sta lasciando.
+    await this.annulla(
+      id,
+      { motivo: 'tempestivo', note: 'Spostamento chiesto dal cliente.' },
+      clienteId,
+    );
+
+    return this.prenotaComeCliente(clienteId, {
+      operatoreId: vecchio.operatoreId,
+      servizioIds,
+      inizio,
+    });
   }
 
   /**
@@ -251,7 +313,9 @@ export class AppuntamentiServizio {
           prezzoTotaleCentesimi: scelti.prezzoTotaleCentesimi,
           // Con una caparra da pagare lo slot resta bloccato in attesa del
           // pagamento; senza caparra l'appuntamento nasce già confermato.
-          stato: caparra.centesimi > 0 ? 'in_attesa_pagamento' : 'confermato',
+          // Con una differenza da pagare lo slot resta bloccato in attesa; se
+          // il credito copre tutta la caparra l'appuntamento è già confermato.
+          stato: caparra.scadeIl ? 'in_attesa_pagamento' : 'confermato',
           caparraCentesimi: caparra.centesimi,
           bloccoScadeIl: caparra.scadeIl,
           senzaCaparra: caparra.centesimi === 0,
@@ -271,15 +335,21 @@ export class AppuntamentiServizio {
         include: INCLUDI_COLLEGAMENTI,
       });
 
+      await this.pagamenti.applicaCreditoAllaPrenotazione({
+        appuntamentoId: creato.id,
+        clienteId: creato.clienteId,
+        creditoUsatoCentesimi: caparra.creditoUsato,
+      });
+
       if (caparra.scadeIl) {
         await this.scadenzaBlocco.programma(creato.id, caparra.scadeIl);
       } else {
-        // La conferma si invia a prenotazione confermata: con la caparra da
-        // pagare parte quando il pagamento riesce.
+        // La conferma si invia a prenotazione confermata: con una differenza
+        // da pagare parte quando il pagamento riesce.
         await this.inviaConferma(creato);
       }
 
-      return this.componi(creato);
+      return this.leggi(creato.id);
     } catch (errore) {
       throw this.traduciErroreDiSovrapposizione(errore);
     }
@@ -298,22 +368,33 @@ export class AppuntamentiServizio {
     dati: DatiCreazioneAppuntamento,
     autoreId: string | null,
     prezzoTotaleCentesimi: number,
-  ): Promise<{ centesimi: number; scadeIl: Date | null }> {
+  ): Promise<{ centesimi: number; creditoUsato: number; scadeIl: Date | null }> {
     const prenotaIlCliente = autoreId === null;
 
     if (!prenotaIlCliente || dati.senzaCaparra) {
-      return { centesimi: 0, scadeIl: null };
+      return { centesimi: 0, creditoUsato: 0, scadeIl: null };
     }
 
-    const centesimi = await this.pagamenti.caparraDovuta(prezzoTotaleCentesimi);
+    const caparra = await this.pagamenti.caparraPerPrenotazione(
+      dati.clienteId,
+      prezzoTotaleCentesimi,
+    );
 
-    if (centesimi <= 0) {
-      return { centesimi: 0, scadeIl: null };
+    if (caparra.caparraCentesimi <= 0) {
+      return { centesimi: 0, creditoUsato: 0, scadeIl: null };
     }
 
+    // Lo slot si blocca solo se resta qualcosa da pagare: con la caparra
+    // coperta dal credito non c'è alcuna attesa.
     const minutiBlocco = await this.disponibilita.minutiBloccoSlot();
+    const scadeIl =
+      caparra.daPagareCentesimi > 0 ? new Date(Date.now() + minutiBlocco * 60_000) : null;
 
-    return { centesimi, scadeIl: new Date(Date.now() + minutiBlocco * 60_000) };
+    return {
+      centesimi: caparra.caparraCentesimi,
+      creditoUsato: caparra.creditoUsatoCentesimi,
+      scadeIl,
+    };
   }
 
   /** Conferma al cliente, se ha un indirizzo e-mail. */

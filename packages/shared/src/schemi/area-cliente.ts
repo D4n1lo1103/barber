@@ -46,6 +46,14 @@ export const schemaAppuntamentoCliente = z.object({
   servizioIds: z.array(z.uuid()),
   puoAnnullare: z.boolean(),
   puoSpostare: z.boolean(),
+  /** Caparra dovuta su questo appuntamento: zero se non richiesta. */
+  caparraCentesimi: z.number().int(),
+  /** Parte già pagata, con carta o con il credito. */
+  caparraPagataCentesimi: z.number().int(),
+  /** Differenza ancora da pagare perché l'appuntamento sia confermato. */
+  caparraDaPagareCentesimi: z.number().int(),
+  /** Istante entro cui pagare, mentre lo slot resta bloccato. */
+  bloccoScadeIl: z.string().nullable(),
 });
 
 export type AppuntamentoCliente = z.infer<typeof schemaAppuntamentoCliente>;

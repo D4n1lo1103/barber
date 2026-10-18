@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   accreditaCredito,
   calcolaCaparra,
+  creditoDaUsare,
   residuoDaSaldare,
   trattamentoDellaCaparra,
 } from './caparra.js';
@@ -30,6 +31,30 @@ describe('Calcolo della caparra', () => {
     // Una caparra superiore al prezzo (prezzo ridotto dopo il pagamento) non
     // produce un residuo negativo.
     expect(residuoDaSaldare(1000, 1500)).toBe(0);
+  });
+});
+
+describe('Uso del credito sulla caparra', () => {
+  it('copre tutta la caparra quando il credito basta', () => {
+    expect(creditoDaUsare(1500, 1500)).toBe(1500);
+    expect(creditoDaUsare(1500, 4000)).toBe(1500);
+  });
+
+  it('copre una parte e lascia il resto da pagare', () => {
+    expect(creditoDaUsare(1500, 1000)).toBe(1000);
+  });
+
+  it('lascia da pagare almeno il minimo accettato dal fornitore', () => {
+    // Con 14,70 € di credito su 15,00 € di caparra resterebbero 30 centesimi,
+    // che il fornitore rifiuterebbe: si usa meno credito e si pagano 50.
+    expect(creditoDaUsare(1500, 1470)).toBe(1450);
+  });
+
+  it('non usa credito quando non ce n’è o non c’è caparra', () => {
+    expect(creditoDaUsare(1500, 0)).toBe(0);
+    expect(creditoDaUsare(0, 1500)).toBe(0);
+    // Credito inferiore al minimo pagabile: resta fermo.
+    expect(creditoDaUsare(40, 20)).toBe(0);
   });
 });
 

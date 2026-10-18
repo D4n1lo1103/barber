@@ -2,6 +2,7 @@ import { BadRequestException, Inject, Injectable, Logger, NotFoundException } fr
 import { ConfigService } from '@nestjs/config';
 import {
   calcolaCaparra,
+  creditoDaUsare,
   trattamentoDellaCaparra,
   type FormaRestituzione,
   type MotivoAnnullamento,
@@ -15,6 +16,16 @@ import {
   type EventoPagamento,
   type FornitorePagamenti,
 } from './fornitore-pagamenti.js';
+
+/** Caparra richiesta su una nuova prenotazione, e quanto ne copre il credito. */
+export interface CaparraPerPrenotazione {
+  /** Caparra dovuta per intero. */
+  caparraCentesimi: number;
+  /** Parte coperta dal credito del cliente. */
+  creditoUsatoCentesimi: number;
+  /** Differenza da pagare con carta: zero se il credito copre tutto. */
+  daPagareCentesimi: number;
+}
 
 /** Pagamento da far completare al cliente. */
 export interface PagamentoDaCompletare {
@@ -59,6 +70,61 @@ export class PagamentiServizio {
   }
 
   /**
+   * Caparra di una nuova prenotazione, già ripartita fra credito del cliente e
+   * importo da pagare con carta. Il credito copre quello che può: il resto si
+   * paga, così non resta credito fermo.
+   */
+  async caparraPerPrenotazione(
+    clienteId: string,
+    prezzoTotaleCentesimi: number,
+  ): Promise<CaparraPerPrenotazione> {
+    const caparraCentesimi = await this.caparraDovuta(prezzoTotaleCentesimi);
+
+    if (caparraCentesimi <= 0) {
+      return { caparraCentesimi: 0, creditoUsatoCentesimi: 0, daPagareCentesimi: 0 };
+    }
+
+    const saldo = await this.caparra.saldoCredito(clienteId);
+    const creditoUsatoCentesimi = creditoDaUsare(caparraCentesimi, saldo);
+
+    return {
+      caparraCentesimi,
+      creditoUsatoCentesimi,
+      daPagareCentesimi: caparraCentesimi - creditoUsatoCentesimi,
+    };
+  }
+
+  /**
+   * Scala dal credito la parte di caparra che copre. Il credito speso vale
+   * come caparra pagata: se poi il pagamento della differenza non arriva, la
+   * scadenza del blocco lo restituisce.
+   */
+  async applicaCreditoAllaPrenotazione(parametri: {
+    appuntamentoId: string;
+    clienteId: string;
+    creditoUsatoCentesimi: number;
+  }): Promise<void> {
+    if (parametri.creditoUsatoCentesimi <= 0) {
+      return;
+    }
+
+    await this.caparra.registraCredito({
+      clienteId: parametri.clienteId,
+      appuntamentoId: parametri.appuntamentoId,
+      importoCentesimi: -parametri.creditoUsatoCentesimi,
+      motivo: 'Credito usato per la caparra di una prenotazione.',
+    });
+
+    await this.caparra.registra({
+      appuntamentoId: parametri.appuntamentoId,
+      clienteId: parametri.clienteId,
+      tipo: 'pagata',
+      importoCentesimi: parametri.creditoUsatoCentesimi,
+      motivo: 'Caparra coperta dal credito del cliente.',
+    });
+  }
+
+  /**
    * Apre il pagamento della caparra di un appuntamento in attesa. Se un
    * pagamento era già stato avviato e non completato (il cliente ha chiuso la
    * pagina) viene chiuso e sostituito, così non restano due operazioni aperte
@@ -86,11 +152,19 @@ export class PagamentiServizio {
       );
     }
 
+    // Quello che il credito ha già coperto non si paga una seconda volta.
+    const giaPagata = await this.caparra.caparraPagata(appuntamentoId);
+    const daPagare = appuntamento.caparraCentesimi - giaPagata;
+
+    if (daPagare <= 0) {
+      throw new BadRequestException('La caparra di questo appuntamento è già coperta.');
+    }
+
     await this.chiudiPagamentiAperti(appuntamentoId);
 
     const origine = this.configurazione.get('ORIGINE_WEB', { infer: true });
     const avviato = await this.fornitore.avvia({
-      importoCentesimi: appuntamento.caparraCentesimi,
+      importoCentesimi: daPagare,
       descrizione: `Caparra per ${appuntamento.servizi.map((servizio) => servizio.nome).join(', ')}`,
       appuntamentoId,
       emailCliente: appuntamento.cliente.email ?? undefined,
@@ -103,14 +177,14 @@ export class PagamentiServizio {
       data: {
         appuntamentoId,
         clienteId,
-        importoCentesimi: appuntamento.caparraCentesimi,
+        importoCentesimi: daPagare,
         riferimento: avviato.riferimento,
       },
     });
 
     return {
       urlPagamento: avviato.urlPagamento,
-      importoCentesimi: appuntamento.caparraCentesimi,
+      importoCentesimi: daPagare,
       scadeIl: scadeIl.toISOString(),
     };
   }
@@ -268,18 +342,13 @@ export class PagamentiServizio {
    * resta solo la via tempestiva.
    */
   async liberaBlocchiScaduti(): Promise<void> {
-    const liberati = await this.prisma.appuntamento.updateMany({
+    const scaduti = await this.prisma.appuntamento.findMany({
       where: { stato: 'in_attesa_pagamento', bloccoScadeIl: { lt: new Date() } },
-      data: {
-        stato: 'annullato',
-        motivoAnnullamento: 'pagamento_non_completato',
-        annullatoIl: new Date(),
-        bloccoScadeIl: null,
-      },
+      select: { id: true },
     });
 
-    if (liberati.count > 0) {
-      this.logger.log(`${liberati.count} slot liberati: caparra non pagata in tempo.`);
+    for (const appuntamento of scaduti) {
+      await this.liberaSlotNonPagato(appuntamento.id);
     }
   }
 
@@ -305,9 +374,37 @@ export class PagamentiServizio {
       },
     });
 
-    if (liberati.count > 0) {
-      this.logger.log(`Appuntamento ${appuntamentoId} annullato: caparra non pagata in tempo.`);
+    if (liberati.count === 0) {
+      return;
     }
+
+    this.logger.log(`Appuntamento ${appuntamentoId} annullato: caparra non pagata in tempo.`);
+    await this.restituisciCreditoUsato(appuntamentoId);
+  }
+
+  /**
+   * Se il credito aveva coperto una parte della caparra e il pagamento della
+   * differenza non è arrivato, il credito torna al cliente: non ha ricevuto
+   * nulla in cambio.
+   */
+  private async restituisciCreditoUsato(appuntamentoId: string): Promise<void> {
+    const appuntamento = await this.prisma.appuntamento.findUnique({
+      where: { id: appuntamentoId },
+      select: { clienteId: true },
+    });
+    const pagata = await this.caparra.caparraPagata(appuntamentoId);
+
+    if (!appuntamento || pagata <= 0) {
+      return;
+    }
+
+    await this.caparra.registra({
+      appuntamentoId,
+      clienteId: appuntamento.clienteId,
+      tipo: 'convertita_in_credito',
+      importoCentesimi: pagata,
+      motivo: 'Pagamento non completato: il credito usato torna al cliente.',
+    });
   }
 
   /** Chiude presso il fornitore i pagamenti rimasti aperti su un appuntamento. */

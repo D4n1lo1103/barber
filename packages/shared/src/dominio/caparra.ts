@@ -65,6 +65,36 @@ export function calcolaCaparra(prezzoTotaleCentesimi: number, percentuale: numbe
   return Math.min(prezzoTotaleCentesimi, Math.round((prezzoTotaleCentesimi * percentuale) / 100));
 }
 
+/**
+ * Importo minimo che un pagamento con carta può avere, in centesimi.
+ * Sotto questa soglia il fornitore rifiuta l'operazione, quindi non si può
+ * chiedere al cliente di pagare la differenza.
+ */
+export const MINIMO_PAGABILE_CENTESIMI = 50;
+
+/**
+ * Quanto credito usare su una caparra dovuta.
+ *
+ * Il credito copre una parte della caparra e il resto si paga con carta, così
+ * non resta credito fermo. Se però la differenza da pagare scendesse sotto il
+ * minimo accettato dal fornitore, si usa un po' meno credito e si lascia da
+ * pagare esattamente il minimo: un pagamento da pochi centesimi verrebbe
+ * rifiutato. Quando il credito basta a coprire tutto, la carta non serve.
+ */
+export function creditoDaUsare(caparraCentesimi: number, saldoCredito: number): number {
+  if (caparraCentesimi <= 0 || saldoCredito <= 0) {
+    return 0;
+  }
+
+  if (saldoCredito >= caparraCentesimi) {
+    return caparraCentesimi;
+  }
+
+  const massimoUtilizzabile = caparraCentesimi - MINIMO_PAGABILE_CENTESIMI;
+
+  return Math.max(0, Math.min(saldoCredito, massimoUtilizzabile));
+}
+
 /** Residuo da saldare in negozio: il prezzo meno la caparra già pagata. */
 export function residuoDaSaldare(prezzoTotaleCentesimi: number, caparraPagata: number): number {
   return Math.max(0, prezzoTotaleCentesimi - caparraPagata);
