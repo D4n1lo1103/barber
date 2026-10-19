@@ -4,19 +4,26 @@ Stato dello sviluppo per fasi (vedi la roadmap in `CLAUDE.md`).
 
 ## In corso
 
-Nessuna attività in corso: le fasi da 0 a 7 sono completate, quindi **il software è
-utilizzabile da un salone reale (MVP)**. Prossima: fase 8 — prodotti e magazzino con vendita
-in negozio.
+Nessuna attività in corso: le fasi da 0 a 8 sono completate. Prossima: fase 9 — vendita
+online dei prodotti (ordini, ritiro in negozio, spedizione).
 
-## Da fare — Fase 8: Prodotti e magazzino
+## Da fare — Fase 9: Vendita online
 
-- [ ] `TODO` Catalogo prodotti con descrizione, prezzo e giacenza.
-- [ ] `TODO` Vendita in negozio registrata dal personale, anche collegata a un cliente o a un
-      appuntamento.
-- [ ] `TODO` Scarico automatico del magazzino a ogni vendita e avviso di scorta minima.
-- [ ] `TODO` Decisioni da prendere con il titolare: se la giacenza possa andare sotto zero
-      (vendita a scaffale vuoto), chi può correggere le giacenze a mano, e se la vendita in
-      negozio debba produrre un documento per il cliente.
+- [ ] `TODO` Catalogo visibile al cliente e carrello, solo se la vendita online è attiva
+      nell'installazione.
+- [ ] `TODO` Ordini con i loro stati: `in_attesa_pagamento`, `pagato`, `in_preparazione`,
+      `pronto_per_ritiro` / `spedito`, `consegnato`, `annullato`, `rimborsato`.
+- [ ] `TODO` Pagamento online con lo stesso fornitore della caparra, confermato dal webhook.
+- [ ] `TODO` Ritiro in negozio e spedizione a domicilio, con i dati di consegna.
+- [ ] `TODO` Resi e rimborsi, tenendo conto del diritto di recesso di 14 giorni.
+- [ ] `TODO` Prenotazione della giacenza all'ordine: un pezzo venduto online non deve essere
+      venduto anche al banco.
+
+### Da chiarire prima di implementare
+
+- [ ] `BLOCCATO` **Obblighi fiscali della vendita online**: il titolare li comunicherà dopo il
+      confronto con il commercialista. Nessuna logica fiscale va inventata.
+- [ ] `BLOCCATO` **Costi, corriere e zone di spedizione**: da definire con il titolare.
 
 ## Da fare — attività trasversali già individuate
 
@@ -42,6 +49,62 @@ in negozio.
 - [ ] `BLOCCATO` Prova reale della procedura di ripristino dei backup.
   - Blocco: richiede un server di prova con un'installazione attiva. Gli script sono
     pronti e documentati; manca la verifica end-to-end su dati reali.
+
+## Completato — Fase 8: Prodotti e magazzino (18/10/2026)
+
+### Decisioni prese con il titolare (18/10/2026)
+
+1. **La giacenza non può andare sotto zero.**
+2. **Le giacenze si correggono a mano solo dal titolare**, con motivazione tracciata.
+3. **La vendita in negozio non produce alcun documento** per il cliente.
+
+### Attività
+
+- [x] `COMPLETATO` Modello dati: prodotti con giacenza e scorta minima, vendite con righe
+      (nome e prezzo copiati), movimenti di magazzino come registro di audit.
+- [x] `COMPLETATO` Migrazione SQL manuale: giacenza e giacenza risultante mai negative,
+      quantità mai nulle, correzione sempre motivata e con autore, coerenza fra causa e segno
+      del movimento, indice per i prodotti sotto scorta.
+- [x] `COMPLETATO` Catalogo prodotti: creazione, modifica, ritiro dalla vendita e riordino dal
+      titolare; consultazione per tutto il personale, con i soli prodotti in vendita per i
+      dipendenti.
+- [x] `COMPLETATO` Vendita in negozio dal personale, con più prodotti, cliente e appuntamento
+      facoltativi, e scarico del magazzino nella stessa transazione.
+- [x] `COMPLETATO` Rifiuto della vendita oltre la giacenza, con aggiornamento condizionato
+      contro le richieste simultanee e vincolo del database come ultima difesa.
+- [x] `COMPLETATO` Carico e correzione della giacenza, solo titolare, con motivo obbligatorio;
+      anche la giacenza iniziale di un prodotto nuovo è un movimento.
+- [x] `COMPLETATO` Avviso di scorta minima per il personale, nella pagina delle vendite e
+      nella scheda Prodotti.
+- [x] `COMPLETATO` Annullamento di una vendita con motivo obbligatorio e ripristino della
+      giacenza, tracciato da un movimento.
+- [x] `COMPLETATO` Interfaccia: scheda Prodotti nelle impostazioni, pagina Vendite per il
+      personale, acquisti nella scheda cliente; la ricerca del cliente è diventata un
+      componente riusabile.
+- [x] `COMPLETATO` Dati demo: quattro prodotti, uno sotto la scorta minima e uno esaurito.
+- [x] `COMPLETATO` Test: unitari sul totale della vendita e sulla validazione dei movimenti,
+      16 di integrazione su catalogo, permessi, giacenza, concorrenza e annullamento,
+      end-to-end della vendita, dell'annullamento e della correzione di giacenza.
+- [x] `COMPLETATO` ADR 0010, README e `MANUALE-DUSO.md` aggiornati.
+
+### Controlli eseguiti al termine della fase 8
+
+| Controllo            | Comando                                       | Esito                                 |
+| -------------------- | --------------------------------------------- | ------------------------------------- |
+| Formattazione        | `pnpm format:check`                           | superato                              |
+| Lint                 | `pnpm lint`                                   | superato                              |
+| Tipi                 | `pnpm type-check`                             | superato                              |
+| Test unitari         | `pnpm test`                                   | 76 condivisi, 34 backend, 38 frontend |
+| Test di integrazione | `pnpm --filter @barber/api test:integrazione` | 196 test superati                     |
+| Test end-to-end      | `pnpm --filter @barber/web test:e2e`          | 45 superati, 1 saltato per scelta     |
+| Build                | `pnpm build`                                  | superato                              |
+
+### Limiti noti
+
+- **Niente fornitori, ordini di acquisto, lotti o scadenze**: non richiesti. I movimenti di
+  carico sono il punto da cui partire, se serviranno.
+- **La vendita non produce documenti**: scontrini, fatture e registratore telematico
+  dipendono dalla gestione della cassa, ancora da definire.
 
 ## Completato — Fase 7: WhatsApp (18/10/2026) — MVP raggiunto
 

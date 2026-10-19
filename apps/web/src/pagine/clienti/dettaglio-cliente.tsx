@@ -6,6 +6,7 @@ import {
   type Appuntamento,
   type Cliente,
   type SituazioneCaparre,
+  type Vendita,
   type TipoMovimentoCaparra,
 } from '@barber/shared';
 import { Avviso } from '../../componenti/avviso';
@@ -15,6 +16,7 @@ import { Superficie } from '../../componenti/superficie';
 import { usaSessione } from '../../autenticazione/contesto-sessione';
 import {
   leggiSituazioneCaparre,
+  leggiVendite,
   leggiStoricoCliente,
   leggiCliente,
   modificaCliente,
@@ -33,6 +35,7 @@ export function PaginaDettaglioCliente() {
   const { utente } = usaSessione();
   // Movimenti e credito sono dati economici: li vede solo il titolare.
   const [situazione, impostaSituazione] = useState<SituazioneCaparre | null>(null);
+  const [acquisti, impostaAcquisti] = useState<Vendita[]>([]);
   const [cliente, impostaCliente] = useState<Cliente | null>(null);
   const [appuntamenti, impostaAppuntamenti] = useState<Appuntamento[]>([]);
   const [note, impostaNote] = useState('');
@@ -52,13 +55,15 @@ export function PaginaDettaglioCliente() {
       leggiCliente(id),
       leggiStoricoCliente(id),
       utente?.ruolo === 'titolare' ? leggiSituazioneCaparre(id) : Promise.resolve(null),
+      leggiVendite({ clienteId: id }),
     ])
-      .then(([scheda, storico, caparre]) => {
+      .then(([scheda, storico, caparre, vendite]) => {
         if (!annullato) {
           impostaCliente(scheda);
           impostaNote(scheda.note);
           impostaAppuntamenti(storico.appuntamenti);
           impostaSituazione(caparre);
+          impostaAcquisti(vendite.vendite);
         }
       })
       .catch((motivo: unknown) => {
@@ -251,6 +256,35 @@ export function PaginaDettaglioCliente() {
               </ul>
             )}
           </Superficie>
+        </>
+      )}
+
+      {acquisti.length > 0 && (
+        <>
+          <h2 className="mt-8 text-lg font-semibold tracking-tight">Acquisti in negozio</h2>
+          <ul className="mt-3 space-y-2">
+            {acquisti.map((vendita) => (
+              <li
+                key={vendita.id}
+                className="rounded-[var(--radius-campo)] border border-bordo bg-superficie px-4 py-3 text-sm"
+              >
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <span className="font-medium">
+                    {formattaPrezzo(vendita.totaleCentesimi)}
+                    {vendita.annullataIl && (
+                      <span className="ml-2 text-xs text-testo-tenue">(annullata)</span>
+                    )}
+                  </span>
+                  <span className="text-xs text-testo-tenue">
+                    {formattaDataBreve(vendita.creataIl)}
+                  </span>
+                </div>
+                <p className="mt-1 text-xs text-testo-tenue">
+                  {vendita.righe.map((riga) => `${riga.quantita} × ${riga.nome}`).join(', ')}
+                </p>
+              </li>
+            ))}
+          </ul>
         </>
       )}
 

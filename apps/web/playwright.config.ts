@@ -57,7 +57,12 @@ export default defineConfig({
     {
       name: 'chromium',
       use: { ...devices['Desktop Chrome'], storageState: PERCORSO_SESSIONE_TITOLARE },
-      testIgnore: ['**/procedura-guidata.e2e.ts', '**/caparra.e2e.ts', '**/messaggi.e2e.ts'],
+      testIgnore: [
+        '**/procedura-guidata.e2e.ts',
+        '**/caparra.e2e.ts',
+        '**/messaggi.e2e.ts',
+        '**/vendite.e2e.ts',
+      ],
       dependencies: ['preparazione'],
     },
     {
@@ -70,8 +75,17 @@ export default defineConfig({
         '**/impostazioni.e2e.ts',
         '**/caparra.e2e.ts',
         '**/messaggi.e2e.ts',
+        '**/vendite.e2e.ts',
       ],
       dependencies: ['preparazione'],
+    },
+    {
+      // Le vendite scaricano il magazzino, condiviso fra i test: girano
+      // dopo gli altri, da sole.
+      name: 'vendite',
+      testMatch: '**/vendite.e2e.ts',
+      use: { ...devices['Desktop Chrome'], storageState: PERCORSO_SESSIONE_TITOLARE },
+      dependencies: ['chromium', 'mobile'],
     },
     {
       // I messaggi si configurano dalle impostazioni, che sono condivise:

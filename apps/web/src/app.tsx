@@ -16,6 +16,7 @@ import { PaginaPagamentoFinto } from './pagine/pagamento-finto';
 import { PaginaPasswordDimenticata } from './pagine/password-dimenticata';
 import { PaginaRegistrazione } from './pagine/registrazione';
 import { PaginaReimpostaPassword } from './pagine/reimposta-password';
+import { PaginaVendite } from './pagine/vendite/vendite';
 import { PaginaVerificaEmail } from './pagine/verifica-email';
 import { PaginaProceduraGuidata } from './pagine/procedura-guidata';
 
@@ -76,6 +77,14 @@ function Instradamento() {
         element={
           <RottaProtetta ruoliConsentiti={['cliente']}>
             <PaginaAreaCliente />
+          </RottaProtetta>
+        }
+      />
+      <Route
+        path="/vendite"
+        element={
+          <RottaProtetta ruoliConsentiti={['titolare', 'dipendente']}>
+            <PaginaVendite />
           </RottaProtetta>
         }
       />

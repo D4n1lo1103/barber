@@ -35,8 +35,13 @@ Lo sviluppo procede per fasi (vedi `docs/TODO.md`).
   scheda _Messaggi_. Senza il token di Meta i messaggi non partono: vengono registrati nei log
   e tutto arriva via e-mail (vedi ADR 0009).
 
-**Con la fase 7 il software è utilizzabile da un salone reale (MVP).** Restano le fasi 8 e 9
-(prodotti, magazzino e vendita online) e la fase 10 (statistiche e KPI).
+- **Fase 8 — Prodotti e magazzino: completata.** Catalogo prodotti del titolare, vendite in
+  negozio registrate dal personale con scarico del magazzino, giacenza che non va sotto zero,
+  correzioni solo del titolare sempre motivate, annullamento che ripristina i pezzi e avviso
+  di scorta minima. La vendita non produce documenti per il cliente (vedi ADR 0010).
+
+**Dalla fase 7 il software è utilizzabile da un salone reale (MVP).** Restano la fase 9
+(vendita online) e la fase 10 (statistiche e KPI).
 
 ## Prerequisiti
 
@@ -183,6 +188,17 @@ Tutte le rotte hanno prefisso `/api`. L'autorizzazione è sempre verificata lato
 | `GET`    | `/orari/chiusure`                         | sessione (personale)                                                                                                   | `200` chiusure raggruppate per periodo e motivo                                                        |
 | `POST`   | `/orari/chiusure`                         | solo titolare                                                                                                          | `201` chiusura registrata per tutti gli operatori, `400` periodo non valido o già occupato             |
 | `DELETE` | `/orari/chiusure`                         | solo titolare                                                                                                          | `204` chiusura rimossa per tutti, `404`                                                                |
+| `GET`    | `/prodotti`                               | sessione (personale)                                                                                                   | `200` catalogo; il dipendente vede solo i prodotti in vendita                                          |
+| `GET`    | `/prodotti/sotto-scorta`                  | sessione (personale)                                                                                                   | `200` prodotti arrivati alla scorta minima                                                             |
+| `POST`   | `/prodotti`                               | solo titolare                                                                                                          | `201` prodotto creato, `409` nome già usato                                                            |
+| `PATCH`  | `/prodotti/:id`                           | solo titolare                                                                                                          | `200` aggiornato; la giacenza non si cambia da qui                                                     |
+| `DELETE` | `/prodotti/:id`                           | solo titolare                                                                                                          | `200` ritirato dalla vendita (mai cancellato)                                                          |
+| `PUT`    | `/prodotti/ordine`                        | solo titolare                                                                                                          | `200` catalogo riordinato                                                                              |
+| `POST`   | `/prodotti/:id/movimenti`                 | solo titolare                                                                                                          | `201` giacenza aggiornata, `400` motivo mancante, `409` giacenza sotto zero                            |
+| `GET`    | `/prodotti/:id/movimenti`                 | solo titolare                                                                                                          | `200` movimenti di magazzino                                                                           |
+| `GET`    | `/vendite`                                | sessione (personale)                                                                                                   | `200` vendite paginate, filtrabili per cliente                                                         |
+| `POST`   | `/vendite`                                | sessione (personale)                                                                                                   | `201` vendita registrata e magazzino scaricato, `409` pezzi insufficienti                              |
+| `POST`   | `/vendite/:id/annullamento`               | sessione (personale)                                                                                                   | `201` annullata e giacenza ripristinata, `409` già annullata                                           |
 | `GET`    | `/impostazioni/whatsapp`                  | solo titolare                                                                                                          | `200` attivazione, numero mittente, modelli, presenza del token                                        |
 | `PUT`    | `/impostazioni/whatsapp`                  | solo titolare                                                                                                          | `200` salvate, `400` attivo senza numero mittente o nomi di modello non validi                         |
 | `POST`   | `/impostazioni/whatsapp/prova`            | solo titolare                                                                                                          | `201` esito dell'invio di prova                                                                        |
@@ -347,7 +363,12 @@ assieme ai dump.
     approvati da Meta. Senza consenso, senza numero o se l'invio non riesce, il messaggio
     parte via e-mail. Il cliente può verificare il proprio numero con un codice di sei cifre.
     Il token di Meta sta nell'ambiente; il resto si imposta in configurazione.
-18. **E-mail di servizio**: verifica dell'indirizzo, reimpostazione della password, inviti
+18. **Vendita di prodotti in negozio**: il personale registra la vendita dalla pagina
+    _Vendite_, scegliendo i prodotti e, se vuole, il cliente. Il magazzino si scarica da sé e
+    la giacenza non può andare sotto zero. Una vendita sbagliata si annulla con un motivo e i
+    pezzi tornano in magazzino. Catalogo e correzioni delle giacenze sono del titolare, e la
+    vendita non produce alcun documento per il cliente.
+19. **E-mail di servizio**: verifica dell'indirizzo, reimpostazione della password, inviti
     ad attivare l'account e conferme di prenotazione, inviate via SMTP attraverso la coda
     pg-boss, così un invio fallito viene ritentato.
 

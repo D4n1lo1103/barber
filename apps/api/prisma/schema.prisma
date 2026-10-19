@@ -63,6 +63,10 @@ model Utente {
   movimentiCaparra          MovimentoCaparra[]        @relation("movimentiDelCliente")
   movimentiCaparraRegistrati MovimentoCaparra[]       @relation("movimentiRegistrati")
   movimentiCredito          MovimentoCredito[]        @relation("creditoDelCliente")
+  venditeComeCliente        Vendita[]                 @relation("venditeDelCliente")
+  venditeRegistrate         Vendita[]                 @relation("venditeRegistrate")
+  venditeAnnullate          Vendita[]                 @relation("venditeAnnullate")
+  movimentiMagazzino        MovimentoMagazzino[]      @relation("movimentiMagazzino")
   movimentiCreditoRegistrati MovimentoCredito[]       @relation("creditoRegistrato")
 
   @@index([ruolo, attivo])
@@ -353,6 +357,7 @@ model Appuntamento {
   pagamenti          Pagamento[]
   movimentiCaparra   MovimentoCaparra[]
   movimentiCredito   MovimentoCredito[]
+  vendite            Vendita[]
 
   @@index([operatoreId, inizio])
   @@index([clienteId, inizio])
@@ -500,4 +505,117 @@ model EventoPagamento {
 
   @@index([ricevutoIl])
   @@map("eventi_pagamento")
+}
+
+/// Prodotto venduto dal salone, con la giacenza di magazzino.
+model Prodotto {
+  id              String   @id @default(uuid()) @db.Uuid
+  nome            String   @unique
+  descrizione     String   @default("")
+  /// Prezzo in centesimi di euro, IVA inclusa.
+  prezzoCentesimi Int
+  /// Pezzi disponibili. Un vincolo del database impedisce che scenda sotto zero.
+  giacenza        Int      @default(0)
+  /// Soglia sotto cui il personale viene avvisato. Zero disattiva l'avviso.
+  scortaMinima    Int      @default(0)
+  attivo          Boolean  @default(true)
+  ordine          Int      @default(0)
+  creatoIl        DateTime @default(now())
+  aggiornatoIl    DateTime @updatedAt
+
+  righeVendita       RigaVendita[]
+  movimentiMagazzino MovimentoMagazzino[]
+
+  @@index([attivo, ordine])
+  @@map("prodotti")
+}
+
+/// Vendita di prodotti registrata dal personale in negozio.
+/// Non produce alcun documento per il cliente: è una registrazione interna.
+model Vendita {
+  id                    String    @id @default(uuid()) @db.Uuid
+  /// Cliente a cui è associata la vendita, se indicato.
+  clienteId             String?   @db.Uuid
+  /// Appuntamento a cui è associata la vendita, se indicato.
+  appuntamentoId        String?   @db.Uuid
+  /// Somma delle righe, copiata alla registrazione.
+  totaleCentesimi       Int
+  note                  String    @default("")
+  /// Chi ha registrato la vendita.
+  registrataDaId        String?   @db.Uuid
+  /// Momento dell'annullamento, quando la vendita viene corretta.
+  annullataIl           DateTime?
+  annullataDaId         String?   @db.Uuid
+  motivoAnnullamento    String    @default("")
+  creataIl              DateTime  @default(now())
+
+  cliente      Utente?       @relation("venditeDelCliente", fields: [clienteId], references: [id], onDelete: SetNull)
+  appuntamento Appuntamento? @relation(fields: [appuntamentoId], references: [id], onDelete: SetNull)
+  registrataDa Utente?       @relation("venditeRegistrate", fields: [registrataDaId], references: [id], onDelete: SetNull)
+  annullataDa  Utente?       @relation("venditeAnnullate", fields: [annullataDaId], references: [id], onDelete: SetNull)
+
+  righe              RigaVendita[]
+  movimentiMagazzino MovimentoMagazzino[]
+
+  @@index([creataIl])
+  @@index([clienteId, creataIl])
+  @@index([appuntamentoId])
+  @@map("vendite")
+}
+
+/// Riga di una vendita. Nome e prezzo sono copiati al momento della vendita:
+/// un cambio di listino non altera le vendite già registrate.
+model RigaVendita {
+  id              String  @id @default(uuid()) @db.Uuid
+  venditaId       String  @db.Uuid
+  /// Nullo se il prodotto viene eliminato dal catalogo.
+  prodottoId      String? @db.Uuid
+  nome            String
+  prezzoCentesimi Int
+  quantita        Int
+
+  vendita  Vendita   @relation(fields: [venditaId], references: [id], onDelete: Cascade)
+  prodotto Prodotto? @relation(fields: [prodottoId], references: [id], onDelete: SetNull)
+
+  @@index([venditaId])
+  @@index([prodottoId])
+  @@map("righe_vendita")
+}
+
+/// Causa di un movimento di magazzino.
+enum CausaMovimentoMagazzino {
+  /// Scarico per una vendita in negozio.
+  vendita
+  /// Ripristino per l'annullamento di una vendita.
+  annullamento_vendita
+  /// Carico di merce ricevuta.
+  carico
+  /// Correzione manuale della giacenza, solo dal titolare.
+  correzione
+}
+
+/// Movimento di magazzino: ogni variazione di giacenza lascia una riga, con
+/// data, quantità, autore e motivo. Le righe non si modificano né si
+/// cancellano: sono il registro di audit del magazzino.
+model MovimentoMagazzino {
+  id         String                  @id @default(uuid()) @db.Uuid
+  prodottoId String                  @db.Uuid
+  causa      CausaMovimentoMagazzino
+  /// Positivo in carico, negativo in scarico. Mai zero.
+  quantita   Int
+  /// Giacenza risultante dopo il movimento, per ricostruire la storia.
+  giacenzaFinale Int
+  motivo     String                  @default("")
+  venditaId  String?                 @db.Uuid
+  /// Nullo quando il movimento lo produce il sistema.
+  autoreId   String?                 @db.Uuid
+  creatoIl   DateTime                @default(now())
+
+  prodotto Prodotto @relation(fields: [prodottoId], references: [id], onDelete: Cascade)
+  vendita  Vendita? @relation(fields: [venditaId], references: [id], onDelete: SetNull)
+  autore   Utente?  @relation("movimentiMagazzino", fields: [autoreId], references: [id], onDelete: SetNull)
+
+  @@index([prodottoId, creatoIl])
+  @@index([venditaId])
+  @@map("movimenti_magazzino")
 }

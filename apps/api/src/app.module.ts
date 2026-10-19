@@ -18,6 +18,7 @@ import { OrariModule } from './orari/orari.module.js';
 import { PagamentiModule } from './pagamenti/pagamenti.module.js';
 import { PersonaleModule } from './personale/personale.module.js';
 import { PrismaModule } from './prisma/prisma.module.js';
+import { ProdottiModule } from './prodotti/prodotti.module.js';
 import { ServiziModule } from './servizi/servizi.module.js';
 import { StatoModule } from './stato/stato.module.js';
 import { UtentiModule } from './utenti/utenti.module.js';
@@ -41,6 +42,7 @@ import { UtentiModule } from './utenti/utenti.module.js';
     OrariModule,
     PagamentiModule,
     PersonaleModule,
+    ProdottiModule,
     ServiziModule,
     StatoModule,
     UtentiModule,
