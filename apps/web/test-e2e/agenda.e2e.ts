@@ -1,4 +1,22 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
+
+/**
+ * Apre una sezione dalla barra del personale. Su schermo stretto le voci
+ * stanno dietro il pulsante «Menu».
+ */
+async function vaiA(page: Page, sezione: string) {
+  // La barra compare quando la sessione è stata letta: senza l'attesa il
+  // controllo sul menu arriverebbe prima che esista qualcosa da guardare.
+  await page.getByRole('banner').waitFor();
+
+  const menu = page.getByRole('button', { name: 'Menu' });
+
+  if (await menu.isVisible()) {
+    await menu.click();
+  }
+
+  await page.getByRole('link', { name: sezione, exact: true }).click();
+}
 
 const FORMATO_GIORNO = new Intl.DateTimeFormat('en-CA', {
   timeZone: 'Europe/Rome',
@@ -64,7 +82,7 @@ test.describe('Agenda del personale', () => {
 
   test('prenota un appuntamento dall’agenda e lo completa', async ({ page }, informazioni) => {
     await page.goto('/');
-    await page.getByRole('link', { name: 'Agenda' }).click();
+    await vaiA(page, 'Agenda');
     await expect(page).toHaveURL(/\/agenda$/);
 
     await page.getByRole('button', { name: 'Nuovo appuntamento' }).click();

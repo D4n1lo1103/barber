@@ -90,6 +90,26 @@ insieme alla prenotazione forzata del titolare.
 
 ## Completato
 
+### Navigazione del personale e dati del salone modificabili (25/10/2026)
+
+Il titolare non riusciva a raggiungere le impostazioni: il collegamento esisteva solo
+sul pannello iniziale. Sono emerse anche due lacune vicine: i dati del primo avvio non
+erano modificabili e il cambio password non aveva nessuna schermata. Decisioni prese
+con il titolare in `docs/adr/0012-dati-del-salone-modificabili-e-navigazione.md`.
+
+- [x] `COMPLETATO` Barra di navigazione fissa del personale su ogni pagina, con menu a
+      scomparsa su schermo stretto; rimossi i collegamenti estemporanei fra le pagine.
+- [x] `COMPLETATO` `GET` e `PUT /impostazioni/salone` (solo titolare) e scheda _Salone_
+      nelle impostazioni: recapiti, granularità, blocco dello slot, vendita online.
+- [x] `COMPLETATO` Il profilo resta immutabile; la granularità viene rifiutata se le
+      durate dei servizi attivi non sono multiple, con l'elenco di quali correggere.
+- [x] `COMPLETATO` Riquadro di cambio password per tutti i ruoli, nel pannello e nella
+      scheda _Profilo e dati_ del cliente.
+- [x] `COMPLETATO` Selettore del tema anche nell'area del cliente.
+- [x] `COMPLETATO` Test: 4 di integrazione sui dati del salone (lettura, salvataggio con
+      aggiornamento dello stato pubblico, granularità incompatibile, divieto al
+      dipendente) e e2e della scheda _Salone_ e della navigazione dalla barra.
+
 ### Prenotazione forzata del titolare (25/10/2026)
 
 Deciso con il titolare: può derogare **solo il titolare**, anche sull'agenda dei

@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Link, useSearchParams } from 'react-router';
+import { useSearchParams } from 'react-router';
 import { clsx } from 'clsx';
 import { startOfWeek } from 'date-fns';
 import { it } from 'date-fns/locale';
-import { CalendarDays, ChevronLeft, ChevronRight, Plus, Users } from 'lucide-react';
+import { CalendarDays, ChevronLeft, ChevronRight, Plus } from 'lucide-react';
 import type { Appuntamento, FasciaSettimanale, Operatore, Servizio } from '@barber/shared';
 import { Avviso } from '../../componenti/avviso';
 import { Caricamento } from '../../componenti/caricamento';
@@ -231,11 +231,6 @@ export function PaginaAgenda() {
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          <Link to="/clienti">
-            <Pulsante variante="secondario">
-              <Users size={16} aria-hidden /> Clienti
-            </Pulsante>
-          </Link>
           <Pulsante onClick={() => apriNuovo(primoGiorno, null)}>
             <Plus size={16} aria-hidden /> Nuovo appuntamento
           </Pulsante>

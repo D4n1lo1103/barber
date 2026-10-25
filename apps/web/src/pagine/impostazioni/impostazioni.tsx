@@ -1,21 +1,29 @@
 import { useState } from 'react';
 import { motion } from 'motion/react';
-import { Link } from 'react-router';
-import { Pulsante } from '../../componenti/pulsante';
 import { usaInstallazione } from '../../installazione/contesto-installazione';
 import { SchedaMessaggi } from './scheda-messaggi';
 import { SchedaOrari } from './scheda-orari';
 import { SchedaProdotti } from './scheda-prodotti';
 import { SchedaRegole } from './scheda-regole';
 import { SchedaPersonale } from './scheda-personale';
+import { SchedaSalone } from './scheda-salone';
 import { SchedaServizi } from './scheda-servizi';
 
-const SCHEDE = ['Servizi', 'Prodotti', 'Personale', 'Orari', 'Regole', 'Messaggi'] as const;
+const SCHEDE = [
+  'Salone',
+  'Servizi',
+  'Prodotti',
+  'Personale',
+  'Orari',
+  'Regole',
+  'Messaggi',
+] as const;
 
 type Scheda = (typeof SCHEDE)[number];
 
 export function PaginaImpostazioni() {
   const { stato } = usaInstallazione();
+  // Si apre sui servizi, la sezione che il titolare tocca più spesso.
   const [scheda, impostaScheda] = useState<Scheda>('Servizi');
   // La granularità effettiva è quella scelta nella procedura guidata.
   const granularita = stato?.granularitaSlotMinuti ?? 15;
@@ -29,12 +37,9 @@ export function PaginaImpostazioni() {
             {stato?.nomeSalone ?? 'Il tuo salone'}
           </h1>
         </div>
-        <Link to="/">
-          <Pulsante variante="secondario">Torna al pannello</Pulsante>
-        </Link>
       </div>
 
-      <nav className="mt-6 flex gap-2" aria-label="Sezioni delle impostazioni">
+      <nav className="mt-6 flex flex-wrap gap-2" aria-label="Sezioni delle impostazioni">
         {SCHEDE.map((nome) => (
           <button
             key={nome}
@@ -59,6 +64,7 @@ export function PaginaImpostazioni() {
         transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
         className="mt-6"
       >
+        {scheda === 'Salone' && <SchedaSalone />}
         {scheda === 'Servizi' && <SchedaServizi granularitaSlotMinuti={granularita} />}
         {scheda === 'Prodotti' && <SchedaProdotti />}
         {scheda === 'Personale' && <SchedaPersonale />}

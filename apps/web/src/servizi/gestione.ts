@@ -8,6 +8,7 @@ import type {
   DatiCreazioneAppuntamento,
   DatiCreazioneAssenza,
   DatiCreazioneChiusura,
+  DatiCambioPassword,
   DatiCreazioneCliente,
   DatiCreazioneDipendente,
   DatiCreazioneProdotto,
@@ -17,6 +18,7 @@ import type {
   DatiImpostazioniWhatsapp,
   DatiEvasioneRichiesta,
   DatiModificaCliente,
+  DatiSaloneModificabili,
   DatiModificaProdotto,
   DatiModificaProfilo,
   DatiPrenotazioneCliente,
@@ -38,6 +40,7 @@ import type {
   FasciaSettimanale,
   MovimentoMagazzino,
   Operatore,
+  Salone,
   PagamentoDaCompletare,
   ProfiloCliente,
   RegoleSalone,
@@ -186,6 +189,14 @@ export function creaCliente(
   return chiamaApi('/clienti', { metodo: 'POST', corpo: dati });
 }
 
+export function leggiSalone(): Promise<Salone> {
+  return chiamaApi<Salone>('/impostazioni/salone');
+}
+
+export function salvaSalone(dati: DatiSaloneModificabili): Promise<Salone> {
+  return chiamaApi<Salone>('/impostazioni/salone', { metodo: 'PUT', corpo: dati });
+}
+
 export function modificaCliente(id: string, dati: DatiModificaCliente): Promise<Cliente> {
   return chiamaApi<Cliente>(`/clienti/${id}`, { metodo: 'PATCH', corpo: dati });
 }
@@ -291,6 +302,10 @@ export function rinviaVerificaEmail(email: string): Promise<void> {
 
 export function richiediResetPassword(email: string): Promise<void> {
   return chiamaApi<void>('/autenticazione/reset-password', { metodo: 'POST', corpo: { email } });
+}
+
+export function cambiaPassword(dati: DatiCambioPassword): Promise<void> {
+  return chiamaApi<void>('/autenticazione/cambio-password', { metodo: 'POST', corpo: dati });
 }
 
 export function confermaResetPassword(token: string, password: string): Promise<void> {

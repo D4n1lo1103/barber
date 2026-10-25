@@ -14,7 +14,10 @@ già completate. Le parti ancora da sviluppare sono elencate in fondo, in
 - [Glossario](#glossario)
 - [Primo avvio dell'installazione](#primo-avvio-dellinstallazione)
 - [Accesso e account](#accesso-e-account)
+  - [Spostarsi fra le sezioni](#spostarsi-fra-le-sezioni)
+  - [Cambiare la propria password](#cambiare-la-propria-password)
 - [Impostazioni del salone (solo titolare)](#impostazioni-del-salone-solo-titolare)
+  - [Dati del salone](#dati-del-salone)
   - [Servizi](#servizi)
   - [Personale](#personale)
   - [Orari e assenze](#orari-e-assenze)
@@ -94,10 +97,46 @@ raggiungibile.
 Il titolare non conosce mai le password degli altri: dipendenti e clienti ricevono un **link
 di attivazione** e scelgono la propria.
 
+### Spostarsi fra le sezioni
+
+Il personale ha una **barra in alto, presente su ogni pagina**: Pannello, Agenda, Clienti,
+Vendite e, per il solo titolare, Impostazioni del salone. A destra ci sono il cambio di tema
+e il pulsante Esci. Su smartphone le voci stanno dietro il pulsante **Menu**, per lasciare
+tutta la larghezza all'agenda.
+
+Il cliente non vede questa barra: la sua area ha le proprie schede, descritte in
+[Area del cliente](#area-del-cliente).
+
+### Cambiare la propria password
+
+- **Personale**: riquadro _Cambia la password_ nel pannello iniziale.
+- **Clienti**: stesso riquadro nella scheda _Profilo e dati_ della propria area.
+
+Servono la password attuale e quella nuova. Al salvataggio **tutti gli accessi vengono
+chiusi**, su ogni dispositivo, e bisogna entrare di nuovo con la password nuova. Chi ha
+dimenticato la password usa invece [Password dimenticata](#password-dimenticata).
+
 ## Impostazioni del salone (solo titolare)
 
-Dal pannello iniziale, pulsante **Impostazioni del salone**. Sei schede: Servizi, Prodotti,
-Personale, Orari, Regole e Messaggi. I dipendenti non vedono questa pagina.
+Dalla barra in alto, voce **Impostazioni del salone**. Sette schede: Salone, Servizi,
+Prodotti, Personale, Orari, Regole e Messaggi. I dipendenti non vedono questa pagina.
+
+### Dati del salone
+
+Nella scheda **Salone** si cambiano i dati decisi al primo avvio:
+
+- **Nome, indirizzo, città, telefono ed e-mail**: compaiono nelle e-mail ai clienti e
+  nell'intestazione dell'app.
+- **Granularità degli slot**: il passo con cui l'agenda propone gli orari liberi. Le durate
+  dei servizi devono essere multiple del valore scelto; se non lo sono, il salvataggio viene
+  rifiutato e dice quali servizi correggere prima. Gli appuntamenti già presi restano al
+  loro orario: il nuovo passo vale per quelli futuri.
+- **Blocco dello slot durante il pagamento**: i minuti concessi al cliente per pagare la
+  caparra prima che lo slot torni libero.
+- **Vendita online dei prodotti**: attiva o disattiva l'acquisto dall'app.
+
+Il **profilo** (barbiere o parrucchiere) si vede ma non si cambia: decide catalogo
+predefinito, durate tipiche e colori, e si sceglie una volta sola al primo avvio.
 
 ### Servizi
 
@@ -557,8 +596,9 @@ Sezione **Profilo e dati**.
 
 ## Aspetto e accessibilità
 
-- **Tema scuro** predefinito, tema chiaro disponibile dal pannello. La scelta resta
-  memorizzata sul dispositivo.
+- **Tema scuro** predefinito, tema chiaro disponibile: per il personale dalla barra in alto,
+  per il cliente dall'intestazione della propria area. La scelta resta memorizzata sul
+  dispositivo.
 - Il colore di accento dipende dal profilo: rosso "lama" per il barbiere, lavanda per il
   parrucchiere.
 - L'interfaccia si usa da computer, tablet e smartphone, anche solo col tocco.

@@ -9,6 +9,7 @@ import { Avviso } from '../../componenti/avviso';
 import { Campo } from '../../componenti/campo';
 import { Modale } from '../../componenti/modale';
 import { Pulsante } from '../../componenti/pulsante';
+import { RiquadroCambioPassword } from '../../componenti/riquadro-cambio-password';
 import { Superficie } from '../../componenti/superficie';
 import { ErroreApi } from '../../servizi/client-api';
 import {
@@ -267,6 +268,8 @@ export function ProfiloClienteScheda({
           Salva i dati
         </Pulsante>
       </Superficie>
+
+      <RiquadroCambioPassword />
 
       <Superficie className="p-6">
         <h2 className="text-lg font-semibold">Consensi</h2>
