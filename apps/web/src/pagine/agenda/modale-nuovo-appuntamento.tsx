@@ -227,8 +227,9 @@ export function ModaleNuovoAppuntamento({
         </fieldset>
 
         {puoForzare && (
-          <label className="flex cursor-pointer items-start gap-2 rounded-[var(--radius-campo)] border border-bordo bg-fondo-elevato px-3 py-2.5 text-sm">
+          <div className="flex items-start gap-2 rounded-[var(--radius-campo)] border border-bordo bg-fondo-elevato px-3 py-2.5 text-sm">
             <input
+              id="fuori-orario"
               type="checkbox"
               checked={fuoriOrario}
               onChange={(evento) => {
@@ -236,16 +237,21 @@ export function ModaleNuovoAppuntamento({
                 impostaInizio(null);
                 impostaErrore(null);
               }}
+              // La descrizione resta fuori dall'etichetta: il nome accessibile
+              // della casella è «Fuori orario» e nient'altro.
+              aria-describedby="fuori-orario-descrizione"
               className="mt-0.5 accent-[var(--color-accento)]"
             />
             <span>
-              <span className="block font-medium">Fuori orario</span>
-              <span className="block text-xs text-testo-tenue">
+              <label htmlFor="fuori-orario" className="block cursor-pointer font-medium">
+                Fuori orario
+              </label>
+              <span id="fuori-orario-descrizione" className="block text-xs text-testo-tenue">
                 Riservato al titolare: sceglie qualsiasi giorno e ora, anche a salone chiuso o con
                 l’operatore già impegnato.
               </span>
             </span>
-          </label>
+          </div>
         )}
 
         {fuoriOrario ? (
