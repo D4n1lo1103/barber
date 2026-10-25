@@ -4,6 +4,7 @@ import {
   type DatiAvvioPagamento,
   type EventoPagamento,
   type FornitorePagamenti,
+  type OggettoPagato,
   type PagamentoAvviato,
 } from './fornitore-pagamenti.js';
 
@@ -24,8 +25,8 @@ export class FornitoreFinto implements FornitorePagamenti {
   readonly chiavePubblicabile = null;
 
   private readonly logger = new Logger(FornitoreFinto.name);
-  /** Pagamenti aperti: riferimento → appuntamento e importo. */
-  private readonly aperti = new Map<string, { appuntamentoId: string; importoCentesimi: number }>();
+  /** Pagamenti aperti: riferimento → oggetto pagato e importo. */
+  private readonly aperti = new Map<string, { oggetto: OggettoPagato; importoCentesimi: number }>();
 
   constructor(private readonly origineWeb: string) {}
 
@@ -33,7 +34,7 @@ export class FornitoreFinto implements FornitorePagamenti {
     const riferimento = `finto_${randomUUID()}`;
 
     this.aperti.set(riferimento, {
-      appuntamentoId: dati.appuntamentoId,
+      oggetto: dati.oggetto,
       importoCentesimi: dati.importoCentesimi,
     });
 
@@ -43,7 +44,7 @@ export class FornitoreFinto implements FornitorePagamenti {
     indirizzo.searchParams.set('importo', String(dati.importoCentesimi));
     indirizzo.searchParams.set('ritorno', dati.urlRitorno);
 
-    this.logger.warn(`Pagamento finto avviato per l'appuntamento ${dati.appuntamentoId}.`);
+    this.logger.warn(`Pagamento finto avviato per ${dati.oggetto.tipo} ${dati.oggetto.id}.`);
 
     return Promise.resolve({ riferimento, urlPagamento: indirizzo.toString() });
   }
@@ -100,7 +101,7 @@ export class FornitoreFinto implements FornitorePagamenti {
       tipo: `finto.${dati.esito}`,
       esito: dati.esito,
       riferimento: dati.riferimento,
-      appuntamentoId: aperto.appuntamentoId,
+      oggetto: aperto.oggetto,
       importoCentesimi: aperto.importoCentesimi,
       errore: dati.esito === 'fallito' ? 'Pagamento finto rifiutato.' : '',
     };

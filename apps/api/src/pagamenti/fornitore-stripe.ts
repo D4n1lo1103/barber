@@ -5,11 +5,20 @@ import {
   type EsitoEvento,
   type EventoPagamento,
   type FornitorePagamenti,
+  type OggettoPagato,
   type PagamentoAvviato,
 } from './fornitore-pagamenti.js';
 
-/** Chiave dei metadati con cui ritroviamo l'appuntamento negli eventi. */
-const META_APPUNTAMENTO = 'appuntamentoId';
+/** Chiavi dei metadati con cui ritroviamo l'oggetto pagato negli eventi. */
+const META_TIPO = 'oggettoTipo';
+const META_ID = 'oggettoId';
+
+/**
+ * Chiave usata prima che i pagamenti servissero anche gli ordini. Resta letta
+ * in ripiego perché un pagamento avviato prima di un aggiornamento porta
+ * ancora questa: l'esito arriverebbe altrimenti senza oggetto.
+ */
+const META_APPUNTAMENTO_STORICA = 'appuntamentoId';
 
 /**
  * Stripe Checkout ospitato: il cliente paga su una pagina di Stripe e noi
@@ -53,10 +62,8 @@ export class FornitoreStripe implements FornitorePagamenti {
       customer_email: dati.emailCliente,
       success_url: dati.urlRitorno,
       cancel_url: dati.urlAnnullamento,
-      metadata: { [META_APPUNTAMENTO]: dati.appuntamentoId },
-      payment_intent_data: {
-        metadata: { [META_APPUNTAMENTO]: dati.appuntamentoId },
-      },
+      metadata: metadati(dati),
+      payment_intent_data: { metadata: metadati(dati) },
     });
 
     if (!sessione.url) {
@@ -116,7 +123,7 @@ export class FornitoreStripe implements FornitorePagamenti {
       tipo: evento.type,
       esito,
       riferimento: oggetto.id ?? null,
-      appuntamentoId: oggetto.metadata?.[META_APPUNTAMENTO] ?? null,
+      oggetto: oggettoPagato(oggetto.metadata),
       importoCentesimi: oggetto.amount_total ?? oggetto.amount ?? null,
       errore: oggetto.last_payment_error?.message ?? '',
     };
@@ -125,6 +132,24 @@ export class FornitoreStripe implements FornitorePagamenti {
   private messaggio(errore: unknown): string {
     return errore instanceof Error ? errore.message : 'errore non identificato';
   }
+}
+
+function metadati(dati: DatiAvvioPagamento): Record<string, string> {
+  return { [META_TIPO]: dati.oggetto.tipo, [META_ID]: dati.oggetto.id };
+}
+
+/** Oggetto pagato ricostruito dai metadati, con il ripiego sulla chiave storica. */
+function oggettoPagato(metadata: Record<string, string> | null | undefined): OggettoPagato | null {
+  const tipo = metadata?.[META_TIPO];
+  const id = metadata?.[META_ID];
+
+  if ((tipo === 'caparra' || tipo === 'ordine') && id) {
+    return { tipo, id };
+  }
+
+  const appuntamentoId = metadata?.[META_APPUNTAMENTO_STORICA];
+
+  return appuntamentoId ? { tipo: 'caparra', id: appuntamentoId } : null;
 }
 
 /** Traduzione dei tipi di evento di Stripe nel nostro esito. */

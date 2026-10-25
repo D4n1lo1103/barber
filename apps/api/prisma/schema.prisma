@@ -48,26 +48,30 @@ model Utente {
   aggiornatoIl          DateTime  @updatedAt
   ultimoAccessoIl       DateTime?
 
-  sessioni                  Sessione[]
-  serviziAbilitati          ServizioOperatore[]
-  orariDiLavoro             OrarioOperatore[]
-  assenze                   Assenza[]
-  token                     TokenUtente[]
-  richiesteCancellazione    RichiestaCancellazione[] @relation("richiesteDelCliente")
-  richiesteEvase            RichiestaCancellazione[] @relation("richiesteEvase")
-  appuntamentiComeCliente   Appuntamento[]           @relation("appuntamentiDelCliente")
-  appuntamentiComeOperatore Appuntamento[]           @relation("appuntamentiDellOperatore")
-  appuntamentiCreati        Appuntamento[]           @relation("appuntamentiCreati")
-  appuntamentiAnnullati     Appuntamento[]           @relation("appuntamentiAnnullati")
-  pagamenti                 Pagamento[]
-  movimentiCaparra          MovimentoCaparra[]        @relation("movimentiDelCliente")
+  sessioni                   Sessione[]
+  serviziAbilitati           ServizioOperatore[]
+  orariDiLavoro              OrarioOperatore[]
+  assenze                    Assenza[]
+  token                      TokenUtente[]
+  richiesteCancellazione     RichiestaCancellazione[] @relation("richiesteDelCliente")
+  richiesteEvase             RichiestaCancellazione[] @relation("richiesteEvase")
+  appuntamentiComeCliente    Appuntamento[]           @relation("appuntamentiDelCliente")
+  appuntamentiComeOperatore  Appuntamento[]           @relation("appuntamentiDellOperatore")
+  appuntamentiCreati         Appuntamento[]           @relation("appuntamentiCreati")
+  appuntamentiAnnullati      Appuntamento[]           @relation("appuntamentiAnnullati")
+  pagamenti                  Pagamento[]
+  movimentiCaparra           MovimentoCaparra[]       @relation("movimentiDelCliente")
   movimentiCaparraRegistrati MovimentoCaparra[]       @relation("movimentiRegistrati")
-  movimentiCredito          MovimentoCredito[]        @relation("creditoDelCliente")
-  venditeComeCliente        Vendita[]                 @relation("venditeDelCliente")
-  venditeRegistrate         Vendita[]                 @relation("venditeRegistrate")
-  venditeAnnullate          Vendita[]                 @relation("venditeAnnullate")
-  movimentiMagazzino        MovimentoMagazzino[]      @relation("movimentiMagazzino")
+  movimentiCredito           MovimentoCredito[]       @relation("creditoDelCliente")
+  venditeComeCliente         Vendita[]                @relation("venditeDelCliente")
+  venditeRegistrate          Vendita[]                @relation("venditeRegistrate")
+  venditeAnnullate           Vendita[]                @relation("venditeAnnullate")
+  movimentiMagazzino         MovimentoMagazzino[]     @relation("movimentiMagazzino")
   movimentiCreditoRegistrati MovimentoCredito[]       @relation("creditoRegistrato")
+  ordiniComeCliente          Ordine[]                 @relation("ordiniDelCliente")
+  ordiniAnnullati            Ordine[]                 @relation("ordiniAnnullati")
+  resiComeCliente            RichiestaReso[]          @relation("resiDelCliente")
+  resiDecisi                 RichiestaReso[]          @relation("resiDecisi")
 
   @@index([ruolo, attivo])
   @@map("utenti")
@@ -96,44 +100,47 @@ model Sessione {
 /// Impostazioni dell'installazione: una sola riga, creata dalla procedura guidata.
 /// Il vincolo di riga unica è applicato da una migrazione SQL manuale.
 model Installazione {
-  id                          String   @id @default(uuid()) @db.Uuid
+  id                          String            @id @default(uuid()) @db.Uuid
   /// Vale sempre 1: insieme al vincolo CHECK garantisce una sola installazione.
-  riga                        Int      @unique @default(1)
+  riga                        Int               @unique @default(1)
   profilo                     Profilo
   nomeSalone                  String
   indirizzo                   String
   citta                       String
   telefono                    String
   emailSalone                 String
-  configurata                 Boolean  @default(false)
-  granularitaSlotMin          Int      @default(15)
+  configurata                 Boolean           @default(false)
+  granularitaSlotMin          Int               @default(15)
   /// Ore entro cui un annullamento del cliente è considerato tempestivo.
-  oreLimitePreavviso          Int      @default(24)
+  oreLimitePreavviso          Int               @default(24)
   /// Se vero lo spostamento segue le regole dell'annullamento; se falso è
   /// libero entro il limite di preavviso.
-  spostamentoComeAnnullamento Boolean  @default(false)
+  spostamentoComeAnnullamento Boolean           @default(false)
   /// Anticipo del promemoria al cliente, in ore (fase 7).
-  oreAnticipoPromemoria       Int      @default(24)
-  minutiBloccoSlot            Int      @default(10)
+  oreAnticipoPromemoria       Int               @default(24)
+  minutiBloccoSlot            Int               @default(10)
   /// Caparra: il salone decide se applicarla e con quale percentuale sul
   /// prezzo dei servizi. Nessun valore cablato nel codice.
-  caparraAttiva               Boolean  @default(false)
-  caparraPercentuale          Int      @default(50)
+  caparraAttiva               Boolean           @default(false)
+  caparraPercentuale          Int               @default(50)
   /// Forma di restituzione per un annullamento tempestivo del cliente.
   restituzioneCaparra         FormaRestituzione @default(rimborso)
   /// Messaggi WhatsApp: l'attivazione e i dati non segreti si impostano nella
   /// procedura guidata e dalle impostazioni. Il token resta nell'ambiente.
-  whatsappAttivo              Boolean  @default(false)
+  whatsappAttivo              Boolean           @default(false)
   /// Identificativo del numero mittente presso Meta: non è un segreto.
-  whatsappIdNumero            String   @default("")
+  whatsappIdNumero            String            @default("")
   /// Nomi dei modelli approvati da Meta, uno per messaggio di servizio.
-  whatsappModelloConferma     String   @default("conferma_prenotazione")
-  whatsappModelloPromemoria   String   @default("promemoria_appuntamento")
-  whatsappModelloInvito       String   @default("invito_attivazione")
-  whatsappModelloVerifica     String   @default("verifica_numero")
-  venditaOnlineAttiva         Boolean  @default(false)
-  creataIl                    DateTime @default(now())
-  aggiornataIl                DateTime @updatedAt
+  whatsappModelloConferma     String            @default("conferma_prenotazione")
+  whatsappModelloPromemoria   String            @default("promemoria_appuntamento")
+  whatsappModelloInvito       String            @default("invito_attivazione")
+  whatsappModelloVerifica     String            @default("verifica_numero")
+  venditaOnlineAttiva         Boolean           @default(false)
+  /// Minuti entro cui pagare un ordine online: oltre, la giacenza prenotata
+  /// torna disponibile. È l'equivalente del blocco dello slot per l'agenda.
+  minutiBloccoOrdine          Int               @default(20)
+  creataIl                    DateTime          @default(now())
+  aggiornataIl                DateTime          @updatedAt
 
   @@map("installazione")
 }
@@ -357,11 +364,11 @@ model Appuntamento {
   creatoDa    Utente? @relation("appuntamentiCreati", fields: [creatoDaId], references: [id], onDelete: SetNull)
   annullatoDa Utente? @relation("appuntamentiAnnullati", fields: [annullatoDaId], references: [id], onDelete: SetNull)
 
-  servizi            AppuntamentoServizio[]
-  pagamenti          Pagamento[]
-  movimentiCaparra   MovimentoCaparra[]
-  movimentiCredito   MovimentoCredito[]
-  vendite            Vendita[]
+  servizi          AppuntamentoServizio[]
+  pagamenti        Pagamento[]
+  movimentiCaparra MovimentoCaparra[]
+  movimentiCredito MovimentoCredito[]
+  vendite          Vendita[]
 
   @@index([operatoreId, inizio])
   @@index([clienteId, inizio])
@@ -413,24 +420,30 @@ enum StatoPagamento {
 /// di carta transita né viene memorizzato: resta solo il riferimento opaco
 /// all'operazione presso il fornitore.
 model Pagamento {
-  id               String         @id @default(uuid()) @db.Uuid
-  appuntamentoId   String         @db.Uuid
-  clienteId        String         @db.Uuid
-  importoCentesimi Int
-  stato            StatoPagamento @default(avviato)
+  id                  String         @id @default(uuid()) @db.Uuid
+  /// Esattamente uno fra appuntamento e ordine è valorizzato: lo impone un
+  /// vincolo del database. Il fornitore è lo stesso, così il webhook e la
+  /// tabella di idempotenza restano unici.
+  appuntamentoId      String?        @db.Uuid
+  ordineId            String?        @db.Uuid
+  clienteId           String         @db.Uuid
+  importoCentesimi    Int
+  stato               StatoPagamento @default(avviato)
   /// Identificativo dell'operazione presso il fornitore (es. PaymentIntent).
-  riferimento      String         @unique
+  riferimento         String         @unique
   /// Identificativo del rimborso presso il fornitore, quando emesso.
   riferimentoRimborso String?
   /// Motivo dell'ultimo esito negativo, per il supporto al cliente.
-  erroreFornitore  String         @default("")
-  creatoIl         DateTime       @default(now())
-  aggiornatoIl     DateTime       @updatedAt
+  erroreFornitore     String         @default("")
+  creatoIl            DateTime       @default(now())
+  aggiornatoIl        DateTime       @updatedAt
 
-  appuntamento Appuntamento @relation(fields: [appuntamentoId], references: [id], onDelete: Cascade)
-  cliente      Utente       @relation(fields: [clienteId], references: [id], onDelete: Restrict)
+  appuntamento Appuntamento? @relation(fields: [appuntamentoId], references: [id], onDelete: Cascade)
+  ordine       Ordine?       @relation(fields: [ordineId], references: [id], onDelete: Cascade)
+  cliente      Utente        @relation(fields: [clienteId], references: [id], onDelete: Restrict)
 
   @@index([appuntamentoId])
+  @@index([ordineId])
   @@index([clienteId])
   @@index([stato])
   @@map("pagamenti")
@@ -484,15 +497,19 @@ model MovimentoCredito {
   motivo           String   @default("")
   /// Appuntamento che ha generato o speso il credito, quando pertinente.
   appuntamentoId   String?  @db.Uuid
+  /// Ordine che ha speso o restituito il credito, quando pertinente.
+  ordineId         String?  @db.Uuid
   autoreId         String?  @db.Uuid
   creatoIl         DateTime @default(now())
 
   cliente      Utente        @relation("creditoDelCliente", fields: [clienteId], references: [id], onDelete: Restrict)
   appuntamento Appuntamento? @relation(fields: [appuntamentoId], references: [id], onDelete: SetNull)
+  ordine       Ordine?       @relation(fields: [ordineId], references: [id], onDelete: SetNull)
   autore       Utente?       @relation("creditoRegistrato", fields: [autoreId], references: [id], onDelete: SetNull)
 
   @@index([clienteId, creatoIl])
   @@index([appuntamentoId])
+  @@index([ordineId])
   @@map("movimenti_credito")
 }
 
@@ -528,6 +545,7 @@ model Prodotto {
   aggiornatoIl    DateTime @updatedAt
 
   righeVendita       RigaVendita[]
+  righeOrdine        RigaOrdine[]
   movimentiMagazzino MovimentoMagazzino[]
 
   @@index([attivo, ordine])
@@ -537,21 +555,21 @@ model Prodotto {
 /// Vendita di prodotti registrata dal personale in negozio.
 /// Non produce alcun documento per il cliente: è una registrazione interna.
 model Vendita {
-  id                    String    @id @default(uuid()) @db.Uuid
+  id                 String    @id @default(uuid()) @db.Uuid
   /// Cliente a cui è associata la vendita, se indicato.
-  clienteId             String?   @db.Uuid
+  clienteId          String?   @db.Uuid
   /// Appuntamento a cui è associata la vendita, se indicato.
-  appuntamentoId        String?   @db.Uuid
+  appuntamentoId     String?   @db.Uuid
   /// Somma delle righe, copiata alla registrazione.
-  totaleCentesimi       Int
-  note                  String    @default("")
+  totaleCentesimi    Int
+  note               String    @default("")
   /// Chi ha registrato la vendita.
-  registrataDaId        String?   @db.Uuid
+  registrataDaId     String?   @db.Uuid
   /// Momento dell'annullamento, quando la vendita viene corretta.
-  annullataIl           DateTime?
-  annullataDaId         String?   @db.Uuid
-  motivoAnnullamento    String    @default("")
-  creataIl              DateTime  @default(now())
+  annullataIl        DateTime?
+  annullataDaId      String?   @db.Uuid
+  motivoAnnullamento String    @default("")
+  creataIl           DateTime  @default(now())
 
   cliente      Utente?       @relation("venditeDelCliente", fields: [clienteId], references: [id], onDelete: SetNull)
   appuntamento Appuntamento? @relation(fields: [appuntamentoId], references: [id], onDelete: SetNull)
@@ -596,30 +614,200 @@ enum CausaMovimentoMagazzino {
   carico
   /// Correzione manuale della giacenza, solo dal titolare.
   correzione
+  /// Scarico per un ordine online: la giacenza è prenotata alla creazione
+  /// dell'ordine, non al pagamento, così il pezzo non si vende due volte.
+  prenotazione_ordine
+  /// Ripristino quando un ordine non pagato scade o viene annullato.
+  rilascio_ordine
+  /// Ripristino per un reso rientrato in negozio.
+  reso_ordine
 }
 
 /// Movimento di magazzino: ogni variazione di giacenza lascia una riga, con
 /// data, quantità, autore e motivo. Le righe non si modificano né si
 /// cancellano: sono il registro di audit del magazzino.
 model MovimentoMagazzino {
-  id         String                  @id @default(uuid()) @db.Uuid
-  prodottoId String                  @db.Uuid
-  causa      CausaMovimentoMagazzino
+  id             String                  @id @default(uuid()) @db.Uuid
+  prodottoId     String                  @db.Uuid
+  causa          CausaMovimentoMagazzino
   /// Positivo in carico, negativo in scarico. Mai zero.
-  quantita   Int
+  quantita       Int
   /// Giacenza risultante dopo il movimento, per ricostruire la storia.
   giacenzaFinale Int
-  motivo     String                  @default("")
-  venditaId  String?                 @db.Uuid
+  motivo         String                  @default("")
+  venditaId      String?                 @db.Uuid
+  ordineId       String?                 @db.Uuid
   /// Nullo quando il movimento lo produce il sistema.
-  autoreId   String?                 @db.Uuid
-  creatoIl   DateTime                @default(now())
+  autoreId       String?                 @db.Uuid
+  creatoIl       DateTime                @default(now())
 
   prodotto Prodotto @relation(fields: [prodottoId], references: [id], onDelete: Cascade)
   vendita  Vendita? @relation(fields: [venditaId], references: [id], onDelete: SetNull)
+  ordine   Ordine?  @relation(fields: [ordineId], references: [id], onDelete: SetNull)
   autore   Utente?  @relation("movimentiMagazzino", fields: [autoreId], references: [id], onDelete: SetNull)
 
   @@index([prodottoId, creatoIl])
   @@index([venditaId])
+  @@index([ordineId])
   @@map("movimenti_magazzino")
+}
+
+/// Stato di un ordine di prodotti acquistati online.
+enum StatoOrdine {
+  /// Giacenza prenotata, in attesa che il cliente paghi entro il blocco.
+  in_attesa_pagamento
+  /// Pagamento confermato dall'evento firmato del fornitore.
+  pagato
+  in_preparazione
+  pronto_per_ritiro
+  /// Previsto dalla specifica: resterà inutilizzato finché la spedizione a
+  /// domicilio non sarà definita (corriere, costi e zone).
+  spedito
+  consegnato
+  annullato
+  rimborsato
+}
+
+/// Come il cliente riceve l'ordine. La spedizione a domicilio è prevista dal
+/// modello ma non ancora attivabile: mancano corriere, costi e zone.
+enum TipoConsegna {
+  ritiro_in_negozio
+  spedizione
+}
+
+/// Ordine di prodotti acquistati online dal cliente.
+///
+/// La giacenza si prenota alla creazione, non al pagamento: finché l'ordine è
+/// `in_attesa_pagamento` i pezzi sono già scaricati, così non possono essere
+/// venduti anche al banco. Se il pagamento non arriva entro `bloccoScadeIl`,
+/// l'ordine viene annullato, i pezzi tornano disponibili e il credito
+/// eventualmente usato viene restituito.
+///
+/// L'ordine non produce documenti fiscali: gli obblighi della vendita online
+/// sono ancora da definire con il commercialista.
+model Ordine {
+  id                     String       @id @default(uuid()) @db.Uuid
+  /// Numero leggibile, quello che il cliente mostra al ritiro.
+  numero                 Int          @unique @default(autoincrement())
+  clienteId              String       @db.Uuid
+  stato                  StatoOrdine  @default(in_attesa_pagamento)
+  tipoConsegna           TipoConsegna @default(ritiro_in_negozio)
+  /// Somma delle righe, copiata alla creazione.
+  totaleRigheCentesimi   Int
+  /// Spese di consegna: sempre zero sul ritiro in negozio.
+  speseConsegnaCentesimi Int          @default(0)
+  /// Parte del totale coperta dal credito del cliente.
+  creditoUsatoCentesimi  Int          @default(0)
+  /// Differenza da pagare al fornitore: zero se il credito copre tutto.
+  daPagareCentesimi      Int
+  note                   String       @default("")
+  /// Oltre questo istante l'ordine non pagato scade. Nullo appena pagato.
+  bloccoScadeIl          DateTime?
+  pagatoIl               DateTime?
+  prontoIl               DateTime?
+  consegnatoIl           DateTime?
+  annullatoIl            DateTime?
+  motivoAnnullamento     String       @default("")
+  /// Nullo quando l'annullamento lo produce la scadenza del blocco.
+  annullatoDaId          String?      @db.Uuid
+  creatoIl               DateTime     @default(now())
+  aggiornatoIl           DateTime     @updatedAt
+
+  cliente     Utente  @relation("ordiniDelCliente", fields: [clienteId], references: [id], onDelete: Restrict)
+  annullatoDa Utente? @relation("ordiniAnnullati", fields: [annullatoDaId], references: [id], onDelete: SetNull)
+
+  righe              RigaOrdine[]
+  pagamenti          Pagamento[]
+  resi               RichiestaReso[]
+  movimentiMagazzino MovimentoMagazzino[]
+  movimentiCredito   MovimentoCredito[]
+
+  @@index([clienteId, creatoIl])
+  @@index([stato, creatoIl])
+  @@index([bloccoScadeIl])
+  @@map("ordini")
+}
+
+/// Riga di un ordine. Nome e prezzo sono copiati all'acquisto: un cambio di
+/// listino non altera gli ordini già fatti.
+model RigaOrdine {
+  id              String  @id @default(uuid()) @db.Uuid
+  ordineId        String  @db.Uuid
+  /// Nullo se il prodotto viene eliminato dal catalogo.
+  prodottoId      String? @db.Uuid
+  nome            String
+  prezzoCentesimi Int
+  quantita        Int
+
+  ordine    Ordine     @relation(fields: [ordineId], references: [id], onDelete: Cascade)
+  prodotto  Prodotto?  @relation(fields: [prodottoId], references: [id], onDelete: SetNull)
+  righeReso RigaReso[]
+
+  @@index([ordineId])
+  @@index([prodottoId])
+  @@map("righe_ordine")
+}
+
+/// Stato di una richiesta di reso.
+enum StatoRichiestaReso {
+  richiesto
+  /// Approvato: si attende il rientro della merce in negozio.
+  approvato
+  /// Rifiutato dal titolare, sempre con motivazione.
+  rifiutato
+  /// Merce rientrata, giacenza ricaricata e rimborso emesso.
+  rimborsato
+}
+
+/// Richiesta di reso del cliente, entro i quattordici giorni di recesso.
+///
+/// La data della richiesta è il dato che conta se il cliente contesta: resta
+/// registrata anche quando il titolare rifiuta. Decide solo il titolare, con
+/// motivazione obbligatoria sul rifiuto.
+model RichiestaReso {
+  id                         String             @id @default(uuid()) @db.Uuid
+  ordineId                   String             @db.Uuid
+  clienteId                  String             @db.Uuid
+  stato                      StatoRichiestaReso @default(richiesto)
+  /// Motivo indicato dal cliente: il recesso non esige una ragione, quindi
+  /// può restare vuoto.
+  motivoCliente              String             @default("")
+  /// Obbligatorio quando la richiesta viene rifiutata.
+  motivoRifiuto              String             @default("")
+  /// Rimborso dovuto, calcolato dalle righe rese alla decisione.
+  importoRimborsoCentesimi   Int                @default(0)
+  /// Identificativo del rimborso presso il fornitore, quando emesso.
+  riferimentoRimborso        String?
+  /// Parte restituita come credito, quando il pagamento era in credito.
+  creditoRestituitoCentesimi Int                @default(0)
+  richiestoIl                DateTime           @default(now())
+  decisoIl                   DateTime?
+  decisaDaId                 String?            @db.Uuid
+  rimborsatoIl               DateTime?
+
+  ordine   Ordine  @relation(fields: [ordineId], references: [id], onDelete: Cascade)
+  cliente  Utente  @relation("resiDelCliente", fields: [clienteId], references: [id], onDelete: Restrict)
+  decisaDa Utente? @relation("resiDecisi", fields: [decisaDaId], references: [id], onDelete: SetNull)
+
+  righe RigaReso[]
+
+  @@index([ordineId])
+  @@index([clienteId, richiestoIl])
+  @@index([stato, richiestoIl])
+  @@map("richieste_reso")
+}
+
+/// Riga resa: il recesso può riguardare solo una parte dell'ordine.
+model RigaReso {
+  id           String @id @default(uuid()) @db.Uuid
+  resoId       String @db.Uuid
+  rigaOrdineId String @db.Uuid
+  quantita     Int
+
+  reso       RichiestaReso @relation(fields: [resoId], references: [id], onDelete: Cascade)
+  rigaOrdine RigaOrdine    @relation(fields: [rigaOrdineId], references: [id], onDelete: Restrict)
+
+  @@unique([resoId, rigaOrdineId])
+  @@index([rigaOrdineId])
+  @@map("righe_reso")
 }

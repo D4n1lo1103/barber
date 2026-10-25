@@ -11,6 +11,8 @@ export const CODA_PROMEMORIA = 'invio-promemoria';
 export const CODA_WHATSAPP = 'invio-whatsapp';
 /** Scadenza del blocco dello slot durante il pagamento della caparra. */
 export const CODA_BLOCCO_SLOT = 'scadenza-blocco-slot';
+/** Scadenza del tempo per pagare un ordine online: la giacenza torna libera. */
+export const CODA_BLOCCO_ORDINE = 'scadenza-blocco-ordine';
 
 type Gestore = (dati: unknown) => Promise<void>;
 
