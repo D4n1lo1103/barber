@@ -155,26 +155,16 @@ export class ImpostazioniServizio {
    * procedura guidata.
    */
   async salvaSalone(dati: DatiSaloneModificabili): Promise<Salone> {
-    const installazione = await this.prisma.installazione.findFirst({ select: { id: true } });
+    const installazione = await this.prisma.installazione.findFirst({
+      select: { id: true, granularitaSlotMin: true },
+    });
 
     if (!installazione) {
       throw new NotFoundException('Installazione non configurata.');
     }
 
-    const incompatibili = await this.prisma.servizio.findMany({
-      where: { attivo: true },
-      select: { nome: true, durataMinuti: true },
-    });
-    const fuoriPasso = incompatibili.filter(
-      (servizio) => servizio.durataMinuti % dati.granularitaSlotMinuti !== 0,
-    );
-
-    if (fuoriPasso.length > 0) {
-      throw new BadRequestException(
-        `Con slot da ${dati.granularitaSlotMinuti} minuti queste durate non tornano: ${fuoriPasso
-          .map((servizio) => `${servizio.nome} (${servizio.durataMinuti} min)`)
-          .join(', ')}. Cambia prima le durate dei servizi.`,
-      );
+    if (dati.granularitaSlotMinuti !== installazione.granularitaSlotMin) {
+      await this.verificaDurateCompatibili(dati.granularitaSlotMinuti);
     }
 
     const aggiornata = await this.prisma.installazione.update({
@@ -193,6 +183,29 @@ export class ImpostazioniServizio {
     });
 
     return this.componiSalone(aggiornata);
+  }
+
+  /**
+   * Anche i servizi disattivati entrano nel controllo: riattivarne uno non
+   * ricontrolla la durata, quindi lasciarlo fuori passo qui lo renderebbe poi
+   * impossibile da prenotare senza che nessuno se ne accorga.
+   */
+  private async verificaDurateCompatibili(granularita: number): Promise<void> {
+    const servizi = await this.prisma.servizio.findMany({
+      select: { nome: true, durataMinuti: true, attivo: true },
+    });
+    const fuoriPasso = servizi.filter((servizio) => servizio.durataMinuti % granularita !== 0);
+
+    if (fuoriPasso.length > 0) {
+      throw new BadRequestException(
+        `Con slot da ${granularita} minuti queste durate non tornano: ${fuoriPasso
+          .map(
+            (servizio) =>
+              `${servizio.nome} (${servizio.durataMinuti} min${servizio.attivo ? '' : ', disattivato'})`,
+          )
+          .join(', ')}. Cambia prima le durate dei servizi.`,
+      );
+    }
   }
 
   private componiSalone(riga: {

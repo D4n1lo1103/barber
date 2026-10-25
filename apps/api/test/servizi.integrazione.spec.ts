@@ -147,6 +147,24 @@ describe('Catalogo dei servizi', () => {
     expect(await contesto.prisma.servizio.count()).toBe(1);
   });
 
+  it('riattivando ricontrolla la durata contro la granularità di oggi', async () => {
+    const creato = await creaServizio({ durataMinuti: 45 }).expect(201);
+    await comeTitolare(chiama().delete(`/api/servizi/${creato.body.id}`)).expect(200);
+
+    // La granularità cambia mentre il servizio è spento: 45 minuti non tornano più.
+    await contesto.prisma.installazione.updateMany({ data: { granularitaSlotMin: 30 } });
+
+    try {
+      const rifiutata = await comeTitolare(
+        chiama().patch(`/api/servizi/${creato.body.id}`).send({ attivo: true }),
+      ).expect(400);
+
+      expect(rifiutata.body.message).toContain('30 minuti');
+    } finally {
+      await contesto.prisma.installazione.updateMany({ data: { granularitaSlotMin: 15 } });
+    }
+  });
+
   it('riordina il catalogo', async () => {
     const primo = await creaServizio({ nome: 'Taglio uomo' }).expect(201);
     const secondo = await creaServizio({ nome: 'Barba', durataMinuti: 15 }).expect(201);
