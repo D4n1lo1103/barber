@@ -84,11 +84,33 @@ insieme alla prenotazione forzata del titolare.
     (host, utente, chiave SSH) da configurare come segreti del repository GitHub.
   - Nel frattempo la pubblicazione delle immagini su GitHub Container Registry è attiva e
     l'aggiornamento si esegue a mano con `infra/aggiorna.sh`.
+- [ ] `BLOCCATO` Invio reale delle e-mail: inviti ad attivare l'account, verifiche,
+      reset della password e conferme partono già da sé, ma senza `SMTP_HOST` restano
+      solo nei log. In sviluppo è il comportamento voluto; all'installazione del salone
+      vanno messe in `.env` le credenziali del provider (Brevo) e va provato l'arrivo di
+      un invito su una casella vera.
+  - Blocco: servono l'account del provider e il dominio del salone verificato come
+    mittente. L'avvio in produzione rifiuta già di partire senza `SMTP_HOST`.
+- [ ] `TODO` Valutare un raccoglitore di posta locale (es. Mailpit in `docker-compose`)
+      per vedere in sviluppo le e-mail come le riceve il cliente, invece di leggerle nei
+      log del server.
 - [ ] `BLOCCATO` Prova reale della procedura di ripristino dei backup.
   - Blocco: richiede un server di prova con un'installazione attiva. Gli script sono
     pronti e documentati; manca la verifica end-to-end su dati reali.
 
 ## Completato
+
+### L'invito al cliente dice su quale recapito è partito (25/10/2026)
+
+L'invio automatico c'era già, ma l'interfaccia mostrava solo il link da copiare e
+diceva «Consegna al cliente questo link»: sembrava l'unico modo di recapitarlo.
+
+- [x] `COMPLETATO` `POST /clienti` e `POST /clienti/:id/invito` restituiscono il
+      `canale` usato (`whatsapp`, `email` o `nessuno`), già noto al servizio notifiche.
+- [x] `COMPLETATO` L'interfaccia nomina il recapito su cui l'invito è partito e
+      presenta il link come riserva; avvisa quando non c'è nessun recapito.
+- [x] `COMPLETATO` Test: due di integrazione (invito via e-mail davvero consegnato al
+      mittente, canale `nessuno` senza recapiti) e tre unitari sul messaggio.
 
 ### Accesso bloccato dai cookie di una sessione scaduta (25/10/2026)
 

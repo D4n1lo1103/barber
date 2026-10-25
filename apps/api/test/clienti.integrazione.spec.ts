@@ -182,6 +182,31 @@ describe('Schede clienti create dal personale', () => {
     ).expect(409);
   });
 
+  it('manda l’invito all’indirizzo e-mail della scheda e dice su quale recapito è partito', async () => {
+    contesto.email.svuota();
+    const email = `invito${Date.now()}@prova.integrazione`;
+
+    const risposta = await come(
+      dipendente,
+      chiama()
+        .post('/api/clienti')
+        .send({ ...datiCliente(70), email }),
+    )
+      .expect(201)
+      .then((esito) => esito.body);
+
+    expect(risposta.canale).toBe('email');
+    expect(contesto.email.ultimoPer(email)?.testo).toContain(risposta.token);
+  });
+
+  it('senza e-mail e senza consenso WhatsApp l’invito non parte e il personale lo sa', async () => {
+    const risposta = await come(dipendente, chiama().post('/api/clienti').send(datiCliente(71)))
+      .expect(201)
+      .then((esito) => esito.body);
+
+    expect(risposta.canale).toBe('nessuno');
+  });
+
   it('rigenera l’invito finché il cliente non ha attivato l’account', async () => {
     const creato = await come(dipendente, chiama().post('/api/clienti').send(datiCliente()))
       .expect(201)
