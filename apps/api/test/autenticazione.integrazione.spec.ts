@@ -125,6 +125,28 @@ describe('Autenticazione, sessioni e permessi', () => {
     expect(conToken.status).toBe(204);
   });
 
+  it('consente di accedere di nuovo con addosso i cookie di una sessione scaduta', async () => {
+    const utente = await creaUtenteDiProva(contesto, 'dipendente', PASSWORD);
+    const vecchia = await accedi(utente.email);
+
+    await chiama()
+      .post('/api/autenticazione/uscita')
+      .set('Cookie', vecchia.cookie)
+      .set('x-csrf-token', vecchia.tokenCsrf)
+      .expect(204);
+
+    // Il browser conserva i cookie anche dopo che la sessione è sparita:
+    // l'accesso deve funzionare lo stesso, altrimenti l'utente resta fuori.
+    const nuovo = await chiama()
+      .post('/api/autenticazione/accesso')
+      .set('Origin', ORIGINE_CONSENTITA)
+      .set('Cookie', vecchia.cookie)
+      .set('x-csrf-token', vecchia.tokenCsrf)
+      .send({ email: utente.email, password: PASSWORD });
+
+    expect(nuovo.status).toBe(200);
+  });
+
   it('invalida la sessione dopo l uscita', async () => {
     const utente = await creaUtenteDiProva(contesto, 'dipendente', PASSWORD);
     const { cookie, tokenCsrf } = await accedi(utente.email);

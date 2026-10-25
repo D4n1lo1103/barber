@@ -67,3 +67,21 @@ export const schemaElencoClienti = z.object({
 });
 
 export type ElencoClienti = z.infer<typeof schemaElencoClienti>;
+
+/**
+ * Recapito su cui è partito l'invito ad attivare l'account: WhatsApp se il
+ * cliente ha dato il consenso e il salone l'ha attivato, altrimenti l'e-mail.
+ * `nessuno` quando la scheda non ha né e-mail né consenso WhatsApp: in quel
+ * caso il link resta in mano al personale, che lo consegna di persona.
+ */
+export const schemaCanaleInvito = z.enum(['whatsapp', 'email', 'nessuno']);
+
+export type CanaleInvito = z.infer<typeof schemaCanaleInvito>;
+
+export const schemaInvitoCliente = z.object({
+  token: z.string(),
+  scadeIl: z.string(),
+  canale: schemaCanaleInvito,
+});
+
+export type InvitoCliente = z.infer<typeof schemaInvitoCliente>;

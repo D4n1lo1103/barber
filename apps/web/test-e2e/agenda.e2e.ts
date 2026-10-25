@@ -64,16 +64,20 @@ test.describe('Agenda del personale', () => {
   const cognomeCliente = `Prova${marcatore}`;
   const giorno = prossimoMercoledi();
 
-  test('crea una scheda cliente e mostra il link di attivazione', async ({ page }) => {
+  test('crea una scheda cliente e manda l’invito al suo recapito', async ({ page }) => {
+    const email = `prova${marcatore}@cliente.test`;
+
     await page.goto('/clienti');
 
     await page.getByRole('button', { name: 'Nuova scheda' }).click();
     await page.getByLabel('Nome', { exact: true }).fill('Cliente');
     await page.getByLabel('Cognome').fill(cognomeCliente);
     await page.getByLabel('Numero WhatsApp').fill(`+39340555${marcatore}`);
+    await page.getByLabel('E-mail (facoltativa)').fill(email);
     await page.getByRole('button', { name: 'Crea scheda' }).click();
 
-    await expect(page.getByText(/Consegna al cliente questo link/)).toBeVisible();
+    // Senza consenso WhatsApp l'invito parte via e-mail; il link resta come riserva.
+    await expect(page.getByText(`Invito inviato per e-mail a ${email}`)).toBeVisible();
     await expect(page.getByText(/\/attivazione\?token=/)).toBeVisible();
 
     await page.getByRole('button', { name: 'Chiudi', exact: true }).click();

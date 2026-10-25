@@ -5,6 +5,7 @@ import { Campo } from '../../componenti/campo';
 import { Modale } from '../../componenti/modale';
 import { Pulsante } from '../../componenti/pulsante';
 import { creaCliente } from '../../servizi/gestione';
+import { messaggioInvito } from './messaggio-invito';
 
 const BOZZA_VUOTA = {
   nome: '',
@@ -17,8 +18,8 @@ const BOZZA_VUOTA = {
 
 /**
  * Scheda cliente creata dal personale. La password non viene mai impostata qui:
- * al salvataggio il sistema produce un link di attivazione, che invia da sé al
- * cliente su WhatsApp o via e-mail e che resta visibile per poterlo dettare.
+ * al salvataggio il sistema invia da sé l'invito, su WhatsApp o via e-mail, e
+ * mostra il link come riserva, per poterlo dettare o consegnare a mano.
  */
 export function ModaleNuovoCliente({
   aperto,
@@ -32,7 +33,10 @@ export function ModaleNuovoCliente({
   const [bozza, impostaBozza] = useState(BOZZA_VUOTA);
   const [errori, impostaErrori] = useState<Record<string, string>>({});
   const [errore, impostaErrore] = useState<string | null>(null);
-  const [collegamento, impostaCollegamento] = useState<string | null>(null);
+  const [invito, impostaInvito] = useState<{
+    collegamento: string;
+    messaggio: ReturnType<typeof messaggioInvito>;
+  } | null>(null);
   const [inInvio, impostaInvio] = useState(false);
 
   useEffect(() => {
@@ -40,7 +44,7 @@ export function ModaleNuovoCliente({
       impostaBozza(BOZZA_VUOTA);
       impostaErrori({});
       impostaErrore(null);
-      impostaCollegamento(null);
+      impostaInvito(null);
     }
   }, [aperto]);
 
@@ -72,9 +76,10 @@ export function ModaleNuovoCliente({
       const esito = await creaCliente(validazione.data);
 
       onCreato(esito.cliente);
-      impostaCollegamento(
-        `${window.location.origin}/attivazione?token=${encodeURIComponent(esito.token)}`,
-      );
+      impostaInvito({
+        collegamento: `${window.location.origin}/attivazione?token=${encodeURIComponent(esito.token)}`,
+        messaggio: messaggioInvito(esito.canale, esito.cliente),
+      });
     } catch (motivo) {
       impostaErrore(motivo instanceof Error ? motivo.message : 'Scheda non salvata.');
     } finally {
@@ -89,19 +94,16 @@ export function ModaleNuovoCliente({
       descrizione="Bastano nome, cognome e numero WhatsApp."
       onChiudi={onChiudi}
     >
-      {collegamento ? (
+      {invito ? (
         <div className="space-y-4">
-          <Avviso tono="conferma">
-            Scheda creata. Consegna al cliente questo link per attivare l’account e scegliere la
-            password.
-          </Avviso>
+          <Avviso tono={invito.messaggio.tono}>Scheda creata. {invito.messaggio.testo}</Avviso>
           <p className="break-all rounded-[var(--radius-campo)] border border-bordo bg-fondo-elevato px-3 py-2 text-xs">
-            {collegamento}
+            {invito.collegamento}
           </p>
           <div className="flex flex-wrap justify-end gap-3">
             <Pulsante
               variante="secondario"
-              onClick={() => void navigator.clipboard?.writeText(collegamento)}
+              onClick={() => void navigator.clipboard?.writeText(invito.collegamento)}
             >
               Copia il link
             </Pulsante>

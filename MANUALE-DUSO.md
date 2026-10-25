@@ -334,13 +334,18 @@ Dal pannello, pulsante **Clienti**: tutto il personale consulta e inserisce le s
 
 - **Cercare**: per nome, cognome, numero WhatsApp o e-mail. L'elenco è paginato.
 - **Creare una scheda** (pulsante _Nuova scheda_): bastano **nome, cognome e numero
-  WhatsApp**; l'e-mail è facoltativa. Al salvataggio compare un **link di attivazione** da
-  consegnare al cliente: sarà lui a scegliere la password.
+  WhatsApp**; l'e-mail è facoltativa. Al salvataggio il sistema **invia da sé l'invito ad
+  attivare l'account**, su WhatsApp se il cliente ha dato il consenso, altrimenti
+  all'indirizzo e-mail della scheda. Il messaggio di conferma dice su quale recapito è
+  partito. Il **link di attivazione** resta comunque a schermo, come riserva: serve se
+  l'invito non arriva o se la scheda non ha né e-mail né consenso, e in quel caso va
+  consegnato o dettato al cliente. Sarà lui a scegliere la password.
 - **Nessun duplicato**: se il numero è già collegato a una scheda, il sistema lo segnala con
   il nome del cliente esistente invece di creare un doppione.
 - **Scheda del cliente**: contatti, stato dell'account, **note interne** modificabili e
   **storico degli appuntamenti** con servizi, operatore, importo e stato.
 - **Nuovo link di attivazione**: disponibile finché il cliente non ha attivato l'account.
+  Anche qui l'invito riparte da solo sul recapito del cliente; il link mostrato è la riserva.
 
 ## Vendite in negozio
 
