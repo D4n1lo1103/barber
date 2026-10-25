@@ -155,6 +155,13 @@ export function ModaleDettaglioAppuntamento({
           </Avviso>
         )}
 
+        {appuntamento.forzato && (
+          <Avviso tono="avviso">
+            Inserito dal titolare fuori dai vincoli dell’agenda: può cadere a salone chiuso, in un
+            giorno di assenza o in contemporanea a un altro appuntamento.
+          </Avviso>
+        )}
+
         {appuntamento.note && (
           <p className="rounded-[var(--radius-campo)] border border-bordo bg-fondo-elevato px-3 py-2 text-sm">
             {appuntamento.note}

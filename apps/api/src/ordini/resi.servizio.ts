@@ -38,11 +38,7 @@ export class ResiServizio {
   ) {}
 
   /** Richiesta di reso del cliente: solo sui propri ordini consegnati. */
-  async richiedi(
-    ordineId: string,
-    dati: DatiRichiestaReso,
-    clienteId: string,
-  ): Promise<Ordine> {
+  async richiedi(ordineId: string, dati: DatiRichiestaReso, clienteId: string): Promise<Ordine> {
     const ordine = await this.prisma.ordine.findFirst({
       where: { id: ordineId, clienteId },
       include: {
@@ -55,7 +51,9 @@ export class ResiServizio {
       throw new NotFoundException('Ordine non trovato.');
     }
 
-    if (!recessoAperto({ stato: ordine.stato, consegnatoIl: ordine.consegnatoIl, adesso: new Date() })) {
+    if (
+      !recessoAperto({ stato: ordine.stato, consegnatoIl: ordine.consegnatoIl, adesso: new Date() })
+    ) {
       throw new ConflictException(
         ordine.stato === 'consegnato'
           ? `I ${GIORNI_RECESSO} giorni per il recesso sono passati: contatta il salone.`

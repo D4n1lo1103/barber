@@ -71,7 +71,7 @@ export class AppuntamentiController {
     @Body(new ValidazioneZodPipe(schemaCreazioneAppuntamento)) dati: DatiCreazioneAppuntamento,
     @UtenteCorrente() utente: UtenteRichiesta,
   ): Promise<Appuntamento> {
-    return this.appuntamenti.crea(dati, utente.id);
+    return this.appuntamenti.crea(dati, utente.id, utente.ruolo);
   }
 
   @Post(':id/spostamento')

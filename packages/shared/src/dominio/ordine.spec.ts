@@ -112,9 +112,9 @@ describe('Finestra di recesso', () => {
   });
 
   it('è aperta il giorno della consegna e fino alla scadenza', () => {
-    expect(
-      recessoAperto({ stato: 'consegnato', consegnatoIl: consegna, adesso: consegna }),
-    ).toBe(true);
+    expect(recessoAperto({ stato: 'consegnato', consegnatoIl: consegna, adesso: consegna })).toBe(
+      true,
+    );
     expect(
       recessoAperto({
         stato: 'consegnato',
@@ -138,9 +138,9 @@ describe('Finestra di recesso', () => {
     expect(
       recessoAperto({ stato: 'pronto_per_ritiro', consegnatoIl: null, adesso: consegna }),
     ).toBe(false);
-    expect(
-      recessoAperto({ stato: 'rimborsato', consegnatoIl: consegna, adesso: consegna }),
-    ).toBe(false);
+    expect(recessoAperto({ stato: 'rimborsato', consegnatoIl: consegna, adesso: consegna })).toBe(
+      false,
+    );
   });
 });
 

@@ -33,6 +33,12 @@ export const schemaCreazioneAppuntamento = z.object({
   servizioIds: schemaServiziScelti,
   inizio: schemaIstante,
   senzaCaparra: z.boolean().default(false),
+  /**
+   * Deroga ai vincoli dell'agenda, riservata al titolare: orari di lavoro,
+   * giorni di chiusura, assenze, allineamento agli slot e sovrapposizioni.
+   * Il backend la rifiuta a chiunque non sia titolare.
+   */
+  forzato: z.boolean().default(false),
   note: z.string().trim().max(500, 'Le note sono troppo lunghe.').default(''),
 });
 
@@ -121,6 +127,8 @@ export const schemaAppuntamento = z.object({
   durataMinuti: z.number().int(),
   prezzoTotaleCentesimi: z.number().int(),
   senzaCaparra: z.boolean(),
+  /** Inserito dal titolare in deroga ai vincoli dell'agenda. */
+  forzato: z.boolean(),
   /** Caparra dovuta, calcolata alla prenotazione: zero se non richiesta. */
   caparraCentesimi: z.number().int(),
   /** Caparra effettivamente pagata e non restituita. */

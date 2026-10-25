@@ -335,6 +335,10 @@ model Appuntamento {
   noteAnnullamento      String              @default("")
   /// Appuntamento inserito dal personale senza richiedere la caparra.
   senzaCaparra          Boolean             @default(false)
+  /// Inserito dal titolare in deroga ai vincoli dell'agenda: orari di lavoro,
+  /// chiusure, assenze, allineamento agli slot e sovrapposizioni. Le righe
+  /// forzate restano fuori dal vincolo di esclusione del database.
+  forzato               Boolean             @default(false)
   /// Caparra dovuta, calcolata alla prenotazione sulla percentuale di allora:
   /// un cambio di impostazione non altera gli appuntamenti già fissati.
   /// Zero quando la caparra non è richiesta.

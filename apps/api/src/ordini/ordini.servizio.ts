@@ -27,10 +27,7 @@ import {
 } from '@barber/shared';
 import { CaparraServizio } from '../pagamenti/caparra.servizio.js';
 import { PagamentiServizio } from '../pagamenti/pagamenti.servizio.js';
-import {
-  RegistroGestoriPagamento,
-  type GestorePagamento,
-} from '../pagamenti/registro-gestori.js';
+import { RegistroGestoriPagamento, type GestorePagamento } from '../pagamenti/registro-gestori.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { ScadenzaOrdiniAttivita } from './scadenza-ordini.attivita.js';
 
@@ -535,11 +532,7 @@ export class OrdiniServizio implements GestorePagamento, OnModuleInit {
   }
 
   /** Avanzamento dell'ordine da parte del personale. */
-  async avanza(
-    ordineId: string,
-    dati: DatiAvanzamentoOrdine,
-    autoreId: string,
-  ): Promise<Ordine> {
+  async avanza(ordineId: string, dati: DatiAvanzamentoOrdine, autoreId: string): Promise<Ordine> {
     const ordine = await this.prisma.ordine.findUnique({
       where: { id: ordineId },
       select: { stato: true, numero: true },
@@ -664,7 +657,13 @@ export function componiOrdine(ordine: {
   annullatoIl: Date | null;
   motivoAnnullamento: string;
   creatoIl: Date;
-  righe: { id: string; prodottoId: string | null; nome: string; prezzoCentesimi: number; quantita: number }[];
+  righe: {
+    id: string;
+    prodottoId: string | null;
+    nome: string;
+    prezzoCentesimi: number;
+    quantita: number;
+  }[];
   cliente: { id: string; nome: string; cognome: string } | null;
   resi: {
     id: string;
@@ -743,9 +742,7 @@ export function componiOrdine(ordine: {
       consegnatoIl: ordine.consegnatoIl,
       adesso,
     }),
-    recessoScadeIl: ordine.consegnatoIl
-      ? scadenzaRecesso(ordine.consegnatoIl).toISOString()
-      : null,
+    recessoScadeIl: ordine.consegnatoIl ? scadenzaRecesso(ordine.consegnatoIl).toISOString() : null,
     creatoIl: ordine.creatoIl.toISOString(),
   };
 }

@@ -157,15 +157,36 @@ export function PaginaAgenda() {
   );
 
   const [minutoApertura, minutoChiusura] = useMemo(() => {
-    if (apertura.length === 0) {
-      return [APERTURA_PREDEFINITA.minutoInizio, APERTURA_PREDEFINITA.minutoFine];
+    const fasce =
+      apertura.length === 0
+        ? [
+            {
+              minutoInizio: APERTURA_PREDEFINITA.minutoInizio,
+              minutoFine: APERTURA_PREDEFINITA.minutoFine,
+            },
+          ]
+        : apertura;
+
+    let dalle = Math.min(...fasce.map((fascia) => fascia.minutoInizio));
+    let alle = Math.max(...fasce.map((fascia) => fascia.minutoFine));
+
+    // Un appuntamento forzato dal titolare può cadere fuori dagli orari di
+    // apertura: la griglia si allarga all'ora piena, altrimenti l'appuntamento
+    // resterebbe invisibile o tagliato al bordo.
+    for (const evento of eventi) {
+      // Un appuntamento che scavalca la mezzanotte arriva comunque a fine giornata.
+      const fine =
+        evento.fine.getDate() === evento.inizio.getDate()
+          ? evento.fine.getHours() * 60 + evento.fine.getMinutes()
+          : 24 * 60;
+      const inizio = evento.inizio.getHours() * 60 + evento.inizio.getMinutes();
+
+      dalle = Math.min(dalle, Math.floor(inizio / 60) * 60);
+      alle = Math.max(alle, Math.min(Math.ceil(fine / 60) * 60, 24 * 60));
     }
 
-    return [
-      Math.min(...apertura.map((fascia) => fascia.minutoInizio)),
-      Math.max(...apertura.map((fascia) => fascia.minutoFine)),
-    ];
-  }, [apertura]);
+    return [dalle, alle];
+  }, [apertura, eventi]);
 
   function apriNuovo(giorno: string, orario: string | null, operatoreId?: string) {
     const scelto =

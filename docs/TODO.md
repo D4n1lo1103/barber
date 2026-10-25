@@ -4,7 +4,8 @@ Stato dello sviluppo per fasi (vedi la roadmap in `CLAUDE.md`).
 
 ## In corso — Fase 9: Vendita online
 
-Branch: `feat/vendita-online`. Le fasi da 0 a 8 sono completate e in `main`.
+Branch: `feat/vendita-online`. Le fasi da 0 a 8 sono completate e in `main`,
+insieme alla prenotazione forzata del titolare.
 
 ### Decisioni prese con il titolare (19/10/2026)
 
@@ -87,7 +88,43 @@ Branch: `feat/vendita-online`. Le fasi da 0 a 8 sono completate e in `main`.
   - Blocco: richiede un server di prova con un'installazione attiva. Gli script sono
     pronti e documentati; manca la verifica end-to-end su dati reali.
 
-## Completato — Fase 8: Prodotti e magazzino (18/10/2026)
+## Completato
+
+### Prenotazione forzata del titolare (25/10/2026)
+
+Deciso con il titolare: può derogare **solo il titolare**, anche sull'agenda dei
+colleghi, superando orari di lavoro, giorni di chiusura, ferie e assenze,
+allineamento agli slot e sovrapposizioni. Restano i limiti di data e il divieto
+di prenotare per una scheda cliente disattivata. Vedi
+`docs/adr/0011-prenotazione-forzata-del-titolare.md`.
+
+- [x] `COMPLETATO` Colonna `forzato` e vincolo di esclusione ricostruito con
+      `AND NOT "forzato"` (migrazione `20261025120000_appuntamento_forzato`).
+- [x] `COMPLETATO` Campo `forzato` negli schemi condivisi di creazione e lettura.
+- [x] `COMPLETATO` Backend: deroga applicata in `AppuntamentiServizio.crea`, con
+      `403` a chi non è titolare e registrazione nei log di ogni inserimento forzato.
+- [x] `COMPLETATO` Interfaccia: interruttore «Fuori orario» con campi giorno e ora
+      liberi, avviso nel modale e nel dettaglio dell'appuntamento.
+- [x] `COMPLETATO` Messaggi di errore specifici al posto del generico
+      «Scegli il cliente, i servizi e l'orario».
+- [x] `COMPLETATO` La griglia dell'agenda si allarga per mostrare un appuntamento
+      fuori dagli orari di apertura, che altrimenti restava invisibile.
+- [x] `COMPLETATO` Test: 9 di integrazione, 3 del frontend e 1 end-to-end.
+- [x] `COMPLETATO` Documentazione: ADR 0011, MANUALE-DUSO.md e README.
+
+Verifiche eseguite il 25/10/2026, tutte con esito positivo: `pnpm verifica`
+(formattazione, lint, type-check, test unitari, build), 205 test di integrazione
+e prova manuale sull'app in esecuzione, come titolare e come dipendente.
+
+**Rischio accettato**: le righe forzate escono dal vincolo di esclusione, quindi
+su quelle si perde la protezione contro due inserimenti simultanei. Il controllo
+applicativo, l'agenda e il calcolo della disponibilità restano invariati.
+
+### Resta da decidere
+
+- [ ] `TODO` Lo **spostamento** di un appuntamento segue ancora i vincoli
+      ordinari, anche per il titolare: se serve la stessa deroga, va decisa a parte.
+      — Fase 8: Prodotti e magazzino (18/10/2026)
 
 ### Decisioni prese con il titolare (18/10/2026)
 
