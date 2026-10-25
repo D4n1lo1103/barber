@@ -36,6 +36,7 @@ import type {
   EsitoRichiestaCodice,
   EsportazioneDati,
   FasciaSettimanale,
+  InvitoCliente,
   MovimentoMagazzino,
   Operatore,
   PagamentoDaCompletare,
@@ -182,7 +183,7 @@ export function leggiCliente(id: string): Promise<Cliente> {
 
 export function creaCliente(
   dati: DatiCreazioneCliente,
-): Promise<{ cliente: Cliente; token: string; scadeIl: string }> {
+): Promise<{ cliente: Cliente } & InvitoCliente> {
   return chiamaApi('/clienti', { metodo: 'POST', corpo: dati });
 }
 
@@ -190,7 +191,7 @@ export function modificaCliente(id: string, dati: DatiModificaCliente): Promise<
   return chiamaApi<Cliente>(`/clienti/${id}`, { metodo: 'PATCH', corpo: dati });
 }
 
-export function rigeneraInvitoCliente(id: string): Promise<{ token: string; scadeIl: string }> {
+export function rigeneraInvitoCliente(id: string): Promise<InvitoCliente> {
   return chiamaApi(`/clienti/${id}/invito`, { metodo: 'POST' });
 }
 

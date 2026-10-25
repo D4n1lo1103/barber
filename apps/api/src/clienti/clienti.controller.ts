@@ -3,6 +3,7 @@ import {
   schemaCreazioneCliente,
   schemaModificaCliente,
   schemaRicercaClienti,
+  type CanaleInvito,
   type Cliente,
   type DatiCreazioneCliente,
   type DatiModificaCliente,
@@ -42,7 +43,7 @@ export class ClientiController {
   @LimiteDiFrequenza(30, 300)
   crea(
     @Body(new ValidazioneZodPipe(schemaCreazioneCliente)) dati: DatiCreazioneCliente,
-  ): Promise<{ cliente: Cliente; token: string; scadeIl: Date }> {
+  ): Promise<{ cliente: Cliente; token: string; scadeIl: Date; canale: CanaleInvito }> {
     return this.clienti.crea(dati);
   }
 
@@ -55,7 +56,9 @@ export class ClientiController {
   }
 
   @Post(':id/invito')
-  rigeneraInvito(@Param('id') id: string): Promise<{ token: string; scadeIl: Date }> {
+  rigeneraInvito(
+    @Param('id') id: string,
+  ): Promise<{ token: string; scadeIl: Date; canale: CanaleInvito }> {
     return this.clienti.rigeneraInvito(id);
   }
 }

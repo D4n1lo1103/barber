@@ -28,6 +28,7 @@ import {
   formattaIntervallo,
   formattaPrezzo,
 } from '../../utilita/formati';
+import { messaggioInvito } from './messaggio-invito';
 
 /** Scheda cliente: contatti, note interne e storico degli appuntamenti. */
 export function PaginaDettaglioCliente() {
@@ -43,6 +44,9 @@ export function PaginaDettaglioCliente() {
   const [errore, impostaErrore] = useState<string | null>(null);
   const [esito, impostaEsito] = useState<string | null>(null);
   const [collegamento, impostaCollegamento] = useState<string | null>(null);
+  const [messaggio, impostaMessaggioInvito] = useState<ReturnType<typeof messaggioInvito> | null>(
+    null,
+  );
 
   useEffect(() => {
     if (!id) {
@@ -111,6 +115,7 @@ export function PaginaDettaglioCliente() {
       impostaCollegamento(
         `${window.location.origin}/attivazione?token=${encodeURIComponent(invito.token)}`,
       );
+      impostaMessaggioInvito(messaggioInvito(invito.canale, cliente));
     } catch (motivo) {
       impostaErrore(motivo instanceof Error ? motivo.message : 'Invito non generato.');
     }
@@ -174,6 +179,7 @@ export function PaginaDettaglioCliente() {
             <Pulsante variante="secondario" onClick={() => void nuovoInvito()}>
               Genera un nuovo link di attivazione
             </Pulsante>
+            {messaggio && <Avviso tono={messaggio.tono}>{messaggio.testo}</Avviso>}
             {collegamento && (
               <>
                 <p className="break-all rounded-[var(--radius-campo)] border border-bordo bg-fondo-elevato px-3 py-2 text-xs">

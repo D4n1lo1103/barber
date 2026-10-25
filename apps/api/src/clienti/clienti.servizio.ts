@@ -6,6 +6,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import type {
+  CanaleInvito,
   Cliente,
   DatiCreazioneCliente,
   DatiModificaCliente,
@@ -16,6 +17,13 @@ import { PrismaService } from '../prisma/prisma.service.js';
 import { SessioniServizio } from '../autenticazione/sessioni.servizio.js';
 import { TokenServizio } from '../autenticazione/token.servizio.js';
 import { NotificheServizio } from '../notifiche/notifiche.servizio.js';
+
+/** Invito appena creato, con il recapito su cui è partito. */
+interface InvitoCreato {
+  token: string;
+  scadeIl: Date;
+  canale: CanaleInvito;
+}
 
 interface RigaCliente {
   id: string;
@@ -85,9 +93,7 @@ export class ClientiServizio {
    * il cliente attiva il proprio account. Un numero già presente non crea un
    * duplicato: la scheda esistente viene segnalata a chi sta inserendo.
    */
-  async crea(
-    dati: DatiCreazioneCliente,
-  ): Promise<{ cliente: Cliente; token: string; scadeIl: Date }> {
+  async crea(dati: DatiCreazioneCliente): Promise<{ cliente: Cliente } & InvitoCreato> {
     const perNumero = await this.prisma.utente.findFirst({
       where: { numeroWhatsapp: dati.numeroWhatsapp },
     });
@@ -127,7 +133,7 @@ export class ClientiServizio {
     // L'invito va su WhatsApp se il cliente ha acconsentito, altrimenti via
     // e-mail. Senza nessuno dei due il link resta in mano al personale, che lo
     // vede a schermo e può dettarlo.
-    await this.notifiche.inviaInvitoAttivazione(
+    const canale = await this.notifiche.inviaInvitoAttivazione(
       {
         nome: creato.nome,
         email: creato.email,
@@ -137,7 +143,7 @@ export class ClientiServizio {
       invito.token,
     );
 
-    return { cliente: this.componi(creato), token: invito.token, scadeIl: invito.scadeIl };
+    return { cliente: this.componi(creato), ...invito, canale };
   }
 
   async modifica(id: string, dati: DatiModificaCliente): Promise<Cliente> {
@@ -180,7 +186,7 @@ export class ClientiServizio {
   }
 
   /** Nuovo invito, ad esempio se il primo è scaduto o non è arrivato. */
-  async rigeneraInvito(id: string): Promise<{ token: string; scadeIl: Date }> {
+  async rigeneraInvito(id: string): Promise<InvitoCreato> {
     const cliente = await this.leggiRiga(id);
 
     if (cliente.passwordHash) {
@@ -189,7 +195,7 @@ export class ClientiServizio {
 
     const invito = await this.token.crea(cliente.id);
 
-    await this.notifiche.inviaInvitoAttivazione(
+    const canale = await this.notifiche.inviaInvitoAttivazione(
       {
         nome: cliente.nome,
         email: cliente.email,
@@ -199,7 +205,7 @@ export class ClientiServizio {
       invito.token,
     );
 
-    return invito;
+    return { ...invito, canale };
   }
 
   /** Usato dal servizio appuntamenti: verifica che il cliente esista e sia attivo. */
