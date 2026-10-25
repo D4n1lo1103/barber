@@ -111,6 +111,42 @@ describe('Dati del salone', () => {
     expect(risposta.body.message).toContain('Taglio e barba');
   });
 
+  it('conta anche i servizi disattivati, che la riattivazione rimetterebbe in agenda', async () => {
+    await contesto.prisma.servizio.create({
+      data: {
+        nome: 'Colore spento',
+        prezzoCentesimi: 4000,
+        durataMinuti: 45,
+        ordine: 0,
+        attivo: false,
+      },
+    });
+
+    const risposta = await come(
+      titolare,
+      chiama()
+        .put('/api/impostazioni/salone')
+        .send(datiSalone({ granularitaSlotMinuti: 30 })),
+    ).expect(400);
+
+    expect(risposta.body.message).toContain('Colore spento');
+  });
+
+  it('salva i recapiti anche con una durata fuori passo, se la granularità non cambia', async () => {
+    await contesto.prisma.servizio.create({
+      data: { nome: 'Taglio lungo', prezzoCentesimi: 3000, durataMinuti: 50, ordine: 0 },
+    });
+
+    const risposta = await come(
+      titolare,
+      chiama()
+        .put('/api/impostazioni/salone')
+        .send(datiSalone({ nomeSalone: 'Barberia Rinominata', granularitaSlotMinuti: 15 })),
+    ).expect(200);
+
+    expect(risposta.body.nomeSalone).toBe('Barberia Rinominata');
+  });
+
   it('nega al dipendente sia la lettura sia la modifica', async () => {
     await come(dipendente, chiama().get('/api/impostazioni/salone')).expect(403);
     await come(dipendente, chiama().put('/api/impostazioni/salone').send(datiSalone())).expect(403);

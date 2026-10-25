@@ -6,6 +6,7 @@ import { Caricamento } from './componenti/caricamento';
 import { IntestazionePersonale } from './componenti/intestazione-personale';
 import { RottaProtetta } from './componenti/rotta-protetta';
 import { FornitoreInstallazione, usaInstallazione } from './installazione/contesto-installazione';
+import { FornitoreTema } from './tema/contesto-tema';
 import { PaginaAccesso } from './pagine/accesso';
 import { PaginaAttivazione } from './pagine/attivazione';
 import { PaginaAreaCliente } from './pagine/area-cliente/area-cliente';
@@ -143,12 +144,14 @@ function Instradamento() {
 
 export function App() {
   return (
-    <FornitoreInstallazione>
-      <FornitoreSessione>
-        <BrowserRouter>
-          <Instradamento />
-        </BrowserRouter>
-      </FornitoreSessione>
-    </FornitoreInstallazione>
+    <FornitoreTema>
+      <FornitoreInstallazione>
+        <FornitoreSessione>
+          <BrowserRouter>
+            <Instradamento />
+          </BrowserRouter>
+        </FornitoreSessione>
+      </FornitoreInstallazione>
+    </FornitoreTema>
   );
 }

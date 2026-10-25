@@ -59,10 +59,14 @@ export class ServiziServizio {
   }
 
   async modifica(id: string, dati: DatiModificaServizio): Promise<Servizio> {
-    await this.leggiOLancia(id);
+    const esistente = await this.leggiOLancia(id);
 
     if (dati.durataMinuti !== undefined) {
       await this.verificaDurata(dati.durataMinuti);
+    } else if (dati.attivo === true && !esistente.attivo) {
+      // Riattivare un servizio lo rimette in agenda: la granularità può essere
+      // cambiata mentre era spento, e una durata fuori passo non trova slot.
+      await this.verificaDurata(esistente.durataMinuti);
     }
 
     if (dati.operatoriAbilitati) {

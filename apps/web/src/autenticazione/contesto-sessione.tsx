@@ -8,6 +8,11 @@ interface ValoreSessione {
   inCaricamento: boolean;
   accedi: (email: string, password: string) => Promise<void>;
   esci: () => Promise<void>;
+  /**
+   * Dimentica l'utente senza chiamare l'uscita: serve quando è il backend ad
+   * aver già chiuso la sessione, come dopo un cambio di password.
+   */
+  scollega: () => void;
 }
 
 const ContestoSessione = createContext<ValoreSessione | undefined>(undefined);
@@ -62,9 +67,11 @@ export function FornitoreSessione({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  const scollega = useCallback(() => impostaUtente(null), []);
+
   const valore = useMemo(
-    () => ({ utente, inCaricamento, accedi, esci }),
-    [utente, inCaricamento, accedi, esci],
+    () => ({ utente, inCaricamento, accedi, esci, scollega }),
+    [utente, inCaricamento, accedi, esci, scollega],
   );
 
   return <ContestoSessione.Provider value={valore}>{children}</ContestoSessione.Provider>;

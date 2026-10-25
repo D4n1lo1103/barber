@@ -25,6 +25,9 @@ export function PaginaAccesso() {
     return <Navigate to={destinazione} replace />;
   }
 
+  // Messaggio portato da chi ci ha rimandato qui, come il cambio di password.
+  const avviso = (posizione.state as { avviso?: string } | null)?.avviso;
+
   async function invia(evento: React.FormEvent) {
     evento.preventDefault();
     impostaErrore(null);
@@ -83,6 +86,7 @@ export function PaginaAccesso() {
               onChange={(evento) => impostaPassword(evento.target.value)}
             />
 
+            {avviso && !errore && <Avviso tono="conferma">{avviso}</Avviso>}
             {errore && <Avviso tono="errore">{errore}</Avviso>}
 
             <Pulsante type="submit" className="w-full" disabled={inInvio}>

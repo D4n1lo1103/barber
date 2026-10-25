@@ -82,23 +82,3 @@ In `apps/web/src/componenti/`:
 2. Verifica il componente nei due temi e nei due profili.
 3. Garantisci la navigazione da tastiera e il focus visibile (`:focus-visible` è globale).
 4. Se il componente comunica uno stato, aggiungi testo o icona oltre al colore.
-
-## login
-
-┌────────────┬────────────────────────────┐
-│ Ruolo │ E-mail │  
-├────────────┼────────────────────────────┤
-│ Titolare │ titolare@salone.test │
-├────────────┼────────────────────────────┤
-│ Dipendente │ dipendente@salone.test │
-├────────────┼────────────────────────────┤
-│ Dipendente │ dipendente2@salone.test │
-├────────────┼────────────────────────────┤
-│ Cliente │ giulia.rossi@cliente.test │
-├────────────┼────────────────────────────┤
-│ Cliente │ andrea.conti@cliente.test │
-├────────────┼────────────────────────────┤
-│ Cliente │ elena.moretti@cliente.test │
-└────────────┴────────────────────────────┘
-
-password uguale per tutti: password-demo-salone

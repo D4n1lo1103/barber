@@ -116,9 +116,17 @@ con il titolare in `docs/adr/0012-dati-del-salone-modificabili-e-navigazione.md`
 - [x] `COMPLETATO` Riquadro di cambio password per tutti i ruoli, nel pannello e nella
       scheda _Profilo e dati_ del cliente.
 - [x] `COMPLETATO` Selettore del tema anche nell'area del cliente.
-- [x] `COMPLETATO` Test: 4 di integrazione sui dati del salone (lettura, salvataggio con
-      aggiornamento dello stato pubblico, granularità incompatibile, divieto al
+- [x] `COMPLETATO` Test: 6 di integrazione sui dati del salone (lettura, salvataggio con
+      aggiornamento dello stato pubblico, granularità incompatibile, servizi disattivati
+      inclusi nel controllo, salvataggio dei recapiti a granularità invariata, divieto al
       dipendente) e e2e della scheda _Salone_ e della navigazione dalla barra.
+- [x] `COMPLETATO` Correzioni dalla revisione del codice: il cambio password non chiama
+      più l'uscita (il backend ha già chiuso la sessione: rispondeva `401` e faceva
+      sembrare fallito un cambio riuscito) e porta la conferma sulla pagina di accesso;
+      il controllo della granularità include i servizi disattivati e scatta solo se la
+      granularità cambia davvero; riattivare un servizio ne ricontrolla la durata; il
+      tema sta in un fornitore unico, così due pulsanti non si disallineano e la
+      preferenza vale anche sulle pagine senza pulsante.
 
 ### L'invito al cliente dice su quale recapito è partito (25/10/2026)
 
