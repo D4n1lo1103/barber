@@ -312,6 +312,81 @@ describe('Agenda del personale', () => {
     });
   });
 
+  describe('Prenotazione forzata del titolare', () => {
+    it('inserisce fuori dagli orari di lavoro dell’operatore', async () => {
+      // 14:00 cade nella pausa fra le due fasce: senza deroga verrebbe rifiutato.
+      const risposta = await prenota(titolare, { inizio: alle(14), forzato: true }).expect(201);
+
+      expect((risposta.body as Appuntamento).forzato).toBe(true);
+    });
+
+    it('inserisce su un orario non allineato alla granularità', async () => {
+      await prenota(titolare, { inizio: alle(9, 7), forzato: true }).expect(201);
+    });
+
+    it('inserisce sopra un appuntamento già presente, sullo stesso operatore', async () => {
+      await prenota(dipendente).expect(201);
+
+      await prenota(titolare, { inizio: alle(9, 15), forzato: true }).expect(201);
+    });
+
+    it('inserisce dentro un’assenza dell’operatore', async () => {
+      await contesto.prisma.assenza.create({
+        data: {
+          operatoreId: idDipendente,
+          tipo: 'ferie',
+          inizio: new Date(alle(8)),
+          fine: new Date(alle(13)),
+        },
+      });
+
+      await prenota(titolare, { forzato: true }).expect(201);
+    });
+
+    it('inserisce in un giorno di chiusura del salone', async () => {
+      await come(
+        titolare,
+        chiama().post('/api/orari/chiusure').send({ dal: giorno, al: giorno, motivo: 'Festività' }),
+      ).expect(201);
+
+      await prenota(titolare, { forzato: true }).expect(201);
+    });
+
+    it('rifiuta la deroga al dipendente', async () => {
+      const risposta = await prenota(dipendente, { inizio: alle(14), forzato: true }).expect(403);
+
+      expect(risposta.body.message).toContain('titolare');
+    });
+
+    it('resta dentro i limiti di data anche per il titolare', async () => {
+      const fraTreMesi = new Date(Date.now() + 90 * GIORNO_IN_MILLISECONDI);
+
+      await prenota(titolare, {
+        inizio: istanteDaDataLocale(dataLocale(fraTreMesi), 540)!.toISOString(),
+        forzato: true,
+      }).expect(400);
+    });
+
+    it('un appuntamento forzato toglie comunque lo slot alle prenotazioni normali', async () => {
+      await prenota(titolare, { forzato: true }).expect(201);
+
+      await prenota(dipendente).expect(409);
+    });
+
+    it('non compare fra gli slot liberi proposti', async () => {
+      await prenota(titolare, { forzato: true }).expect(201);
+
+      const risposta = await come(
+        dipendente,
+        chiama()
+          .get('/api/appuntamenti/disponibilita')
+          .query({ operatoreId: idDipendente, servizioIds: idTaglio, dal: giorno }),
+      ).expect(200);
+
+      expect(risposta.body.giorni[0].slot).not.toContain(alle(9));
+    });
+  });
+
   describe('Doppie prenotazioni simultanee', () => {
     it('su due richieste contemporanee solo una va a buon fine', async () => {
       const esiti = await Promise.all([
