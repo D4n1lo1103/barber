@@ -2,28 +2,65 @@
 
 Stato dello sviluppo per fasi (vedi la roadmap in `CLAUDE.md`).
 
-## In corso
+## In corso — Fase 9: Vendita online
 
-Nessuna attività in corso: le fasi da 0 a 8 sono completate. Prossima: fase 9 — vendita
-online dei prodotti (ordini, ritiro in negozio, spedizione).
+Branch: `feat/vendita-online`. Le fasi da 0 a 8 sono completate e in `main`.
 
-## Da fare — Fase 9: Vendita online
+### Decisioni prese con il titolare (19/10/2026)
 
-- [ ] `TODO` Catalogo visibile al cliente e carrello, solo se la vendita online è attiva
-      nell'installazione.
-- [ ] `TODO` Ordini con i loro stati: `in_attesa_pagamento`, `pagato`, `in_preparazione`,
-      `pronto_per_ritiro` / `spedito`, `consegnato`, `annullato`, `rimborsato`.
-- [ ] `TODO` Pagamento online con lo stesso fornitore della caparra, confermato dal webhook.
-- [ ] `TODO` Ritiro in negozio e spedizione a domicilio, con i dati di consegna.
-- [ ] `TODO` Resi e rimborsi, tenendo conto del diritto di recesso di 14 giorni.
-- [ ] `TODO` Prenotazione della giacenza all'ordine: un pezzo venduto online non deve essere
-      venduto anche al banco.
+1. **Solo ritiro in negozio per ora.** La spedizione a domicilio resta fuori dalla fase
+   finché corriere, costi e zone non sono definiti. Il modello dati prevede già il tipo di
+   consegna, così aggiungerla non richiederà una migrazione distruttiva.
+2. **La giacenza si prenota alla creazione dell'ordine**, che resta `in_attesa_pagamento`
+   per un tempo limitato come il blocco dello slot. Se il pagamento non arriva, la
+   prenotazione decade e i pezzi tornano disponibili: un pezzo pagato online non può essere
+   venduto anche al banco.
+3. **Il reso lo chiede il cliente** dall'area clienti entro i 14 giorni di recesso; il
+   titolare approva o rifiuta con motivazione ed emette il rimborso al rientro della merce.
+4. **Il credito del cliente è spendibile anche sugli ordini.** Un ordine coperto
+   interamente dal credito non passa dal fornitore di pagamenti.
 
-### Da chiarire prima di implementare
+### Attività
 
-- [ ] `BLOCCATO` **Obblighi fiscali della vendita online**: il titolare li comunicherà dopo il
-      confronto con il commercialista. Nessuna logica fiscale va inventata.
-- [ ] `BLOCCATO` **Costi, corriere e zone di spedizione**: da definire con il titolare.
+- [ ] `TODO` Modello dati: `Ordine`, `RigaOrdine`, `RichiestaReso`, stati dell'ordine e
+      tipo di consegna. `Pagamento` diventa polimorfo (caparra oppure ordine) con un
+      vincolo che impone esattamente un collegamento; `MovimentoCredito` acquisisce
+      `ordineId`.
+- [ ] `TODO` Migrazione SQL manuale: importi e quantità non negativi, esattamente un
+      collegamento sul pagamento, coerenza fra stato dell'ordine e date, motivo
+      obbligatorio su rifiuto del reso e annullamento.
+- [ ] `TODO` Prenotazione della giacenza: nuove cause di movimento per l'ordine
+      (`prenotazione_ordine`, `rilascio_ordine`, `reso_ordine`), scarico condizionato
+      contro le richieste simultanee.
+- [ ] `TODO` Generalizzare `FornitorePagamenti`: al posto di `appuntamentoId` un
+      riferimento interno con il suo tipo, così il webhook serve caparre e ordini con un
+      solo endpoint e una sola tabella di idempotenza.
+- [ ] `TODO` Schemi Zod condivisi degli ordini e del carrello, con il totale calcolato
+      nello stesso modo da frontend e backend.
+- [ ] `TODO` Catalogo e carrello lato cliente, visibili solo se la vendita online è attiva.
+- [ ] `TODO` Creazione dell'ordine con prenotazione della giacenza, credito a scalare e
+      pagamento del residuo; conferma solo dall'evento firmato del fornitore.
+- [ ] `TODO` Attività pg-boss di scadenza degli ordini non pagati, che rilascia la
+      giacenza e restituisce il credito usato.
+- [ ] `TODO` Gestione degli ordini dal personale: preparazione, pronto per il ritiro,
+      consegnato, annullato con rimborso.
+- [ ] `TODO` Resi: richiesta del cliente entro 14 giorni dalla consegna, approvazione o
+      rifiuto motivato del titolare, rimborso e ricarico della giacenza.
+- [ ] `TODO` Test unitari sul totale dell'ordine, sulla finestra di recesso e sulle
+      transizioni di stato.
+- [ ] `TODO` Test di integrazione: permessi, prenotazione della giacenza in concorrenza,
+      scadenza, webhook idempotente, rimborso, reso.
+- [ ] `TODO` Test end-to-end: acquisto con ritiro in negozio, ordine scaduto, reso.
+- [ ] `TODO` Dati demo: ordini di esempio negli stati principali.
+- [ ] `TODO` ADR 0011, README e `MANUALE-DUSO.md`.
+- [ ] `TODO` Controlli finali: formattazione, lint, tipi, test, build.
+
+### Rinviato dentro la fase 9
+
+- [ ] `BLOCCATO` **Spedizione a domicilio**: servono corriere, costi e zone.
+- [ ] `BLOCCATO` **Obblighi fiscali della vendita online**: il titolare li comunicherà dopo
+      il confronto con il commercialista. Nessuna logica fiscale va inventata, quindi
+      l'ordine non produce documenti.
 
 ## Da fare — attività trasversali già individuate
 

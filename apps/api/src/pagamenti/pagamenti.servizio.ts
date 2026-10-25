@@ -15,7 +15,9 @@ import {
   FORNITORE_PAGAMENTI,
   type EventoPagamento,
   type FornitorePagamenti,
+  type TipoOggettoPagato,
 } from './fornitore-pagamenti.js';
+import { RegistroGestoriPagamento, type GestorePagamento } from './registro-gestori.js';
 
 /** Caparra richiesta su una nuova prenotazione, e quanto ne copre il credito. */
 export interface CaparraPerPrenotazione {
@@ -55,6 +57,7 @@ export class PagamentiServizio {
     private readonly caparra: CaparraServizio,
     private readonly impostazioni: ImpostazioniServizio,
     private readonly configurazione: ConfigService<Ambiente, true>,
+    private readonly registro: RegistroGestoriPagamento,
     @Inject(FORNITORE_PAGAMENTI) private readonly fornitore: FornitorePagamenti,
   ) {}
 
@@ -166,7 +169,7 @@ export class PagamentiServizio {
     const avviato = await this.fornitore.avvia({
       importoCentesimi: daPagare,
       descrizione: `Caparra per ${appuntamento.servizi.map((servizio) => servizio.nome).join(', ')}`,
-      appuntamentoId,
+      oggetto: { tipo: 'caparra', id: appuntamentoId },
       emailCliente: appuntamento.cliente.email ?? undefined,
       urlRitorno: new URL('/area-cliente?pagamento=riuscito', origine).toString(),
       urlAnnullamento: new URL('/area-cliente?pagamento=annullato', origine).toString(),
@@ -187,6 +190,106 @@ export class PagamentiServizio {
       importoCentesimi: daPagare,
       scadeIl: scadeIl.toISOString(),
     };
+  }
+
+  /**
+   * Apre presso il fornitore il pagamento di un ordine di prodotti.
+   *
+   * L'ordine esiste già, con la giacenza prenotata: qui si apre soltanto il
+   * pagamento del residuo. La conferma arriverà dall'evento firmato, non dal
+   * ritorno del browser.
+   */
+  async avviaPagamentoOrdine(parametri: {
+    ordineId: string;
+    clienteId: string;
+    importoCentesimi: number;
+    descrizione: string;
+    emailCliente?: string;
+    scadeIl: Date;
+  }): Promise<PagamentoDaCompletare> {
+    const origine = this.configurazione.get('ORIGINE_WEB', { infer: true });
+    const avviato = await this.fornitore.avvia({
+      importoCentesimi: parametri.importoCentesimi,
+      descrizione: parametri.descrizione,
+      oggetto: { tipo: 'ordine', id: parametri.ordineId },
+      emailCliente: parametri.emailCliente,
+      urlRitorno: new URL('/area-cliente/ordini?pagamento=riuscito', origine).toString(),
+      urlAnnullamento: new URL('/area-cliente/ordini?pagamento=annullato', origine).toString(),
+      scadeIl: parametri.scadeIl,
+    });
+
+    await this.prisma.pagamento.create({
+      data: {
+        ordineId: parametri.ordineId,
+        clienteId: parametri.clienteId,
+        importoCentesimi: parametri.importoCentesimi,
+        riferimento: avviato.riferimento,
+      },
+    });
+
+    return {
+      urlPagamento: avviato.urlPagamento,
+      importoCentesimi: parametri.importoCentesimi,
+      scadeIl: parametri.scadeIl.toISOString(),
+    };
+  }
+
+  /** Chiude presso il fornitore i pagamenti rimasti aperti su un ordine. */
+  async chiudiPagamentiApertiOrdine(ordineId: string): Promise<void> {
+    const aperti = await this.prisma.pagamento.findMany({
+      where: { ordineId, stato: 'avviato' },
+    });
+
+    for (const pagamento of aperti) {
+      await this.fornitore.annulla(pagamento.riferimento);
+      await this.prisma.pagamento.update({
+        where: { id: pagamento.id },
+        data: { stato: 'annullato' },
+      });
+    }
+  }
+
+  /**
+   * Rimborsa un ordine, in tutto o in parte. Restituisce il riferimento del
+   * rimborso presso il fornitore, oppure nullo quando non c'era nulla da
+   * rimborsare con carta: un ordine pagato interamente col credito si
+   * restituisce in credito, non con un rimborso.
+   */
+  async rimborsaOrdine(ordineId: string, importoCentesimi: number): Promise<string | null> {
+    if (importoCentesimi <= 0) {
+      return null;
+    }
+
+    const pagamento = await this.prisma.pagamento.findFirst({
+      where: { ordineId, stato: 'riuscito' },
+      orderBy: { creatoIl: 'desc' },
+    });
+
+    if (!pagamento) {
+      return null;
+    }
+
+    const riferimentoRimborso = await this.fornitore.rimborsa(
+      pagamento.riferimento,
+      Math.min(importoCentesimi, pagamento.importoCentesimi),
+    );
+
+    await this.prisma.pagamento.update({
+      where: { id: pagamento.id },
+      data: { stato: 'rimborsato', riferimentoRimborso },
+    });
+
+    return riferimentoRimborso;
+  }
+
+  /** Quanto il cliente ha effettivamente pagato con carta su un ordine. */
+  async pagatoConCartaSullOrdine(ordineId: string): Promise<number> {
+    const riuscito = await this.prisma.pagamento.aggregate({
+      where: { ordineId, stato: 'riuscito' },
+      _sum: { importoCentesimi: true },
+    });
+
+    return riuscito._sum.importoCentesimi ?? 0;
   }
 
   /** Verifica la firma dell'evento e lo elabora. */
@@ -272,8 +375,17 @@ export class PagamentiServizio {
       data: { stato: 'riuscito', erroreFornitore: '' },
     });
 
+    if (pagamento.ordineId) {
+      return this.effettiSulGestore('ordine', (gestore) =>
+        gestore.pagamentoRiuscito({
+          oggettoId: pagamento.ordineId!,
+          importoCentesimi: pagamento.importoCentesimi,
+        }),
+      );
+    }
+
     await this.caparra.registra({
-      appuntamentoId: pagamento.appuntamentoId,
+      appuntamentoId: pagamento.appuntamentoId!,
       clienteId: pagamento.clienteId,
       tipo: 'pagata',
       importoCentesimi: pagamento.importoCentesimi,
@@ -281,7 +393,7 @@ export class PagamentiServizio {
     });
 
     const confermati = await this.prisma.appuntamento.updateMany({
-      where: { id: pagamento.appuntamentoId, stato: 'in_attesa_pagamento' },
+      where: { id: pagamento.appuntamentoId!, stato: 'in_attesa_pagamento' },
       data: { stato: 'confermato', bloccoScadeIl: null },
     });
 
@@ -308,6 +420,12 @@ export class PagamentiServizio {
       data: { stato: 'fallito', erroreFornitore: evento.errore },
     });
 
+    if (pagamento.ordineId) {
+      return this.effettiSulGestore('ordine', (gestore) =>
+        gestore.pagamentoFallito({ oggettoId: pagamento.ordineId!, errore: evento.errore }),
+      );
+    }
+
     // L'appuntamento resta in attesa fino alla scadenza del blocco: il cliente
     // può ritentare con un altro metodo.
     return 'pagamento fallito';
@@ -323,10 +441,18 @@ export class PagamentiServizio {
       });
     }
 
-    const appuntamentoId = pagamento?.appuntamentoId ?? evento.appuntamentoId;
+    const ordineId = pagamento?.ordineId ?? idSeOrdine(evento);
+
+    if (ordineId) {
+      return this.effettiSulGestore('ordine', (gestore) =>
+        gestore.pagamentoScaduto({ oggettoId: ordineId }),
+      );
+    }
+
+    const appuntamentoId = pagamento?.appuntamentoId ?? idSeCaparra(evento);
 
     if (!appuntamentoId) {
-      return 'nessun appuntamento collegato';
+      return 'nessun oggetto collegato';
     }
 
     await this.liberaSlotNonPagato(appuntamentoId);
@@ -583,15 +709,45 @@ export class PagamentiServizio {
       return this.prisma.pagamento.findUnique({ where: { riferimento: evento.riferimento } });
     }
 
-    if (evento.appuntamentoId) {
-      return this.prisma.pagamento.findFirst({
-        where: { appuntamentoId: evento.appuntamentoId },
-        orderBy: { creatoIl: 'desc' },
-      });
+    if (evento.oggetto) {
+      const dove =
+        evento.oggetto.tipo === 'ordine'
+          ? { ordineId: evento.oggetto.id }
+          : { appuntamentoId: evento.oggetto.id };
+
+      return this.prisma.pagamento.findFirst({ where: dove, orderBy: { creatoIl: 'desc' } });
     }
 
     return Promise.resolve(null);
   }
+
+  /**
+   * Applica gli effetti sul gestore del tipo indicato. Se nessun modulo si è
+   * registrato l'evento non va perso: resta scritto fra gli eventi con un
+   * esito che lo dice.
+   */
+  private async effettiSulGestore(
+    tipo: TipoOggettoPagato,
+    azione: (gestore: GestorePagamento) => Promise<string>,
+  ): Promise<string> {
+    const gestore = this.registro.gestore(tipo);
+
+    if (!gestore) {
+      this.logger.error(`Nessun gestore registrato per «${tipo}»: evento non applicato.`);
+
+      return `nessun gestore per ${tipo}`;
+    }
+
+    return azione(gestore);
+  }
+}
+
+function idSeOrdine(evento: EventoPagamento): string | null {
+  return evento.oggetto?.tipo === 'ordine' ? evento.oggetto.id : null;
+}
+
+function idSeCaparra(evento: EventoPagamento): string | null {
+  return evento.oggetto?.tipo === 'caparra' ? evento.oggetto.id : null;
 }
 
 const MOTIVI_TRATTAMENTO: Readonly<Record<string, string>> = {

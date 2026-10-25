@@ -102,6 +102,9 @@ export const CAUSE_MOVIMENTO_MAGAZZINO = [
   'annullamento_vendita',
   'carico',
   'correzione',
+  'prenotazione_ordine',
+  'rilascio_ordine',
+  'reso_ordine',
 ] as const;
 
 export type CausaMovimentoMagazzino = (typeof CAUSE_MOVIMENTO_MAGAZZINO)[number];
@@ -111,6 +114,9 @@ export const ETICHETTE_CAUSA_MOVIMENTO: Readonly<Record<CausaMovimentoMagazzino,
   annullamento_vendita: 'Vendita annullata',
   carico: 'Carico',
   correzione: 'Correzione',
+  prenotazione_ordine: 'Ordine online',
+  rilascio_ordine: 'Ordine annullato',
+  reso_ordine: 'Reso rientrato',
 };
 
 export interface MovimentoMagazzino {

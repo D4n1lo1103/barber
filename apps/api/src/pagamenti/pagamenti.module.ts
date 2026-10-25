@@ -9,6 +9,7 @@ import { FornitoreStripe } from './fornitore-stripe.js';
 import { FORNITORE_PAGAMENTI, type FornitorePagamenti } from './fornitore-pagamenti.js';
 import { PagamentiController } from './pagamenti.controller.js';
 import { PagamentiServizio } from './pagamenti.servizio.js';
+import { RegistroGestoriPagamento } from './registro-gestori.js';
 import { ScadenzaBloccoAttivita } from './scadenza-blocco.attivita.js';
 
 /**
@@ -51,9 +52,16 @@ function creaFornitore(configurazione: ConfigService<Ambiente, true>): Fornitore
   providers: [
     { provide: FORNITORE_PAGAMENTI, useFactory: creaFornitore, inject: [ConfigService] },
     CaparraServizio,
+    RegistroGestoriPagamento,
     PagamentiServizio,
     ScadenzaBloccoAttivita,
   ],
-  exports: [CaparraServizio, PagamentiServizio, ScadenzaBloccoAttivita, FORNITORE_PAGAMENTI],
+  exports: [
+    CaparraServizio,
+    RegistroGestoriPagamento,
+    PagamentiServizio,
+    ScadenzaBloccoAttivita,
+    FORNITORE_PAGAMENTI,
+  ],
 })
 export class PagamentiModule {}
