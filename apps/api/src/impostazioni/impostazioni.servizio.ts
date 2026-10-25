@@ -1,6 +1,18 @@
-import { Inject, Injectable, NotFoundException, forwardRef } from '@nestjs/common';
+import {
+  BadRequestException,
+  Inject,
+  Injectable,
+  NotFoundException,
+  forwardRef,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import type { DatiImpostazioniWhatsapp, EsitoInvioDiProva, StatoWhatsapp } from '@barber/shared';
+import type {
+  DatiImpostazioniWhatsapp,
+  DatiSaloneModificabili,
+  EsitoInvioDiProva,
+  Salone,
+  StatoWhatsapp,
+} from '@barber/shared';
 import {
   CAPARRA_PERCENTUALE_PREDEFINITA,
   ORE_LIMITE_PREAVVISO_PREDEFINITO,
@@ -21,6 +33,19 @@ const CAMPI_WHATSAPP = {
   whatsappModelloPromemoria: true,
   whatsappModelloInvito: true,
   whatsappModelloVerifica: true,
+} as const;
+
+/** Colonne dei dati del salone, profilo compreso: il profilo è in sola lettura. */
+const CAMPI_SALONE = {
+  profilo: true,
+  nomeSalone: true,
+  indirizzo: true,
+  citta: true,
+  telefono: true,
+  emailSalone: true,
+  granularitaSlotMin: true,
+  minutiBloccoSlot: true,
+  venditaOnlineAttiva: true,
 } as const;
 
 /** Colonne che compongono le regole: lette e restituite sempre insieme. */
@@ -110,6 +135,80 @@ export class ImpostazioniServizio {
       canale: esito.canale,
       dettaglio: esito.dettaglio,
     };
+  }
+
+  /** Dati del salone decisi al primo avvio e poi modificabili dal titolare. */
+  async leggiSalone(): Promise<Salone> {
+    const installazione = await this.prisma.installazione.findFirst({ select: CAMPI_SALONE });
+
+    if (!installazione) {
+      throw new NotFoundException('Installazione non configurata.');
+    }
+
+    return this.componiSalone(installazione);
+  }
+
+  /**
+   * La granularità non si può alzare liberamente: l'agenda compone gli
+   * appuntamenti sommando durate, e una durata che non è multipla della
+   * granularità non troverebbe mai uno slot. Lo stesso vincolo vale nella
+   * procedura guidata.
+   */
+  async salvaSalone(dati: DatiSaloneModificabili): Promise<Salone> {
+    const installazione = await this.prisma.installazione.findFirst({ select: { id: true } });
+
+    if (!installazione) {
+      throw new NotFoundException('Installazione non configurata.');
+    }
+
+    const incompatibili = await this.prisma.servizio.findMany({
+      where: { attivo: true },
+      select: { nome: true, durataMinuti: true },
+    });
+    const fuoriPasso = incompatibili.filter(
+      (servizio) => servizio.durataMinuti % dati.granularitaSlotMinuti !== 0,
+    );
+
+    if (fuoriPasso.length > 0) {
+      throw new BadRequestException(
+        `Con slot da ${dati.granularitaSlotMinuti} minuti queste durate non tornano: ${fuoriPasso
+          .map((servizio) => `${servizio.nome} (${servizio.durataMinuti} min)`)
+          .join(', ')}. Cambia prima le durate dei servizi.`,
+      );
+    }
+
+    const aggiornata = await this.prisma.installazione.update({
+      where: { id: installazione.id },
+      data: {
+        nomeSalone: dati.nomeSalone,
+        indirizzo: dati.indirizzo,
+        citta: dati.citta,
+        telefono: dati.telefono,
+        emailSalone: dati.emailSalone,
+        granularitaSlotMin: dati.granularitaSlotMinuti,
+        minutiBloccoSlot: dati.minutiBloccoSlot,
+        venditaOnlineAttiva: dati.venditaOnlineAttiva,
+      },
+      select: CAMPI_SALONE,
+    });
+
+    return this.componiSalone(aggiornata);
+  }
+
+  private componiSalone(riga: {
+    profilo: Salone['profilo'];
+    nomeSalone: string;
+    indirizzo: string;
+    citta: string;
+    telefono: string;
+    emailSalone: string;
+    granularitaSlotMin: number;
+    minutiBloccoSlot: number;
+    venditaOnlineAttiva: boolean;
+  }): Salone {
+    const { granularitaSlotMin, ...resto } = riga;
+
+    return { ...resto, granularitaSlotMinuti: granularitaSlotMin };
   }
 
   async leggiRegole(): Promise<RegoleSalone> {

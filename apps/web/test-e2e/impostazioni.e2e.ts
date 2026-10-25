@@ -16,6 +16,25 @@ test.describe('Impostazioni del salone', () => {
     await expect(page.getByRole('heading', { name: 'Barberia Centrale' })).toBeVisible();
   });
 
+  test('mostra i dati del salone e salva una modifica', async ({ page }) => {
+    await page.goto('/impostazioni');
+    await page.getByRole('button', { name: 'Salone' }).click();
+
+    await expect(page.getByLabel('Nome del salone')).toHaveValue('Barberia Centrale');
+    // Il profilo si vede ma non si cambia.
+    await expect(page.getByText('Scelto al primo avvio e non modificabile')).toBeVisible();
+
+    const blocco = page.getByLabel('Blocco dello slot durante il pagamento (minuti)');
+    await blocco.fill('12');
+    await page.getByRole('button', { name: 'Salva i dati del salone' }).click();
+    await expect(page.getByText('Dati del salone salvati.')).toBeVisible();
+
+    // Si rimette il valore dei dati demo per i test che seguono.
+    await blocco.fill('10');
+    await page.getByRole('button', { name: 'Salva i dati del salone' }).click();
+    await expect(page.getByText('Dati del salone salvati.')).toBeVisible();
+  });
+
   test('aggiunge un servizio al catalogo e poi lo disattiva', async ({ page }) => {
     const nomeServizio = `Rasatura di prova ${Date.now()}`;
     await page.goto('/impostazioni');

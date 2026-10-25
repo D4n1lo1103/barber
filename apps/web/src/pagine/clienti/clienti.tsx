@@ -63,9 +63,6 @@ export function PaginaClienti() {
           </h1>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Link to="/agenda">
-            <Pulsante variante="secondario">Agenda</Pulsante>
-          </Link>
           <Pulsante onClick={() => impostaNuovoAperto(true)}>
             <Plus size={16} aria-hidden /> Nuova scheda
           </Pulsante>

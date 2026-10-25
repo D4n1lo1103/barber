@@ -111,3 +111,34 @@ export const schemaStatoInstallazione = z.object({
 });
 
 export type StatoInstallazione = z.infer<typeof schemaStatoInstallazione>;
+
+/**
+ * Dati del salone modificabili dal titolare dopo il primo avvio. Il profilo
+ * non c'è: cambiarlo a salone avviato ribalterebbe catalogo predefinito,
+ * durate tipiche e palette su dati già in uso, e si decide una volta sola
+ * nella procedura guidata.
+ */
+export const schemaDatiSaloneModificabili = schemaDatiSalone.extend({
+  granularitaSlotMinuti: z
+    .number()
+    .int()
+    .refine(
+      (valore) => (GRANULARITA_SLOT_AMMESSE as readonly number[]).includes(valore),
+      `La granularità deve essere una fra: ${GRANULARITA_SLOT_AMMESSE.join(', ')} minuti.`,
+    ),
+  minutiBloccoSlot: z
+    .number()
+    .int()
+    .min(5, 'Il blocco dello slot deve durare almeno 5 minuti.')
+    .max(60, 'Il blocco dello slot non può superare i 60 minuti.'),
+  venditaOnlineAttiva: z.boolean(),
+});
+
+export type DatiSaloneModificabili = z.infer<typeof schemaDatiSaloneModificabili>;
+
+/** Gli stessi dati come li restituisce l'API, con il profilo in sola lettura. */
+export const schemaSalone = schemaDatiSaloneModificabili.extend({
+  profilo: z.enum(PROFILI),
+});
+
+export type Salone = z.infer<typeof schemaSalone>;

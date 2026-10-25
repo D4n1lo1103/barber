@@ -7,6 +7,7 @@ import { usaSessione } from '../../autenticazione/contesto-sessione';
 import { Avviso } from '../../componenti/avviso';
 import { Caricamento } from '../../componenti/caricamento';
 import { Pulsante } from '../../componenti/pulsante';
+import { PulsanteTema } from '../../componenti/pulsante-tema';
 import { usaInstallazione } from '../../installazione/contesto-installazione';
 import { ErroreApi } from '../../servizi/client-api';
 import { leggiAppuntamentiCliente, leggiProfiloCliente } from '../../servizi/gestione';
@@ -79,9 +80,12 @@ export function PaginaAreaCliente() {
           <p className="text-sm text-testo-tenue">{stato?.nomeSalone ?? 'Il tuo salone'}</p>
           <h1 className="mt-1 text-2xl font-semibold tracking-tight">Ciao {utente?.nome ?? ''}</h1>
         </div>
-        <Pulsante variante="secondario" onClick={() => void esci()}>
-          Esci
-        </Pulsante>
+        <div className="flex flex-wrap items-center gap-2">
+          <PulsanteTema />
+          <Pulsante variante="secondario" onClick={() => void esci()}>
+            Esci
+          </Pulsante>
+        </div>
       </div>
 
       <nav className="mt-6 flex flex-wrap gap-2" aria-label="Sezioni della tua area">

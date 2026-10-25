@@ -3,6 +3,7 @@ import { BrowserRouter, Navigate, Route, Routes } from 'react-router';
 import { FornitoreSessione } from './autenticazione/contesto-sessione';
 import { Avviso } from './componenti/avviso';
 import { Caricamento } from './componenti/caricamento';
+import { IntestazionePersonale } from './componenti/intestazione-personale';
 import { RottaProtetta } from './componenti/rotta-protetta';
 import { FornitoreInstallazione, usaInstallazione } from './installazione/contesto-installazione';
 import { PaginaAccesso } from './pagine/accesso';
@@ -57,82 +58,86 @@ function Instradamento() {
   }
 
   return (
-    <Routes>
-      <Route path="/accesso" element={<PaginaAccesso />} />
-      <Route path="/registrazione" element={<PaginaRegistrazione />} />
-      <Route path="/verifica-email" element={<PaginaVerificaEmail />} />
-      <Route path="/password-dimenticata" element={<PaginaPasswordDimenticata />} />
-      <Route path="/reimposta-password" element={<PaginaReimpostaPassword />} />
-      <Route path="/attivazione" element={<PaginaAttivazione />} />
-      <Route
-        path="/pagamento-finto"
-        element={
-          <RottaProtetta ruoliConsentiti={['cliente']}>
-            <PaginaPagamentoFinto />
-          </RottaProtetta>
-        }
-      />
-      <Route
-        path="/area-cliente"
-        element={
-          <RottaProtetta ruoliConsentiti={['cliente']}>
-            <PaginaAreaCliente />
-          </RottaProtetta>
-        }
-      />
-      <Route
-        path="/vendite"
-        element={
-          <RottaProtetta ruoliConsentiti={['titolare', 'dipendente']}>
-            <PaginaVendite />
-          </RottaProtetta>
-        }
-      />
-      <Route path="/procedura-guidata" element={<Navigate to="/" replace />} />
-      <Route
-        path="/agenda"
-        element={
-          <RottaProtetta ruoliConsentiti={['titolare', 'dipendente']}>
-            <Suspense fallback={<Caricamento messaggio="Caricamento dell’agenda" />}>
-              <PaginaAgenda />
-            </Suspense>
-          </RottaProtetta>
-        }
-      />
-      <Route
-        path="/clienti"
-        element={
-          <RottaProtetta ruoliConsentiti={['titolare', 'dipendente']}>
-            <PaginaClienti />
-          </RottaProtetta>
-        }
-      />
-      <Route
-        path="/clienti/:id"
-        element={
-          <RottaProtetta ruoliConsentiti={['titolare', 'dipendente']}>
-            <PaginaDettaglioCliente />
-          </RottaProtetta>
-        }
-      />
-      <Route
-        path="/impostazioni"
-        element={
-          <RottaProtetta ruoliConsentiti={['titolare']}>
-            <PaginaImpostazioni />
-          </RottaProtetta>
-        }
-      />
-      <Route
-        path="/"
-        element={
-          <RottaProtetta>
-            <PaginaPannello />
-          </RottaProtetta>
-        }
-      />
-      <Route path="*" element={<Navigate to="/" replace />} />
-    </Routes>
+    <>
+      {/* Resa una sola volta: si disegna da sé solo per il personale collegato. */}
+      <IntestazionePersonale />
+      <Routes>
+        <Route path="/accesso" element={<PaginaAccesso />} />
+        <Route path="/registrazione" element={<PaginaRegistrazione />} />
+        <Route path="/verifica-email" element={<PaginaVerificaEmail />} />
+        <Route path="/password-dimenticata" element={<PaginaPasswordDimenticata />} />
+        <Route path="/reimposta-password" element={<PaginaReimpostaPassword />} />
+        <Route path="/attivazione" element={<PaginaAttivazione />} />
+        <Route
+          path="/pagamento-finto"
+          element={
+            <RottaProtetta ruoliConsentiti={['cliente']}>
+              <PaginaPagamentoFinto />
+            </RottaProtetta>
+          }
+        />
+        <Route
+          path="/area-cliente"
+          element={
+            <RottaProtetta ruoliConsentiti={['cliente']}>
+              <PaginaAreaCliente />
+            </RottaProtetta>
+          }
+        />
+        <Route
+          path="/vendite"
+          element={
+            <RottaProtetta ruoliConsentiti={['titolare', 'dipendente']}>
+              <PaginaVendite />
+            </RottaProtetta>
+          }
+        />
+        <Route path="/procedura-guidata" element={<Navigate to="/" replace />} />
+        <Route
+          path="/agenda"
+          element={
+            <RottaProtetta ruoliConsentiti={['titolare', 'dipendente']}>
+              <Suspense fallback={<Caricamento messaggio="Caricamento dell’agenda" />}>
+                <PaginaAgenda />
+              </Suspense>
+            </RottaProtetta>
+          }
+        />
+        <Route
+          path="/clienti"
+          element={
+            <RottaProtetta ruoliConsentiti={['titolare', 'dipendente']}>
+              <PaginaClienti />
+            </RottaProtetta>
+          }
+        />
+        <Route
+          path="/clienti/:id"
+          element={
+            <RottaProtetta ruoliConsentiti={['titolare', 'dipendente']}>
+              <PaginaDettaglioCliente />
+            </RottaProtetta>
+          }
+        />
+        <Route
+          path="/impostazioni"
+          element={
+            <RottaProtetta ruoliConsentiti={['titolare']}>
+              <PaginaImpostazioni />
+            </RottaProtetta>
+          }
+        />
+        <Route
+          path="/"
+          element={
+            <RottaProtetta>
+              <PaginaPannello />
+            </RottaProtetta>
+          }
+        />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </>
   );
 }
 

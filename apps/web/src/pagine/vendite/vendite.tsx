@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Link } from 'react-router';
 import { motion } from 'motion/react';
 import { totaleVendita, type Cliente, type Prodotto, type Vendita } from '@barber/shared';
 import { Avviso } from '../../componenti/avviso';
@@ -144,9 +143,6 @@ export function PaginaVendite() {
             La vendita scarica il magazzino. Non produce documenti per il cliente.
           </p>
         </div>
-        <Link to="/">
-          <Pulsante variante="secondario">Torna al pannello</Pulsante>
-        </Link>
       </div>
 
       <motion.div

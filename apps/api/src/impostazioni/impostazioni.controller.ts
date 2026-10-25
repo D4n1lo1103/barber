@@ -1,13 +1,16 @@
 import { Body, Controller, Get, Post, Put, UseGuards } from '@nestjs/common';
 import {
+  schemaDatiSaloneModificabili,
   schemaImpostazioniWhatsapp,
   schemaInvioDiProva,
   schemaRegoleSalone,
   type DatiImpostazioniWhatsapp,
   type DatiInvioDiProva,
   type DatiRegoleSalone,
+  type DatiSaloneModificabili,
   type EsitoInvioDiProva,
   type RegoleSalone,
+  type Salone,
   type StatoWhatsapp,
 } from '@barber/shared';
 import { Ruoli } from '../comuni/decoratori/ruoli.decoratore.js';
@@ -20,6 +23,21 @@ import { ImpostazioniServizio } from './impostazioni.servizio.js';
 @UseGuards(RuoliGuardia)
 export class ImpostazioniController {
   constructor(private readonly impostazioni: ImpostazioniServizio) {}
+
+  /** Dati del salone: il profilo si vede ma non si cambia. */
+  @Get('salone')
+  @Ruoli('titolare')
+  leggiSalone(): Promise<Salone> {
+    return this.impostazioni.leggiSalone();
+  }
+
+  @Put('salone')
+  @Ruoli('titolare')
+  salvaSalone(
+    @Body(new ValidazioneZodPipe(schemaDatiSaloneModificabili)) dati: DatiSaloneModificabili,
+  ): Promise<Salone> {
+    return this.impostazioni.salvaSalone(dati);
+  }
 
   @Get('regole')
   @Ruoli('titolare', 'dipendente')
