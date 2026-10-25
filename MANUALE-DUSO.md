@@ -28,6 +28,7 @@ già completate. Le parti ancora da sviluppare sono elencate in fondo, in
 - [Vendite in negozio](#vendite-in-negozio)
 - [Agenda](#agenda)
   - [Inserire un appuntamento](#inserire-un-appuntamento)
+  - [Inserire un appuntamento fuori orario (solo titolare)](#inserire-un-appuntamento-fuori-orario-solo-titolare)
   - [Spostare un appuntamento](#spostare-un-appuntamento)
   - [Annullare un appuntamento](#annullare-un-appuntamento)
   - [Mancata presentazione](#mancata-presentazione)
@@ -361,11 +362,40 @@ Regole dell'inserimento dal personale:
 - si può registrare un appuntamento già avvenuto fino a **7 giorni** nel passato, per
   regolarizzare l'agenda;
 - in avanti il limite è **60 giorni**;
-- non si può inserire un appuntamento fuori dagli orari di lavoro dell'operatore, a salone
-  chiuso o durante un'assenza;
+- il dipendente non può inserire un appuntamento fuori dagli orari di lavoro
+  dell'operatore, a salone chiuso o durante un'assenza; il titolare sì, con **Fuori
+  orario** (vedi sotto);
 - se nel frattempo qualcun altro ha occupato lo stesso orario, il salvataggio viene
   rifiutato con l'invito a scegliere un altro orario: le doppie prenotazioni sono impedite
   anche quando due persone salvano nello stesso istante.
+
+### Inserire un appuntamento fuori orario (solo titolare)
+
+Il titolare può fissare un appuntamento **quando vuole**, anche dove l'agenda non lo
+permetterebbe: il favore al cliente abituale la domenica, l'appuntamento preso di persona
+a saracinesca abbassata.
+
+Nel modale **Nuovo appuntamento** compare, al solo titolare, l'interruttore **Fuori
+orario**. Attivandolo la griglia degli orari liberi lascia il posto a due campi, **Giorno**
+e **Ora**, in cui si scrive qualsiasi data e ora.
+
+Un appuntamento inserito così non rispetta:
+
+- gli orari di lavoro dell'operatore;
+- i giorni di chiusura del salone;
+- le ferie e le assenze dell'operatore;
+- l'allineamento agli slot: si può fissare alle 21:40, non solo ai quarti d'ora;
+- la presenza di un altro appuntamento nello stesso momento, sullo stesso operatore.
+
+Restano invece i limiti di data (7 giorni nel passato, 60 in avanti) e il divieto di
+prenotare per una scheda cliente disattivata.
+
+Nel modale e nel dettaglio dell'appuntamento compare un avviso: **l'agenda non garantisce
+più che l'operatore sia libero**, va verificato di persona. L'appuntamento forzato resta
+comunque visibile in agenda e **toglie lo slot** alle prenotazioni online dei clienti.
+
+Il dipendente non vede l'interruttore e, se la richiesta arriva per altra via, il server la
+rifiuta.
 
 ### Spostare un appuntamento
 

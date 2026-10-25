@@ -23,6 +23,17 @@ function prossimoMercoledi(): string {
   return FORMATO_GIORNO.format(istante);
 }
 
+/** Prima domenica utile: il salone demo è chiuso, nessuno slot è proposto. */
+function prossimaDomenica(): string {
+  let istante = new Date(Date.now() + 24 * 60 * 60 * 1000);
+
+  while (FORMATO_SETTIMANA.format(istante) !== 'Sun') {
+    istante = new Date(istante.getTime() + 24 * 60 * 60 * 1000);
+  }
+
+  return FORMATO_GIORNO.format(istante);
+}
+
 /**
  * Flusso critico della fase 3: il personale crea una scheda cliente, prenota un
  * appuntamento scegliendo servizi e orario fra quelli disponibili e poi lo
@@ -108,5 +119,32 @@ test.describe('Agenda del personale', () => {
 
     await expect(page.getByRole('heading', { name: 'Storico appuntamenti' })).toBeVisible();
     await expect(page.getByRole('listitem').first()).toContainText('Completato');
+  });
+
+  test('il titolare forza un appuntamento in un giorno di chiusura', async ({ page }) => {
+    const domenica = prossimaDomenica();
+
+    await page.goto(`/agenda?giorno=${domenica}`);
+    await page.getByRole('button', { name: 'Nuovo appuntamento' }).click();
+
+    await page.getByRole('textbox', { name: 'Cliente' }).fill(cognomeCliente);
+    await page.getByRole('button', { name: new RegExp(cognomeCliente) }).click();
+    await page
+      .locator('fieldset', { hasText: 'Servizi' })
+      .locator('input[type=checkbox]')
+      .first()
+      .check();
+
+    // Senza deroga la domenica non offre alcun orario.
+    await expect(page.getByText('Nessun orario libero in questo giorno')).toBeVisible();
+
+    await page.getByRole('checkbox', { name: /Fuori orario/ }).check();
+    await page.getByLabel('Ora', { exact: true }).fill('21:40');
+    await page.getByRole('button', { name: 'Salva appuntamento' }).click();
+    await expect(page.getByRole('dialog')).toBeHidden();
+
+    await page.goto(`/agenda?giorno=${domenica}`);
+    await page.getByText(`Cliente ${cognomeCliente}`).first().click();
+    await expect(page.getByRole('dialog')).toContainText('fuori dai vincoli dell’agenda');
   });
 });

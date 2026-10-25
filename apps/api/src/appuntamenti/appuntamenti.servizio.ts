@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   ConflictException,
+  ForbiddenException,
   Injectable,
   Logger,
   NotFoundException,
@@ -27,6 +28,7 @@ import {
   type DatiPrenotazioneCliente,
   type DatiSpostamentoAppuntamento,
   type MovimentoPerTotali,
+  type Ruolo,
   type StatoAppuntamento,
 } from '@barber/shared';
 import { ClientiServizio } from '../clienti/clienti.servizio.js';
@@ -113,6 +115,7 @@ export class AppuntamentiServizio {
         servizioIds: dati.servizioIds,
         inizio: dati.inizio,
         senzaCaparra: false,
+        forzato: false,
         note: '',
       },
       null,
@@ -283,7 +286,13 @@ export class AppuntamentiServizio {
    * deve cadere negli orari di lavoro dell'operatore, fuori dalle sue assenze e
    * su uno slot libero. Il flag "senza caparra" è disponibile solo qui.
    */
-  async crea(dati: DatiCreazioneAppuntamento, autoreId: string | null): Promise<Appuntamento> {
+  async crea(
+    dati: DatiCreazioneAppuntamento,
+    autoreId: string | null,
+    ruoloAutore?: Ruolo,
+  ): Promise<Appuntamento> {
+    const forzato = this.verificaDeroga(dati.forzato, ruoloAutore);
+
     await this.clienti.verificaCliente(dati.clienteId);
     await this.disponibilita.verificaOperatore(dati.operatoreId);
 
@@ -294,7 +303,12 @@ export class AppuntamentiServizio {
     // Uno slot tenuto da un pagamento mai completato non deve bloccare chi
     // prenota adesso.
     await this.pagamenti.liberaBlocchiScaduti();
-    await this.verificaSlotLibero(dati.operatoreId, inizio, scelti.durataMinuti);
+
+    // Il titolare che forza salta orari, chiusure, assenze, allineamento e
+    // sovrapposizioni: resta solo il controllo sui limiti di data.
+    if (!forzato) {
+      await this.verificaSlotLibero(dati.operatoreId, inizio, scelti.durataMinuti);
+    }
 
     const fine = new Date(inizio.getTime() + scelti.durataMinuti * 60_000);
     const caparra = await this.caparraPerLaPrenotazione(
@@ -320,6 +334,7 @@ export class AppuntamentiServizio {
           caparraCentesimi: caparra.centesimi,
           bloccoScadeIl: caparra.scadeIl,
           senzaCaparra: caparra.centesimi === 0,
+          forzato,
           note: dati.note,
           // Nullo quando prenota il cliente stesso dall'area clienti.
           creatoDaId: autoreId,
@@ -335,6 +350,12 @@ export class AppuntamentiServizio {
         },
         include: INCLUDI_COLLEGAMENTI,
       });
+
+      if (forzato) {
+        this.logger.warn(
+          `Appuntamento ${creato.id} inserito da ${autoreId} in deroga ai vincoli dell'agenda.`,
+        );
+      }
 
       await this.pagamenti.applicaCreditoAllaPrenotazione({
         appuntamentoId: creato.id,
@@ -590,6 +611,25 @@ export class AppuntamentiServizio {
    * avvenuto, ma solo nel passato recente; in avanti vale il limite dei
    * 60 giorni valido anche per i clienti.
    */
+  /**
+   * Deroga ai vincoli dell'agenda: la può chiedere solo il titolare, anche
+   * sull'agenda dei colleghi. Il cliente che prenota dall'area clienti non ha
+   * ruolo autore e non può in nessun caso forzare.
+   */
+  private verificaDeroga(richiesta: boolean, ruoloAutore?: Ruolo): boolean {
+    if (!richiesta) {
+      return false;
+    }
+
+    if (ruoloAutore !== 'titolare') {
+      throw new ForbiddenException(
+        'Solo il titolare può inserire un appuntamento fuori dagli orari.',
+      );
+    }
+
+    return true;
+  }
+
   private verificaLimitiDiData(inizio: Date): void {
     const adesso = Date.now();
 
@@ -697,6 +737,7 @@ export class AppuntamentiServizio {
     durataMinuti: number;
     prezzoTotaleCentesimi: number;
     senzaCaparra: boolean;
+    forzato: boolean;
     caparraCentesimi: number;
     bloccoScadeIl: Date | null;
     note: string;
@@ -730,6 +771,7 @@ export class AppuntamentiServizio {
       durataMinuti: riga.durataMinuti,
       prezzoTotaleCentesimi: riga.prezzoTotaleCentesimi,
       senzaCaparra: riga.senzaCaparra,
+      forzato: riga.forzato,
       caparraCentesimi: riga.caparraCentesimi,
       caparraPagataCentesimi: caparraPagataDaMovimenti(riga.movimentiCaparra),
       caparraTrattenutaCentesimi: caparraTrattenutaDaMovimenti(riga.movimentiCaparra),
