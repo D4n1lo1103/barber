@@ -90,6 +90,20 @@ insieme alla prenotazione forzata del titolare.
 
 ## Completato
 
+### Accesso bloccato dai cookie di una sessione scaduta (25/10/2026)
+
+Con addosso il cookie di sessione di una sessione non più valida — scaduta,
+revocata o sparita perché il database è stato ripopolato dal seed — la guardia
+CSRF rifiutava anche la richiesta di accesso, con «Token di sicurezza non
+valido. Ricarica la pagina.». Ricaricare non serviva: il cookie restava e
+l'utente non poteva più rientrare se non cancellando i cookie dal browser.
+
+- [x] `COMPLETATO` La guardia CSRF salta la verifica quando il cookie di sessione
+      non corrisponde a nessuna sessione valida: la richiesta non è autenticata e
+      non c'è autorità da proteggere.
+- [x] `COMPLETATO` Test di integrazione di regressione: accesso riuscito inviando
+      i cookie di una sessione chiusa con l'uscita.
+
 ### Prenotazione forzata del titolare (25/10/2026)
 
 Deciso con il titolare: può derogare **solo il titolare**, anche sull'agenda dei

@@ -14,7 +14,7 @@ const METODI_SICURI = new Set(['GET', 'HEAD', 'OPTIONS']);
 /**
  * Protezione CSRF con doppio invio del token (cookie + header),
  * rafforzata dal controllo dell'origine della richiesta.
- * Si applica solo alle richieste che modificano dati e che portano un cookie di sessione.
+ * Si applica solo alle richieste che modificano dati e che portano una sessione valida.
  */
 @Injectable()
 export class CsrfGuardia implements CanActivate {
@@ -30,7 +30,11 @@ export class CsrfGuardia implements CanActivate {
       return true;
     }
 
-    if (!richiesta.cookies?.[COOKIE_SESSIONE]) {
+    // Il cookie di sessione da solo non basta: se la sessione non esiste più
+    // (scaduta, revocata, database ripopolato) la richiesta non è autenticata e
+    // non c'è nulla da proteggere. Pretendere comunque il token impedirebbe di
+    // accedere di nuovo, perché l'accesso arriva con il cookie vecchio addosso.
+    if (!richiesta.cookies?.[COOKIE_SESSIONE] || typeof richiesta.csrfHashSessione !== 'string') {
       return true;
     }
 
