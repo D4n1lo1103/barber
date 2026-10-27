@@ -4,8 +4,14 @@ Stato dello sviluppo per fasi (vedi la roadmap in `CLAUDE.md`).
 
 ## In corso — Fase 9: Vendita online
 
-Branch: `feat/vendita-online`. Le fasi da 0 a 8 sono completate e in `main`,
-insieme alla prenotazione forzata del titolare.
+Le fasi da 0 a 8 sono completate e in `main`, insieme alla prenotazione forzata del
+titolare.
+
+**Stato reale al 27/10/2026: il backend della fase 9 è fatto ed è in `main` (PR #11);
+il frontend non è iniziato.** Oggi un cliente non può comprare nulla anche con la vendita
+online attiva: le API rispondono, ma nessuna schermata le chiama. Mancano inoltre i test
+di integrazione ed end-to-end, i dati demo e l'ADR. L'elenco qui sotto è stato verificato
+voce per voce contro il codice.
 
 ### Decisioni prese con il titolare (19/10/2026)
 
@@ -21,39 +27,56 @@ insieme alla prenotazione forzata del titolare.
 4. **Il credito del cliente è spendibile anche sugli ordini.** Un ordine coperto
    interamente dal credito non passa dal fornitore di pagamenti.
 
-### Attività
+### Fatto e in `main` (backend e dominio)
 
-- [ ] `TODO` Modello dati: `Ordine`, `RigaOrdine`, `RichiestaReso`, stati dell'ordine e
-      tipo di consegna. `Pagamento` diventa polimorfo (caparra oppure ordine) con un
-      vincolo che impone esattamente un collegamento; `MovimentoCredito` acquisisce
-      `ordineId`.
-- [ ] `TODO` Migrazione SQL manuale: importi e quantità non negativi, esattamente un
+- [x] `COMPLETATO` Modello dati: `Ordine`, `RigaOrdine`, `RichiestaReso`, stati dell'ordine
+      e tipo di consegna; `Pagamento` polimorfo (caparra oppure ordine) con il vincolo che
+      impone esattamente un collegamento; `MovimentoCredito` con `ordineId`.
+- [x] `COMPLETATO` Migrazioni `20261019090000_ordini_vendita_online` e
+      `20261019090100_ordini_vincoli`: importi e quantità non negativi, esattamente un
       collegamento sul pagamento, coerenza fra stato dell'ordine e date, motivo
       obbligatorio su rifiuto del reso e annullamento.
-- [ ] `TODO` Prenotazione della giacenza: nuove cause di movimento per l'ordine
-      (`prenotazione_ordine`, `rilascio_ordine`, `reso_ordine`), scarico condizionato
-      contro le richieste simultanee.
-- [ ] `TODO` Generalizzare `FornitorePagamenti`: al posto di `appuntamentoId` un
-      riferimento interno con il suo tipo, così il webhook serve caparre e ordini con un
-      solo endpoint e una sola tabella di idempotenza.
-- [ ] `TODO` Schemi Zod condivisi degli ordini e del carrello, con il totale calcolato
-      nello stesso modo da frontend e backend.
+- [x] `COMPLETATO` Prenotazione della giacenza con le cause `prenotazione_ordine`,
+      `rilascio_ordine` e `reso_ordine`, e scarico condizionato contro le richieste
+      simultanee (`ordini.servizio.ts`).
+- [x] `COMPLETATO` `FornitorePagamenti` generalizzato: riferimento interno con il suo tipo,
+      un solo endpoint di webhook e una sola tabella di idempotenza per caparre e ordini.
+- [x] `COMPLETATO` Schemi Zod condivisi di ordini e carrello
+      (`packages/shared/src/schemi/ordini.ts`), con il totale calcolato una volta sola.
+- [x] `COMPLETATO` Creazione dell'ordine con prenotazione della giacenza, credito a scalare
+      e pagamento del residuo; conferma solo dall'evento firmato del fornitore.
+- [x] `COMPLETATO` Attività pg-boss di scadenza degli ordini non pagati, che rilascia la
+      giacenza e restituisce il credito usato (`scadenza-ordini.attivita.ts`).
+- [x] `COMPLETATO` API degli ordini per il personale (`ordini.controller.ts`): elenco,
+      dettaglio, cambio di stato, annullamento, decisione e rientro dei resi.
+- [x] `COMPLETATO` API degli ordini per il cliente (`ordini-cliente.controller.ts`):
+      catalogo, elenco, dettaglio, creazione e richiesta di reso.
+- [x] `COMPLETATO` Test unitari del dominio (`packages/shared/src/dominio/ordine.spec.ts`):
+      totale, ripartizione fra credito e pagamento, transizioni di stato, finestra di
+      recesso.
+
+### Da fare
+
+Il frontend è interamente da scrivere: in `apps/web` non esiste nessuna pagina del
+negozio e `servizi/gestione.ts` non ha una sola chiamata agli ordini.
+
 - [ ] `TODO` Catalogo e carrello lato cliente, visibili solo se la vendita online è attiva.
-- [ ] `TODO` Creazione dell'ordine con prenotazione della giacenza, credito a scalare e
-      pagamento del residuo; conferma solo dall'evento firmato del fornitore.
-- [ ] `TODO` Attività pg-boss di scadenza degli ordini non pagati, che rilascia la
-      giacenza e restituisce il credito usato.
-- [ ] `TODO` Gestione degli ordini dal personale: preparazione, pronto per il ritiro,
-      consegnato, annullato con rimborso.
-- [ ] `TODO` Resi: richiesta del cliente entro 14 giorni dalla consegna, approvazione o
-      rifiuto motivato del titolare, rimborso e ricarico della giacenza.
-- [ ] `TODO` Test unitari sul totale dell'ordine, sulla finestra di recesso e sulle
-      transizioni di stato.
-- [ ] `TODO` Test di integrazione: permessi, prenotazione della giacenza in concorrenza,
-      scadenza, webhook idempotente, rimborso, reso.
+- [ ] `TODO` Pagamento dell'ordine e pagina di esito, sulla falsariga della caparra.
+- [ ] `TODO` «I miei ordini» nell'area cliente: stato, dettaglio e richiesta di reso entro
+      i 14 giorni.
+- [ ] `TODO` Schermata degli ordini per il personale: preparazione, pronto per il ritiro,
+      consegnato, annullamento con rimborso, decisione sui resi.
+- [ ] `TODO` Chiamate API degli ordini in `apps/web/src/servizi/gestione.ts`.
+- [ ] `TODO` Test di integrazione (non esiste `ordini.integrazione.spec.ts`): permessi,
+      prenotazione della giacenza in concorrenza, scadenza, webhook idempotente, rimborso,
+      reso.
 - [ ] `TODO` Test end-to-end: acquisto con ritiro in negozio, ordine scaduto, reso.
-- [ ] `TODO` Dati demo: ordini di esempio negli stati principali.
-- [ ] `TODO` ADR 0011, README e `MANUALE-DUSO.md`.
+- [ ] `TODO` Dati demo: ordini di esempio negli stati principali. In `seed.ts` oggi non ce
+      n'è nessuno.
+- [ ] `TODO` ADR della vendita online. Il numero 0011 citato prima era già occupato dalla
+      prenotazione forzata: il prossimo libero è 0014.
+- [ ] `TODO` README e `MANUALE-DUSO.md`: entrambi descrivono ancora la vendita online come
+      una fase futura (README riga 43, manuale riga 693).
 - [ ] `TODO` Controlli finali: formattazione, lint, tipi, test, build.
 
 ### Rinviato dentro la fase 9
@@ -62,6 +85,28 @@ insieme alla prenotazione forzata del titolare.
 - [ ] `BLOCCATO` **Obblighi fiscali della vendita online**: il titolare li comunicherà dopo
       il confronto con il commercialista. Nessuna logica fiscale va inventata, quindi
       l'ordine non produce documenti.
+
+## Da fare — Fase 10: Statistiche e KPI
+
+Ultima fase della roadmap, mai iniziata. I dati ci sono già tutti: appuntamenti con stato
+e motivo di annullamento, movimenti di caparra e credito, vendite in negozio, ordini e
+movimenti di magazzino. Manca il modo di leggerli.
+
+Li vede **solo il titolare**: `CLAUDE.md` è esplicito nel tenere i dati economici fuori
+dalla portata del dipendente, quindi ogni endpoint va sotto `@Ruoli('titolare')`.
+
+- [ ] `TODO` Decidere con il titolare quali numeri servono davvero e su quale periodo:
+      l'elenco del capitolato (appuntamenti, servizi più richiesti, rendimento per
+      operatore, vendite, incassi, caparre trattenute, annullamenti e mancate
+      presentazioni) è una lista di temi, non di indicatori definiti.
+- [ ] `TODO` Query aggregate con intervallo di date, calcolate dal database e non in
+      memoria; valutare gli indici necessari prima di scriverle.
+- [ ] `TODO` Endpoint dei KPI riservati al titolare, con gli importi sempre in centesimi.
+- [ ] `TODO` Schermata delle statistiche con i grafici, e scelta della libreria da
+      concordare: oggi non c'è nulla in `package.json` per disegnarli.
+- [ ] `TODO` Test: permessi (il dipendente riceve `403`), correttezza dei totali su dati
+      noti, comportamento su un periodo vuoto.
+- [ ] `TODO` ADR, README e `MANUALE-DUSO.md`.
 
 ## Da fare — attività trasversali già individuate
 
@@ -77,6 +122,12 @@ insieme alla prenotazione forzata del titolare.
       taglio in parti ora che l'area cliente è cresciuta.
 
 ### Dalla revisione di sicurezza del 27/10/2026 (minori, confermate)
+
+- [ ] `TODO` Estendere la revisione a ciò che non è stato esaminato. La scansione ha
+      coperto **solo `apps/api`** (131 file): restano fuori `apps/web`,
+      `packages/shared`, `infra/` (Caddy, compose di produzione, script di backup,
+      aggiornamento e ripristino) e i workflow di GitHub Actions, dove stanno i segreti di
+      deploy, l'esposizione HTTPS e i dump cifrati.
 
 - [ ] `TODO` I token in chiaro finiscono nella tabella delle code: il corpo dell'e-mail
       accodato a pg-boss contiene i link di attivazione e reimpostazione, mentre la tabella
