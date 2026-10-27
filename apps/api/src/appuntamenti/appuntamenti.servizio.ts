@@ -318,37 +318,60 @@ export class AppuntamentiServizio {
     );
 
     try {
-      const creato = await this.prisma.appuntamento.create({
-        data: {
-          clienteId: dati.clienteId,
-          operatoreId: dati.operatoreId,
-          inizio,
-          fine,
-          durataMinuti: scelti.durataMinuti,
-          prezzoTotaleCentesimi: scelti.prezzoTotaleCentesimi,
-          // Con una caparra da pagare lo slot resta bloccato in attesa del
-          // pagamento; senza caparra l'appuntamento nasce già confermato.
-          // Con una differenza da pagare lo slot resta bloccato in attesa; se
-          // il credito copre tutta la caparra l'appuntamento è già confermato.
-          stato: caparra.scadeIl ? 'in_attesa_pagamento' : 'confermato',
-          caparraCentesimi: caparra.centesimi,
-          bloccoScadeIl: caparra.scadeIl,
-          senzaCaparra: caparra.centesimi === 0,
-          forzato,
-          note: dati.note,
-          // Nullo quando prenota il cliente stesso dall'area clienti.
-          creatoDaId: autoreId,
-          servizi: {
-            create: scelti.servizi.map((servizio, indice) => ({
-              servizioId: servizio.servizioId,
-              nome: servizio.nome,
-              prezzoCentesimi: servizio.prezzoCentesimi,
-              durataMinuti: servizio.durataMinuti,
-              ordine: indice,
-            })),
+      // Appuntamento e credito speso stanno nella stessa transazione: se il
+      // credito nel frattempo è finito, lo slot non resta occupato da una
+      // prenotazione che nessuno ha pagato.
+      const creato = await this.prisma.$transaction(async (transazione) => {
+        if (caparra.creditoUsato > 0) {
+          // Prima di ogni scrittura: creare l'appuntamento prende da sé un
+          // blocco condiviso sulla riga del cliente, e chiedere dopo quello
+          // esclusivo manderebbe due prenotazioni simultanee in deadlock.
+          await this.pagamenti.bloccaCreditoDelCliente(transazione, dati.clienteId);
+        }
+
+        const appuntamento = await transazione.appuntamento.create({
+          data: {
+            clienteId: dati.clienteId,
+            operatoreId: dati.operatoreId,
+            inizio,
+            fine,
+            durataMinuti: scelti.durataMinuti,
+            prezzoTotaleCentesimi: scelti.prezzoTotaleCentesimi,
+            // Con una caparra da pagare lo slot resta bloccato in attesa del
+            // pagamento; senza caparra l'appuntamento nasce già confermato.
+            // Con una differenza da pagare lo slot resta bloccato in attesa; se
+            // il credito copre tutta la caparra l'appuntamento è già confermato.
+            stato: caparra.scadeIl ? 'in_attesa_pagamento' : 'confermato',
+            caparraCentesimi: caparra.centesimi,
+            bloccoScadeIl: caparra.scadeIl,
+            senzaCaparra: caparra.centesimi === 0,
+            forzato,
+            note: dati.note,
+            // Nullo quando prenota il cliente stesso dall'area clienti.
+            creatoDaId: autoreId,
+            servizi: {
+              create: scelti.servizi.map((servizio, indice) => ({
+                servizioId: servizio.servizioId,
+                nome: servizio.nome,
+                prezzoCentesimi: servizio.prezzoCentesimi,
+                durataMinuti: servizio.durataMinuti,
+                ordine: indice,
+              })),
+            },
           },
-        },
-        include: INCLUDI_COLLEGAMENTI,
+          include: INCLUDI_COLLEGAMENTI,
+        });
+
+        await this.pagamenti.applicaCreditoAllaPrenotazione(
+          {
+            appuntamentoId: appuntamento.id,
+            clienteId: appuntamento.clienteId,
+            creditoUsatoCentesimi: caparra.creditoUsato,
+          },
+          transazione,
+        );
+
+        return appuntamento;
       });
 
       if (forzato) {
@@ -356,12 +379,6 @@ export class AppuntamentiServizio {
           `Appuntamento ${creato.id} inserito da ${autoreId} in deroga ai vincoli dell'agenda.`,
         );
       }
-
-      await this.pagamenti.applicaCreditoAllaPrenotazione({
-        appuntamentoId: creato.id,
-        clienteId: creato.clienteId,
-        creditoUsatoCentesimi: caparra.creditoUsato,
-      });
 
       if (caparra.scadeIl) {
         await this.scadenzaBlocco.programma(creato.id, caparra.scadeIl);
@@ -595,9 +612,23 @@ export class AppuntamentiServizio {
       );
     }
 
-    const aggiornato = await this.prisma.appuntamento.update({
-      where: { id },
+    // Lo stato letto sopra deve essere ancora quello al momento della
+    // scrittura: altrimenti due annullamenti simultanei passerebbero entrambi
+    // il controllo e la caparra verrebbe restituita due volte.
+    const esito = await this.prisma.appuntamento.updateMany({
+      where: { id, stato: appuntamento.stato },
       data: { stato: nuovo, ...datiAggiuntivi },
+    });
+
+    if (esito.count === 0) {
+      throw new ConflictException(
+        'L’appuntamento è stato aggiornato da qualcun altro in questo momento: ' +
+          'ricarica la pagina e riprova.',
+      );
+    }
+
+    const aggiornato = await this.prisma.appuntamento.findUniqueOrThrow({
+      where: { id },
       include: INCLUDI_COLLEGAMENTI,
     });
 

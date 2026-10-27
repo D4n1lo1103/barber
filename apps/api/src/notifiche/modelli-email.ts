@@ -216,32 +216,3 @@ export function modelloPromemoria(
     ),
   };
 }
-
-/**
- * Codice di verifica del numero di telefono, inviato per e-mail quando i
- * messaggi WhatsApp non sono disponibili.
- */
-export function modelloCodiceVerificaNumero(
-  salone: ContestoSalone,
-  destinatario: DestinatarioEmail,
-  codice: string,
-): MessaggioEmail {
-  return {
-    a: destinatario.email,
-    oggetto: `${salone.nomeSalone}: codice di verifica`,
-    testo: [
-      `Ciao ${destinatario.nome},`,
-      '',
-      `il tuo codice di verifica è ${codice}.`,
-      '',
-      'Vale pochi minuti. Se non hai chiesto tu la verifica, ignora questo messaggio.',
-    ].join('\n'),
-    html: involucro(
-      salone.nomeSalone,
-      'Codice di verifica',
-      `<p style="margin:0 0 16px;font-size:15px;line-height:1.5">Ciao ${destinatario.nome}, il tuo codice di verifica è:</p>` +
-        `<p style="margin:0;font-size:28px;font-weight:700;letter-spacing:6px">${codice}</p>` +
-        '<p style="margin:16px 0 0;font-size:13px;color:#6b6b70">Vale pochi minuti. Se non hai chiesto tu la verifica, ignora questo messaggio.</p>',
-    ),
-  };
-}

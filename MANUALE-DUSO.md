@@ -281,6 +281,15 @@ Come viene scelto il canale, per ogni messaggio:
 | Invio WhatsApp non riuscito                             | e-mail, subito           |
 | Nessun recapito                                         | nessun messaggio         |
 
+Un'unica eccezione: il **codice di verifica del numero** parte solo su WhatsApp e non
+ripiega mai sull'e-mail, perché deve dimostrare il possesso di quel numero. Senza WhatsApp
+attivo i clienti non possono verificare il proprio numero.
+
+Nelle installazioni di sviluppo, se le credenziali di Meta mancano, i messaggi WhatsApp
+vengono solo contati nei log (senza il testo) e consegnati via e-mail. In produzione non
+vengono mai scritti nei log: il testo contiene link di attivazione e codici, che valgono
+quanto una password.
+
 Il **consenso** lo dà il cliente registrandosi, oppure lo dichiara al telefono e il
 dipendente lo registra creando la scheda. Il cliente può revocarlo quando vuole dalla propria
 area: è un obbligo di legge, non una cortesia.
@@ -341,7 +350,11 @@ Dal pannello, pulsante **Clienti**: tutto il personale consulta e inserisce le s
   l'invito non arriva o se la scheda non ha né e-mail né consenso, e in quel caso va
   consegnato o dettato al cliente. Sarà lui a scegliere la password.
 - **Nessun duplicato**: se il numero è già collegato a una scheda, il sistema lo segnala con
-  il nome del cliente esistente invece di creare un doppione.
+  il nome del cliente esistente invece di creare un doppione. Può però capitare di vedere
+  **due schede con lo stesso numero**: succede quando un cliente che aveva già una scheda
+  si registra per conto proprio. Le due si uniscono da sé — storico, credito e note
+  comprese — appena il cliente verifica il numero dalla sua area, cosa che richiede i
+  messaggi WhatsApp attivi.
 - **Scheda del cliente**: contatti, stato dell'account, **note interne** modificabili e
   **storico degli appuntamenti** con servizi, operatore, importo e stato.
 - **Nuovo link di attivazione**: disponibile finché il cliente non ha attivato l'account.
@@ -503,9 +516,14 @@ Servono un account e un indirizzo e-mail confermato: senza, non si prenota.
 Casi particolari:
 
 - **Il salone ha già una scheda con quel numero** (es. cliente che prenotava per telefono):
-  la registrazione **riprende quella scheda**, con tutto lo storico. Non nasce un doppione.
-- **Quel numero o quell'indirizzo hanno già un account attivo**: la registrazione si ferma e
-  invita ad accedere o a reimpostare la password.
+  la registrazione crea comunque un account nuovo, e la scheda del salone resta dov'è. Le
+  due si uniscono, con tutto lo storico, appena si **verifica il numero** (vedi
+  [Verificare il numero di telefono](#verificare-il-numero-di-telefono)). Il numero scritto
+  nel modulo, da solo, non è una prova: se bastasse, chiunque lo conoscesse potrebbe
+  prendersi la scheda di un altro cliente.
+- **Quel numero o quell'indirizzo hanno già un account attivo**, oppure il numero è già
+  stato verificato da qualcuno: la registrazione si ferma e invita ad accedere o a
+  reimpostare la password.
 - **Invito ricevuto dal salone**: il link di attivazione porta alla pagina _Attiva il tuo
   account_, dove si sceglie la password. Se il salone non aveva registrato l'e-mail, la si
   indica lì: servirà per accedere e per recuperare la password. Il salone non conosce mai la
@@ -575,12 +593,17 @@ si libera, il credito usato torna indietro.
 ### Verificare il numero di telefono
 
 Nella sezione **Profilo e dati**, sotto il numero: **Invia il codice**. Arriva un codice di
-sei cifre su WhatsApp — o per e-mail, se il salone non ha ancora attivato i messaggi — valido
-pochi minuti. Inserendolo, il numero risulta verificato.
+sei cifre **su WhatsApp**, valido pochi minuti. Inserendolo, il numero risulta verificato.
 
-Non è obbligatorio per prenotare: serve al salone per essere sicuro di poterti raggiungere.
-Un numero già verificato su un altro account viene rifiutato: in quel caso va contattato il
-salone.
+Il codice non viene mai inviato per e-mail: riceverlo nella propria casella dimostrerebbe
+solo di possedere quella casella, non quel numero. Perciò, **se il salone non ha ancora
+attivato i messaggi WhatsApp, la verifica non è disponibile**: l'app lo dice e invita a
+contattare il salone.
+
+Non è obbligatorio per prenotare, e serve due cose: permettere al salone di raggiungerti, e
+unire al tuo account l'eventuale scheda che il salone aveva creato con lo stesso numero —
+con appuntamenti, acquisti, credito e note. L'unione è automatica alla verifica. Un numero
+già verificato su un altro account viene rifiutato: in quel caso va contattato il salone.
 
 ### Profilo, consensi e dati personali
 

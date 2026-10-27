@@ -1,5 +1,6 @@
 import { BadRequestException, Inject, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import type { Prisma } from '@prisma/client';
 import {
   calcolaCaparra,
   creditoDaUsare,
@@ -98,33 +99,54 @@ export class PagamentiServizio {
   }
 
   /**
+   * Blocca il credito del cliente per il resto della transazione: va fatto
+   * prima di creare l'appuntamento, altrimenti due prenotazioni simultanee
+   * finiscono in deadlock (vedi `CaparraServizio.bloccaCliente`).
+   */
+  async bloccaCreditoDelCliente(
+    transazione: Prisma.TransactionClient,
+    clienteId: string,
+  ): Promise<void> {
+    await this.caparra.bloccaCliente(transazione, clienteId);
+  }
+
+  /**
    * Scala dal credito la parte di caparra che copre. Il credito speso vale
    * come caparra pagata: se poi il pagamento della differenza non arriva, la
    * scadenza del blocco lo restituisce.
    */
-  async applicaCreditoAllaPrenotazione(parametri: {
-    appuntamentoId: string;
-    clienteId: string;
-    creditoUsatoCentesimi: number;
-  }): Promise<void> {
+  async applicaCreditoAllaPrenotazione(
+    parametri: {
+      appuntamentoId: string;
+      clienteId: string;
+      creditoUsatoCentesimi: number;
+    },
+    transazione: Prisma.TransactionClient,
+  ): Promise<void> {
     if (parametri.creditoUsatoCentesimi <= 0) {
       return;
     }
 
-    await this.caparra.registraCredito({
+    // Il saldo viene riletto qui dentro, con la riga del cliente bloccata: fra
+    // il preventivo della caparra e questo momento il credito può essere stato
+    // speso da un'altra prenotazione.
+    await this.caparra.spendiCredito(transazione, {
       clienteId: parametri.clienteId,
       appuntamentoId: parametri.appuntamentoId,
-      importoCentesimi: -parametri.creditoUsatoCentesimi,
+      importoCentesimi: parametri.creditoUsatoCentesimi,
       motivo: 'Credito usato per la caparra di una prenotazione.',
     });
 
-    await this.caparra.registra({
-      appuntamentoId: parametri.appuntamentoId,
-      clienteId: parametri.clienteId,
-      tipo: 'pagata',
-      importoCentesimi: parametri.creditoUsatoCentesimi,
-      motivo: 'Caparra coperta dal credito del cliente.',
-    });
+    await this.caparra.registra(
+      {
+        appuntamentoId: parametri.appuntamentoId,
+        clienteId: parametri.clienteId,
+        tipo: 'pagata',
+        importoCentesimi: parametri.creditoUsatoCentesimi,
+        motivo: 'Caparra coperta dal credito del cliente.',
+      },
+      transazione,
+    );
   }
 
   /**

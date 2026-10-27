@@ -27,7 +27,7 @@ import {
   type DisponibilitaGiorno,
   type EsitoRichiestaCodice,
   type EsportazioneDati,
-  type Operatore,
+  type OperatorePubblico,
   type ProfiloCliente,
   type RichiestaCancellazione,
   type Servizio,
@@ -63,9 +63,15 @@ export class AreaClienteController {
     private readonly verificaNumero: VerificaNumeroServizio,
   ) {}
 
-  /** Catalogo e operatori che il cliente può scegliere. */
+  /**
+   * Catalogo e operatori che il cliente può scegliere.
+   *
+   * Degli operatori escono solo identificativo e nome: e-mail, numero
+   * personale, ruolo e stato dell'account sono dati del personale e per
+   * scegliere con chi prenotare non servono.
+   */
   @Get('catalogo')
-  async leggiCatalogo(): Promise<{ servizi: Servizio[]; operatori: Operatore[] }> {
+  async leggiCatalogo(): Promise<{ servizi: Servizio[]; operatori: OperatorePubblico[] }> {
     const [catalogo, personale] = await Promise.all([
       this.servizi.elenca(),
       this.personale.elenca(),
@@ -73,7 +79,9 @@ export class AreaClienteController {
 
     return {
       servizi: catalogo.filter((servizio) => servizio.attivo),
-      operatori: personale.filter((operatore) => operatore.attivo),
+      operatori: personale
+        .filter((operatore) => operatore.attivo)
+        .map(({ id, nome, cognome }) => ({ id, nome, cognome })),
     };
   }
 

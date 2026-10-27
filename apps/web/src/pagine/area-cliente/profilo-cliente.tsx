@@ -142,16 +142,12 @@ export function ProfiloClienteScheda({
     impostaMessaggio(null);
 
     try {
-      const esito = await chiediCodiceNumero();
+      // Il codice parte solo su WhatsApp: senza, la richiesta viene rifiutata
+      // dal backend e si finisce nel catch.
+      await chiediCodiceNumero();
 
       impostaCodiceRichiesto(true);
-      impostaMessaggio({
-        tono: 'conferma',
-        testo:
-          esito.canale === 'whatsapp'
-            ? 'Codice inviato su WhatsApp.'
-            : 'Il salone non ha attivo WhatsApp: il codice è stato inviato per e-mail.',
-      });
+      impostaMessaggio({ tono: 'conferma', testo: 'Codice inviato su WhatsApp.' });
     } catch (problema) {
       impostaMessaggio({
         tono: 'errore',
@@ -244,7 +240,8 @@ export function ProfiloClienteScheda({
             ) : (
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <p className="text-sm text-testo-tenue">
-                  Verifica il tuo numero: ti inviamo un codice di sei cifre.
+                  Verifica il tuo numero: ti inviamo un codice di sei cifre su WhatsApp. Serve per
+                  unire al tuo account l’eventuale scheda che il salone ha già con questo numero.
                 </p>
                 <Pulsante
                   variante="secondario"

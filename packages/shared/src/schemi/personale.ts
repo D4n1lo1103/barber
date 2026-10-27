@@ -53,3 +53,18 @@ export const schemaOperatore = z.object({
 });
 
 export type Operatore = z.infer<typeof schemaOperatore>;
+
+/**
+ * Operatore come lo vede il cliente che prenota: solo ciò che serve a
+ * sceglierlo.
+ *
+ * Recapiti personali, stato dell'account e ruolo restano al personale: sono
+ * dati di un'altra persona e per scegliere con chi prenotare non servono.
+ */
+export const schemaOperatorePubblico = schemaOperatore.pick({
+  id: true,
+  nome: true,
+  cognome: true,
+});
+
+export type OperatorePubblico = z.infer<typeof schemaOperatorePubblico>;

@@ -3,7 +3,7 @@ import { clsx } from 'clsx';
 import {
   calcolaCaparra,
   type AppuntamentoCliente,
-  type Operatore,
+  type OperatorePubblico,
   type Servizio,
 } from '@barber/shared';
 import { Avviso } from '../../componenti/avviso';
@@ -36,7 +36,7 @@ export function Prenota({
 }) {
   const { stato } = usaInstallazione();
   const [servizi, impostaServizi] = useState<Servizio[]>([]);
-  const [operatori, impostaOperatori] = useState<Operatore[]>([]);
+  const [operatori, impostaOperatori] = useState<OperatorePubblico[]>([]);
   const [scelti, impostaScelti] = useState<string[]>([]);
   const [operatoreId, impostaOperatore] = useState('');
   const [giorno, impostaGiorno] = useState(() => giornoDaDataDiVista(dataDiVista(new Date())));

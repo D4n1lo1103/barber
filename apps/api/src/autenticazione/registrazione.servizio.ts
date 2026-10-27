@@ -10,13 +10,16 @@ import { TokenServizio } from './token.servizio.js';
  * Registrazione autonoma del cliente, verifica dell'indirizzo e-mail e
  * reimpostazione della password.
  *
- * Se il numero WhatsApp indicato appartiene già a una scheda creata dal
- * personale, la registrazione **non** crea un duplicato: prende quella scheda,
- * con il suo storico. L'account diventa utilizzabile solo dopo la verifica
- * dell'e-mail, quindi il collegamento richiede sempre una casella verificata.
+ * La registrazione **non tocca mai una scheda già esistente**, nemmeno quando
+ * il numero indicato coincide: il numero è un dato che chiunque può scrivere
+ * nel modulo, e usarlo come prova d'identità permetterebbe a un estraneo di
+ * impossessarsi della scheda di un cliente, con il suo storico e il suo
+ * credito. Nasce sempre un account nuovo, con il numero da verificare.
  *
- * La verifica del numero di telefono arriva con i messaggi WhatsApp (fase 7):
- * fino ad allora `numeroVerificato` resta falso.
+ * Il collegamento alla scheda creata dal personale avviene dopo, quando il
+ * cliente verifica il numero con il codice che riceve su WhatsApp: è lì che si
+ * dimostra di possedere davvero quel numero. Vedi
+ * `VerificaNumeroServizio.confermaCodice`.
  */
 @Injectable()
 export class RegistrazioneServizio {
@@ -39,32 +42,44 @@ export class RegistrazioneServizio {
       );
     }
 
-    const perNumero = await this.prisma.utente.findFirst({
-      where: { numeroWhatsapp: dati.numeroWhatsapp },
+    // Un numero già verificato, o in uso a un account con password, appartiene
+    // a qualcuno che l'ha dimostrato: non lo si può richiedere di nuovo. Una
+    // scheda creata dal personale, invece, non blocca nessuno: resta dov'è e
+    // verrà unita a chi dimostrerà di possedere il numero.
+    const giaRivendicato = await this.prisma.utente.findFirst({
+      where: {
+        numeroWhatsapp: dati.numeroWhatsapp,
+        OR: [
+          { ruolo: { not: 'cliente' } },
+          { passwordHash: { not: null } },
+          { numeroVerificato: true },
+        ],
+      },
+      select: { id: true },
     });
 
-    if (perNumero && (perNumero.ruolo !== 'cliente' || perNumero.passwordHash)) {
-      // Numero del personale, o scheda che ha già un account attivo.
+    if (giaRivendicato) {
       throw new ConflictException(
         'Questo numero è già collegato a un account. Accedi, oppure reimposta la password.',
       );
     }
 
     const adesso = new Date();
-    const datiComuni = {
-      nome: dati.nome,
-      cognome: dati.cognome,
-      email: dati.email,
-      numeroWhatsapp: dati.numeroWhatsapp,
-      passwordHash: await this.autenticazione.calcolaHashPassword(dati.password),
-      emailVerificata: false,
-      consensoTrattamentoIl: adesso,
-      consensoWhatsappIl: dati.consensoWhatsapp ? adesso : null,
-    };
-
-    const cliente = perNumero
-      ? await this.prisma.utente.update({ where: { id: perNumero.id }, data: datiComuni })
-      : await this.prisma.utente.create({ data: { ...datiComuni, ruolo: 'cliente' } });
+    const cliente = await this.prisma.utente.create({
+      data: {
+        nome: dati.nome,
+        cognome: dati.cognome,
+        email: dati.email,
+        numeroWhatsapp: dati.numeroWhatsapp,
+        ruolo: 'cliente',
+        passwordHash: await this.autenticazione.calcolaHashPassword(dati.password),
+        emailVerificata: false,
+        // Il numero vale solo come recapito finché non arriva il codice.
+        numeroVerificato: false,
+        consensoTrattamentoIl: adesso,
+        consensoWhatsappIl: dati.consensoWhatsapp ? adesso : null,
+      },
+    });
 
     const invito = await this.token.crea(cliente.id, 'verifica_email');
 
@@ -73,13 +88,9 @@ export class RegistrazioneServizio {
       invito.token,
     );
 
-    this.logger.log(
-      perNumero
-        ? 'Registrazione collegata a una scheda cliente già presente.'
-        : 'Nuova registrazione cliente.',
-    );
+    this.logger.log('Nuova registrazione cliente.');
 
-    return { email: dati.email, collegataASchedaEsistente: perNumero !== null };
+    return { email: dati.email };
   }
 
   /** Conferma dell'indirizzo: da qui l'account del cliente è utilizzabile. */

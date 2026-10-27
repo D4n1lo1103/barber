@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type Browser, type Page } from '@playwright/test';
 
 const PASSWORD_DEMO = process.env.PASSWORD_DEMO ?? 'password-demo-salone';
 /** Cliente dei dati demo con consenso dato e numero da verificare. */
@@ -9,8 +9,10 @@ const EMAIL_CLIENTE = 'elena.moretti@cliente.test';
  * cliente verifica il proprio numero.
  *
  * L'installazione di prova non ha il token di Meta, quindi i messaggi vengono
- * solo registrati: l'interfaccia lo dichiara, e il codice di verifica arriva
- * via e-mail come ripiego. È esattamente il comportamento da verificare.
+ * solo registrati e l'interfaccia lo dichiara. Il codice di verifica del
+ * numero, però, non ripiega sull'e-mail: dimostrerebbe il possesso della
+ * casella e non del numero, e da quella prova dipende l'unione con la scheda
+ * creata dal personale. Senza WhatsApp attivo la verifica non è disponibile.
  */
 test.describe('Messaggi di servizio', () => {
   test.describe.configure({ mode: 'serial' });
@@ -38,7 +40,8 @@ test.describe('Messaggi di servizio', () => {
     await expect(page.getByRole('status').first()).toContainText('registrato');
   });
 
-  test('il cliente chiede il codice per verificare il numero', async ({ browser }) => {
+  /** Apre l'area del cliente in una sessione pulita, sulla scheda del profilo. */
+  async function profiloDelCliente(browser: Browser) {
     const contesto = await browser.newContext({ storageState: { cookies: [], origins: [] } });
     const page = await contesto.newPage();
 
@@ -51,19 +54,66 @@ test.describe('Messaggi di servizio', () => {
     await page.getByRole('button', { name: 'Profilo e dati' }).click();
     await expect(page.getByText(/Verifica il tuo numero/)).toBeVisible();
 
+    return { contesto, page };
+  }
+
+  /** Attiva o disattiva i messaggi WhatsApp dalla scheda Messaggi. */
+  async function impostaWhatsapp(page: Page, attivo: boolean) {
+    await page.goto('/impostazioni');
+    await page.getByRole('button', { name: 'Messaggi', exact: true }).click();
+
+    const interruttore = page.getByRole('checkbox', {
+      name: /Invia i messaggi di servizio su WhatsApp/,
+    });
+
+    if ((await interruttore.isChecked()) !== attivo) {
+      await interruttore.setChecked(attivo);
+    }
+
+    if (attivo) {
+      // Per ruolo e non per etichetta: il testo dell'interruttore cita a sua
+      // volta l'identificativo del numero mittente.
+      await page
+        .getByRole('textbox', { name: 'Identificativo del numero mittente' })
+        .fill('123456789012345');
+    }
+
+    await page.getByRole('button', { name: 'Salva i messaggi' }).click();
+    await expect(page.getByRole('status').first()).toBeVisible();
+  }
+
+  test('senza WhatsApp attivo la verifica del numero non è disponibile', async ({ browser }) => {
+    const { contesto, page } = await profiloDelCliente(browser);
+
     await page.getByRole('button', { name: 'Invia il codice' }).click();
 
-    // Senza WhatsApp attivo il codice arriva via e-mail: il campo del codice
-    // compare comunque, pronto per essere compilato.
-    // Senza WhatsApp attivo l'avviso dice che il codice è arrivato per e-mail.
-    await expect(page.getByRole('status').first()).toContainText('codice');
-    await expect(page.getByLabel('Codice ricevuto')).toBeVisible();
-
-    // Un codice sbagliato viene rifiutato con un messaggio chiaro.
-    await page.getByLabel('Codice ricevuto').fill('000000');
-    await page.getByRole('button', { name: 'Conferma il numero' }).click();
-    await expect(page.getByRole('alert')).toContainText('Codice');
+    // Nessun ripiego via e-mail: l'app spiega perché e manda dal salone.
+    await expect(page.getByRole('alert')).toContainText('WhatsApp');
+    await expect(page.getByLabel('Codice ricevuto')).toBeHidden();
 
     await contesto.close();
+  });
+
+  test('con WhatsApp attivo il cliente riceve il codice e uno sbagliato viene rifiutato', async ({
+    browser,
+    page,
+  }) => {
+    await impostaWhatsapp(page, true);
+
+    const { contesto, page: pagina } = await profiloDelCliente(browser);
+
+    await pagina.getByRole('button', { name: 'Invia il codice' }).click();
+
+    await expect(pagina.getByRole('status').first()).toContainText('WhatsApp');
+    await expect(pagina.getByLabel('Codice ricevuto')).toBeVisible();
+
+    // Un codice sbagliato viene rifiutato con un messaggio chiaro.
+    await pagina.getByLabel('Codice ricevuto').fill('000000');
+    await pagina.getByRole('button', { name: 'Conferma il numero' }).click();
+    await expect(pagina.getByRole('alert')).toContainText('Codice');
+
+    await contesto.close();
+    // Le impostazioni sono condivise: WhatsApp torna spento per gli altri test.
+    await impostaWhatsapp(page, false);
   });
 });
