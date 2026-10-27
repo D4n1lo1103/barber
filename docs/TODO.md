@@ -163,6 +163,10 @@ sotto _Da fare_. Decisioni in `docs/adr/0013-correzioni-di-sicurezza.md`.
       numero verificato rifiutato), unione delle schede alla verifica, verifica non
       disponibile senza WhatsApp, catalogo senza dati personali, e due test di
       concorrenza (credito speso una volta sola, caparra restituita una volta sola).
+- [x] `COMPLETATO` Test end-to-end dei messaggi allineati: senza WhatsApp attivo la verifica
+      del numero non è disponibile (il test verificava il ripiego via e-mail, che non esiste
+      più), e un secondo test attiva WhatsApp dalle impostazioni, fa arrivare il codice,
+      rifiuta un codice sbagliato e rimette l'impostazione come l'ha trovata.
 - [x] `COMPLETATO` Tre test di `area-cliente.integrazione.spec.ts` dipendevano dall'ora di
       esecuzione: `prossimoMercoledi()` partiva da domani, quindi un appuntamento alle
       10:00 cadeva sotto le 24 ore di preavviso se la suite girava dopo le 10:00, e
