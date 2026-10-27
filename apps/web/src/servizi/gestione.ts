@@ -41,6 +41,7 @@ import type {
   InvitoCliente,
   MovimentoMagazzino,
   Operatore,
+  OperatorePubblico,
   Salone,
   PagamentoDaCompletare,
   ProfiloCliente,
@@ -341,7 +342,10 @@ export function evadiRichiestaCancellazione(
 
 // ─── Area cliente ─────────────────────────────────────────────────────────────
 
-export function leggiCatalogoCliente(): Promise<{ servizi: Servizio[]; operatori: Operatore[] }> {
+export function leggiCatalogoCliente(): Promise<{
+  servizi: Servizio[];
+  operatori: OperatorePubblico[];
+}> {
   return chiamaApi('/area-cliente/catalogo');
 }
 

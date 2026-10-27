@@ -10,6 +10,7 @@ import { MittenteRegistro } from './mittente-registro.js';
 import { MittenteSmtp } from './mittente-smtp.js';
 import { MITTENTE_WHATSAPP, type MittenteWhatsapp } from './mittente-whatsapp.js';
 import { MittenteWhatsappCloud } from './mittente-whatsapp-cloud.js';
+import { MittenteWhatsappNonConfigurato } from './mittente-whatsapp-non-configurato.js';
 import { MittenteWhatsappRegistro } from './mittente-whatsapp-registro.js';
 import { NotificheServizio } from './notifiche.servizio.js';
 import { PromemoriaAttivita } from './promemoria.attivita.js';
@@ -66,6 +67,14 @@ async function creaMittenteWhatsapp(
   const registro = new Logger('NotificheModule');
 
   if (!token || idNumero === '') {
+    // In produzione i messaggi non si registrano mai: conterrebbero link di
+    // attivazione e codici di verifica, cioè credenziali in chiaro nei log.
+    if (configurazione.get('NODE_ENV', { infer: true }) === 'production') {
+      registro.warn('WhatsApp non configurato: i messaggi di servizio vanno via e-mail.');
+
+      return new MittenteWhatsappNonConfigurato();
+    }
+
     registro.warn(
       'WhatsApp non configurato: i messaggi vengono registrati nei log e inviati via e-mail.',
     );

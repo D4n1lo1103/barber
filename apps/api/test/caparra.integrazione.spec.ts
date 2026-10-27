@@ -320,6 +320,25 @@ describe('Caparra e pagamenti', () => {
       expect(await saldoCredito()).toBe(0);
     });
 
+    it('due annullamenti simultanei restituiscono la caparra una volta sola', async () => {
+      const id = await prenotaEPaga();
+      contesto.limiti.azzera();
+
+      const annulla = () =>
+        come(cliente, chiama().post(`/api/area-cliente/appuntamenti/${id}/annullamento`));
+      const [primo, secondo] = await Promise.all([annulla(), annulla()]);
+
+      // Uno solo passa. L'altro viene rifiutato: con 409 se ha corso davvero
+      // in parallelo, con 400 se è arrivato quando il primo aveva già chiuso.
+      const esiti = [primo.status, secondo.status].sort();
+      expect(esiti[0]).toBe(201);
+      expect([400, 409]).toContain(esiti[1]);
+
+      const rimborsi = (await movimenti(id)).filter((movimento) => movimento.tipo === 'rimborsata');
+      expect(rimborsi).toHaveLength(1);
+      expect(await saldoCredito()).toBe(0);
+    });
+
     it('con la restituzione in credito l’annullamento tempestivo accredita il cliente', async () => {
       await come(
         titolare,
@@ -534,6 +553,34 @@ describe('Caparra e pagamenti', () => {
         motivoAnnullamento: 'pagamento_non_completato',
       });
       expect(await saldoCredito()).toBe(1000);
+    });
+
+    it('due prenotazioni simultanee non spendono due volte lo stesso credito', async () => {
+      // Credito per una sola caparra da 15,00 €.
+      await accredita(1500);
+
+      const [prima, seconda] = await Promise.all([prenota(alle(10)), prenota(alle(11))]);
+      const esiti = [prima.status, seconda.status].sort();
+
+      // La prima passa sempre. La seconda o viene rifiutata, perché il credito
+      // è stato appena speso, o passa senza credito e con la caparra da pagare:
+      // quello che non può succedere è spenderlo due volte.
+      expect(esiti[0]).toBe(201);
+      expect([201, 409]).toContain(esiti[1]);
+
+      const movimentiNegativi = await contesto.prisma.movimentoCredito.findMany({
+        where: { clienteId: idCliente, importoCentesimi: { lt: 0 } },
+      });
+      expect(movimentiNegativi).toHaveLength(1);
+      expect(movimentiNegativi[0]?.importoCentesimi).toBe(-1500);
+      // Il saldo non va mai sotto zero.
+      expect(await saldoCredito()).toBe(0);
+
+      // Una prenotazione rifiutata non lascia dietro di sé un appuntamento.
+      const appuntamenti = await contesto.prisma.appuntamento.count({
+        where: { clienteId: idCliente },
+      });
+      expect(appuntamenti).toBe(esiti.filter((stato) => stato === 201).length);
     });
   });
 

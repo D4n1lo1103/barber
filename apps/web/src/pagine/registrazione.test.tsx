@@ -61,7 +61,6 @@ describe('PaginaRegistrazione', () => {
     registraFinto.mockReset();
     registraFinto.mockResolvedValue({
       email: 'marta@cliente.test',
-      collegataASchedaEsistente: false,
     });
     const utente = userEvent.setup();
     disegna();

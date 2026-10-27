@@ -20,7 +20,6 @@ import {
   type NomiModelliWhatsapp,
 } from './modelli-whatsapp.js';
 import {
-  modelloCodiceVerificaNumero,
   modelloConfermaPrenotazione,
   modelloInvitoAttivazione,
   modelloPromemoria,
@@ -118,9 +117,16 @@ export class NotificheServizio implements OnModuleInit {
   private async consegna(
     destinatario: DestinatarioMessaggio,
     componi: (canale: Canale) => { whatsapp?: MessaggioWhatsapp; email?: MessaggioEmail },
+    opzioni: { soloWhatsapp?: boolean } = {},
   ): Promise<Canale> {
     const whatsappAttivo = await this.whatsappAttivo();
     const canale = canaleDaUsare({ whatsappAttivo, destinatario });
+
+    // Un messaggio che prova il possesso del numero non può ripiegare su un
+    // altro recapito: arriverebbe a chi quel numero non ce l'ha.
+    if (opzioni.soloWhatsapp && canale !== 'whatsapp') {
+      return 'nessuno';
+    }
 
     if (canale === 'nessuno') {
       this.logger.warn('Messaggio di servizio non inviato: il destinatario non ha recapiti.');
@@ -254,32 +260,31 @@ export class NotificheServizio implements OnModuleInit {
 
   /**
    * Codice di verifica del numero di telefono: va per forza su WhatsApp, che è
-   * il canale da verificare. Senza WhatsApp attivo il codice arriva via
-   * e-mail, così la verifica resta possibile anche prima che il salone
-   * configuri i messaggi.
+   * il canale da verificare. Senza WhatsApp attivo il codice non parte e la
+   * verifica non è disponibile: recapitarlo altrove non proverebbe nulla sul
+   * numero, e da quella prova dipende l'unione delle schede del salone.
    */
   async inviaCodiceVerificaNumero(
     destinatario: DestinatarioMessaggio,
     codice: string,
   ): Promise<Canale> {
-    const [salone, nomi] = await Promise.all([this.contestoSalone(), this.nomiModelli()]);
+    const nomi = await this.nomiModelli();
 
-    return this.consegna(destinatario, () => ({
-      whatsapp: destinatario.numeroWhatsapp
-        ? modelloWhatsappVerificaNumero(
-            nomi,
-            { nome: destinatario.nome, numeroWhatsapp: destinatario.numeroWhatsapp },
-            codice,
-          )
-        : undefined,
-      email: destinatario.email
-        ? modelloCodiceVerificaNumero(
-            salone,
-            { nome: destinatario.nome, email: destinatario.email },
-            codice,
-          )
-        : undefined,
-    }));
+    return this.consegna(
+      destinatario,
+      () => ({
+        whatsapp: destinatario.numeroWhatsapp
+          ? modelloWhatsappVerificaNumero(
+              nomi,
+              { nome: destinatario.nome, numeroWhatsapp: destinatario.numeroWhatsapp },
+              codice,
+            )
+          : undefined,
+      }),
+      // Niente ripiego sull'e-mail: il codice serve a dimostrare che il
+      // numero è di chi lo sta verificando, e solo WhatsApp lo dimostra.
+      { soloWhatsapp: true },
+    );
   }
 
   /** Invio di prova, per verificare la configurazione dei messaggi. */

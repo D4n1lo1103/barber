@@ -71,7 +71,7 @@ describe('Registrazione del cliente, verifica e reimpostazione della password', 
         .send(dati)
         .expect(201);
 
-      expect(risposta.body).toEqual({ email: dati.email, collegataASchedaEsistente: false });
+      expect(risposta.body).toEqual({ email: dati.email });
 
       const cliente = await contesto.prisma.utente.findUniqueOrThrow({
         where: { email: dati.email },
@@ -181,10 +181,10 @@ describe('Registrazione del cliente, verifica e reimpostazione della password', 
     });
   });
 
-  describe('Collegamento a una scheda creata dal personale', () => {
-    it('riusa la scheda esistente invece di creare un duplicato', async () => {
-      const numero = `${PREFISSO_NUMERO_PROVA}${String(30000 + marcatore)}`;
-      const scheda = await contesto.prisma.utente.create({
+  describe('Scheda creata dal personale', () => {
+    /** Scheda come la crea il personale: numero, nessuna password. */
+    async function schedaDelSalone(numero: string) {
+      return contesto.prisma.utente.create({
         data: {
           nome: 'Marta',
           cognome: 'Esposito',
@@ -193,23 +193,72 @@ describe('Registrazione del cliente, verifica e reimpostazione della password', 
           note: 'Preferisce il sabato.',
         },
       });
+    }
+
+    it('non si impossessa della scheda di un altro indicandone il numero', async () => {
+      const numero = `${PREFISSO_NUMERO_PROVA}${String(30000 + marcatore)}`;
+      const scheda = await schedaDelSalone(numero);
 
       const dati = datiRegistrazione({ numeroWhatsapp: numero });
-      const risposta = await chiama()
-        .post('/api/autenticazione/registrazione')
-        .send(dati)
-        .expect(201);
+      await chiama().post('/api/autenticazione/registrazione').send(dati).expect(201);
 
-      expect(risposta.body.collegataASchedaEsistente).toBe(true);
-      expect(await contesto.prisma.utente.count({ where: { numeroWhatsapp: numero } })).toBe(1);
-
-      const aggiornata = await contesto.prisma.utente.findUniqueOrThrow({
+      // La scheda del salone resta intatta: nome, assenza di password e note.
+      const invariata = await contesto.prisma.utente.findUniqueOrThrow({
         where: { id: scheda.id },
       });
-      expect(aggiornata.email).toBe(dati.email);
-      // Le note del personale restano: è la stessa scheda.
-      expect(aggiornata.note).toBe('Preferisce il sabato.');
-      expect(aggiornata.emailVerificata).toBe(false);
+      expect(invariata.email).toBeNull();
+      expect(invariata.passwordHash).toBeNull();
+      expect(invariata.note).toBe('Preferisce il sabato.');
+
+      // Il nuovo account è separato, con il numero ancora da verificare.
+      const nuovo = await contesto.prisma.utente.findUniqueOrThrow({
+        where: { email: dati.email },
+      });
+      expect(nuovo.id).not.toBe(scheda.id);
+      expect(nuovo.numeroVerificato).toBe(false);
+    });
+
+    it('non rivela che quel numero è già di un cliente del salone', async () => {
+      const numero = `${PREFISSO_NUMERO_PROVA}${String(31000 + marcatore)}`;
+      await schedaDelSalone(numero);
+
+      const conScheda = await chiama()
+        .post('/api/autenticazione/registrazione')
+        .send(datiRegistrazione({ numeroWhatsapp: numero }))
+        .expect(201);
+      const senzaScheda = await chiama()
+        .post('/api/autenticazione/registrazione')
+        .send(
+          datiRegistrazione({
+            email: `ignoto-${marcatore}${SUFFISSO_PROVA}`,
+            numeroWhatsapp: `${PREFISSO_NUMERO_PROVA}${String(32000 + marcatore)}`,
+          }),
+        )
+        .expect(201);
+
+      expect(Object.keys(conScheda.body)).toEqual(['email']);
+      expect(Object.keys(senzaScheda.body)).toEqual(Object.keys(conScheda.body));
+    });
+
+    it('rifiuta un numero già verificato da un altro account', async () => {
+      const numero = `${PREFISSO_NUMERO_PROVA}${String(33000 + marcatore)}`;
+      await contesto.prisma.utente.create({
+        data: {
+          nome: 'Luca',
+          cognome: 'Verdi',
+          email: `luca-${marcatore}${SUFFISSO_PROVA}`,
+          numeroWhatsapp: numero,
+          ruolo: 'cliente',
+          numeroVerificato: true,
+        },
+      });
+
+      const risposta = await chiama()
+        .post('/api/autenticazione/registrazione')
+        .send(datiRegistrazione({ numeroWhatsapp: numero }))
+        .expect(409);
+
+      expect(risposta.body.message).toContain('numero');
     });
   });
 

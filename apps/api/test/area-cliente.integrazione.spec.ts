@@ -189,9 +189,29 @@ describe('Area del cliente', () => {
       expect(
         risposta.body.operatori.some((operatore: { id: string }) => operatore.id === idOperatore),
       ).toBe(true);
-      expect(
-        risposta.body.operatori.every((operatore: { attivo: boolean }) => operatore.attivo),
-      ).toBe(true);
+      // L'operatore disattivato non compare: il cliente non può sceglierlo.
+      const disattivato = await contesto.prisma.utente.findFirst({
+        where: { ruolo: { in: ['titolare', 'dipendente'] }, attivo: false },
+        select: { id: true },
+      });
+
+      if (disattivato) {
+        expect(
+          risposta.body.operatori.some(
+            (operatore: { id: string }) => operatore.id === disattivato.id,
+          ),
+        ).toBe(false);
+      }
+    });
+
+    it('degli operatori non espone recapiti né stato dell’account', async () => {
+      const risposta = await come(cliente, chiama().get('/api/area-cliente/catalogo')).expect(200);
+
+      for (const operatore of risposta.body.operatori as Record<string, unknown>[]) {
+        // Sono dati personali di un'altra persona: per scegliere chi ti taglia
+        // i capelli bastano identificativo e nome.
+        expect(Object.keys(operatore).sort()).toEqual(['cognome', 'id', 'nome']);
+      }
     });
 
     it('non propone orari nelle due ore successive', async () => {

@@ -69,6 +69,9 @@ describe('Messaggi WhatsApp', () => {
     contesto.limiti.azzera();
     contesto.email.svuota();
     contesto.whatsapp.svuota();
+    // I movimenti di credito non collegati a un appuntamento trattengono
+    // l'utente (vincolo RESTRICT) e bloccherebbero la pulizia finale.
+    await contesto.prisma.movimentoCredito.deleteMany();
     await contesto.prisma.tokenUtente.deleteMany({ where: { utenteId: idCliente } });
     await contesto.prisma.utente.update({
       where: { id: idCliente },
@@ -87,6 +90,7 @@ describe('Messaggi WhatsApp', () => {
   });
 
   afterAll(async () => {
+    await contesto.prisma.movimentoCredito.deleteMany();
     await rimuoviDatiDiProva(contesto);
     await contesto.app.close();
   });
@@ -242,16 +246,61 @@ describe('Messaggi WhatsApp', () => {
       expect(aggiornato.numeroVerificato).toBe(false);
     });
 
-    it('con WhatsApp spento il codice arriva via e-mail', async () => {
+    it('con WhatsApp spento la verifica non è disponibile e nulla parte via e-mail', async () => {
       await impostaWhatsapp(WHATSAPP_SPENTO).expect(200);
       contesto.limiti.azzera();
+      contesto.email.svuota();
 
-      const inviato = await come(cliente, chiama().post('/api/area-cliente/numero/codice')).expect(
-        201,
-      );
+      // Un codice recapitato via e-mail proverebbe solo che chi lo riceve ha
+      // quella casella, non che possiede il numero: da quella prova dipende
+      // l'unione delle schede del salone, quindi non si ripiega.
+      await come(cliente, chiama().post('/api/area-cliente/numero/codice')).expect(400);
 
-      expect(inviato.body.canale).toBe('email');
-      expect(contesto.email.messaggi.at(-1)?.oggetto).toContain('codice di verifica');
+      expect(contesto.email.messaggi).toHaveLength(0);
+
+      const aggiornato = await contesto.prisma.utente.findUniqueOrThrow({
+        where: { id: idCliente },
+      });
+      expect(aggiornato.numeroVerificato).toBe(false);
+    });
+
+    it('verificato il numero, unisce la scheda che il personale aveva creato', async () => {
+      const numero = await contesto.prisma.utente
+        .findUniqueOrThrow({ where: { id: idCliente }, select: { numeroWhatsapp: true } })
+        .then((riga) => riga.numeroWhatsapp ?? '');
+
+      // Scheda nata da una prenotazione al telefono: stesso numero, nessuna
+      // password, con il suo credito.
+      const scheda = await contesto.prisma.utente.create({
+        data: {
+          nome: 'Marta',
+          cognome: 'Esposito',
+          numeroWhatsapp: numero,
+          ruolo: 'cliente',
+          note: 'Preferisce il sabato.',
+        },
+      });
+      await contesto.prisma.movimentoCredito.create({
+        data: { clienteId: scheda.id, importoCentesimi: 1500, motivo: 'Credito del salone.' },
+      });
+
+      await come(cliente, chiama().post('/api/area-cliente/numero/codice')).expect(201);
+      const codice = contesto.whatsapp.messaggi.at(-1)?.parametri[0] ?? '';
+
+      await come(
+        cliente,
+        chiama().post('/api/area-cliente/numero/verifica').send({ codice }),
+      ).expect(204);
+
+      // La scheda sparisce e il suo storico passa all'account verificato.
+      expect(await contesto.prisma.utente.findUnique({ where: { id: scheda.id } })).toBeNull();
+      const credito = await contesto.prisma.movimentoCredito.findMany({
+        where: { clienteId: idCliente },
+      });
+      expect(credito.map((movimento) => movimento.importoCentesimi)).toContain(1500);
+
+      const unito = await contesto.prisma.utente.findUniqueOrThrow({ where: { id: idCliente } });
+      expect(unito.note).toContain('Preferisce il sabato.');
     });
 
     it('non verifica un numero già verificato su un altro account', async () => {

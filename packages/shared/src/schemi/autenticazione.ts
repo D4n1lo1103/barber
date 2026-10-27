@@ -63,12 +63,17 @@ export const schemaConfermaReset = z.object({
 
 export type DatiConfermaReset = z.infer<typeof schemaConfermaReset>;
 
-/** Esito della registrazione: dice al frontend cosa mostrare. */
+/**
+ * Esito della registrazione: dice al frontend cosa mostrare.
+ *
+ * Non dice se il numero indicato apparteneva già a una scheda del salone:
+ * sarebbe una risposta diversa per un numero cliente e per uno sconosciuto, e
+ * chiunque potrebbe scoprire così chi è cliente. Il collegamento alla scheda
+ * esistente avviene dopo la verifica del numero, non qui.
+ */
 export const schemaEsitoRegistrazione = z.object({
   /** Indirizzo a cui è stata inviata la verifica. */
   email: z.string(),
-  /** Vero quando la registrazione è stata collegata a una scheda già esistente. */
-  collegataASchedaEsistente: z.boolean(),
 });
 
 export type EsitoRegistrazione = z.infer<typeof schemaEsitoRegistrazione>;

@@ -172,6 +172,12 @@ export class OrdiniServizio implements GestorePagamento, OnModuleInit {
     const scadeIl = new Date(Date.now() + (await this.minutiBlocco()) * 60_000);
 
     const creato = await this.prisma.$transaction(async (transazione) => {
+      if (importi.creditoUsatoCentesimi > 0) {
+        // Prima di ogni scrittura, altrimenti due ordini simultanei dello
+        // stesso cliente finiscono in deadlock: vedi `bloccaCliente`.
+        await this.caparra.bloccaCliente(transazione, clienteId);
+      }
+
       const ordine = await transazione.ordine.create({
         data: {
           clienteId,
@@ -217,16 +223,15 @@ export class OrdiniServizio implements GestorePagamento, OnModuleInit {
         });
       }
 
-      if (importi.creditoUsatoCentesimi > 0) {
-        await transazione.movimentoCredito.create({
-          data: {
-            clienteId,
-            ordineId: ordine.id,
-            importoCentesimi: -importi.creditoUsatoCentesimi,
-            motivo: `Credito usato per l’ordine numero ${ordine.numero}.`,
-          },
-        });
-      }
+      // Il saldo letto per il preventivo può essere già stato speso da un
+      // altro ordine: qui viene riletto con la riga del cliente bloccata e, se
+      // non basta più, l'ordine intero viene annullato.
+      await this.caparra.spendiCredito(transazione, {
+        clienteId,
+        ordineId: ordine.id,
+        importoCentesimi: importi.creditoUsatoCentesimi,
+        motivo: `Credito usato per l’ordine numero ${ordine.numero}.`,
+      });
 
       return ordine;
     });

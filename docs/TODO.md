@@ -76,6 +76,36 @@ insieme alla prenotazione forzata del titolare.
 - [ ] `TODO` Il pacchetto JavaScript del frontend supera i 500 kB: valutare un ulteriore
       taglio in parti ora che l'area cliente è cresciuta.
 
+### Dalla revisione di sicurezza del 27/10/2026 (minori, confermate)
+
+- [ ] `TODO` I token in chiaro finiscono nella tabella delle code: il corpo dell'e-mail
+      accodato a pg-boss contiene i link di attivazione e reimpostazione, mentre la tabella
+      `token_utente` conserva solo gli hash. Accodare l'identificativo del token e comporre
+      il messaggio al momento dell'invio.
+- [ ] `TODO` La chiave del limite di frequenza usa il percorso grezzo della richiesta.
+      Express non distingue le maiuscole nelle rotte, quindi `/API/...` raggiunge lo stesso
+      gestore con una chiave diversa e moltiplica i tentativi di accesso disponibili:
+      normalizzare la chiave in minuscolo.
+- [ ] `TODO` `MittenteSmtp` crea il trasporto con `secure: false` e senza `requireTLS`:
+      con STARTTLS opzionale un attaccante in mezzo può togliere la cifratura e leggere le
+      credenziali SMTP.
+- [ ] `TODO` I modelli e-mail interpolano `nome` e `nomeSalone` nell'HTML senza escape.
+      Il destinatario è sempre la persona stessa, quindi l'unico scenario è un dipendente
+      che confezioni un'e-mail ingannevole verso un cliente: serve una funzione di escape
+      in `modelli-email.ts`.
+- [ ] `TODO` `PUT /prodotti/ordine` è l'unico endpoint con `@Body()` grezzo senza schema
+      Zod. Prisma parametrizza, quindi non è iniettabile, ma è un'incoerenza da chiudere.
+- [ ] `TODO` Tre test di `area-cliente.integrazione.spec.ts` dipendono dall'ora in cui
+      vengono eseguiti: `prossimoMercoledi()` prenota alle 10:00 del primo mercoledì utile,
+      quindi quando li si lancia intorno alle 10:00 del giorno prima l'appuntamento cade
+      appena sotto il limite di preavviso di 24 ore e `puoAnnullare`, lo spostamento e
+      l'annullamento dall'app risultano negati. Il difetto è nel test, non nel codice, ed
+      è anteriore a questo branch (verificato con `git stash` sul commit `c035e17`).
+      Spostare la prenotazione di prova più in là nella settimana.
+- [ ] `TODO` Verificare se il personale debba ricevere in risposta il token di invito del
+      cliente: `CLAUDE.md` dice che «il personale non conosce né imposta mai la password
+      del cliente», e chi ha il token può impostarla. Valutare l'invio sul solo recapito.
+
 ## Bloccato
 
 - [ ] `BLOCCATO` Aggiornamento automatico dell'installazione di staging al merge su `main`
@@ -99,6 +129,47 @@ insieme alla prenotazione forzata del titolare.
     pronti e documentati; manca la verifica end-to-end su dati reali.
 
 ## Completato
+
+### Correzioni di sicurezza dalla revisione del backend (27/10/2026)
+
+Branch: `fix/correzioni-sicurezza`. Revisione di sicurezza di `apps/api`: 22 ipotesi
+esaminate, 9 confermate. Qui sono corrette le cinque che contano; le minori restano
+sotto _Da fare_. Decisioni in `docs/adr/0013-correzioni-di-sicurezza.md`.
+
+- [x] `COMPLETATO` **Furto della scheda cliente.** La registrazione sovrascriveva la
+      scheda creata dal personale che avesse lo stesso numero WhatsApp, senza verificarlo:
+      chiunque conoscesse il numero di un cliente ne otteneva storico, credito e dati.
+      Ora la registrazione non tocca mai una scheda esistente e il numero vale solo come
+      recapito finché non è verificato.
+- [x] `COMPLETATO` **Unione dopo la verifica del numero**, come prescrive `CLAUDE.md`
+      («dopo la verifica del numero»): verificato il numero, le schede non rivendicate con
+      quello stesso numero vengono unite all'account con tutto lo storico e poi eliminate.
+- [x] `COMPLETATO` **Il codice di verifica parte solo su WhatsApp.** Il ripiego via
+      e-mail dimostrava il possesso della casella, non del numero: con quella prova si
+      sarebbe ottenuta la scheda altrui. Senza WhatsApp attivo la verifica non è
+      disponibile e lo dice.
+- [x] `COMPLETATO` **Niente enumerazione dei clienti**: la risposta alla registrazione
+      non dice più se quel numero era già di un cliente del salone.
+- [x] `COMPLETATO` **Credito spendibile due volte.** Saldo letto fuori dalla transazione
+      e speso senza ricontrollo: due richieste simultanee lo spendevano entrambe. Ora
+      `CaparraServizio.spendiCredito` blocca la riga del cliente (`FOR UPDATE`), rilegge
+      il saldo e rifiuta se non basta; prenotazione e credito stanno nella stessa
+      transazione, quindi uno slot non resta occupato da una prenotazione non pagata.
+- [x] `COMPLETATO` **Caparra restituita due volte.** `cambiaStato` leggeva lo stato e poi
+      scriveva: due annullamenti simultanei passavano entrambi. Ora la scrittura è
+      condizionata allo stato letto e la seconda riceve `409`.
+- [x] `COMPLETATO` **Dati personali del personale ai clienti.** `GET /area-cliente/catalogo`
+      restituiva e-mail, numero e stato dell'account di ogni operatore: ora solo
+      identificativo e nome (`schemaOperatorePubblico`).
+- [x] `COMPLETATO` **Credenziali nei log in produzione.** Senza `WHATSAPP_TOKEN` il
+      mittente di sviluppo scriveva nei log link di attivazione e codici di verifica, e
+      nulla impediva che accadesse in produzione: ora in produzione si usa
+      `MittenteWhatsappNonConfigurato`, che non registra nulla e lascia ripiegare
+      sull'e-mail. Il mittente di sviluppo non scrive più l'anteprima.
+- [x] `COMPLETATO` Test: registrazione (scheda altrui intatta, nessuna enumerazione,
+      numero verificato rifiutato), unione delle schede alla verifica, verifica non
+      disponibile senza WhatsApp, catalogo senza dati personali, e due test di
+      concorrenza (credito speso una volta sola, caparra restituita una volta sola).
 
 ### Navigazione del personale e dati del salone modificabili (25/10/2026)
 
