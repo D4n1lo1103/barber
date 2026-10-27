@@ -13,9 +13,17 @@ import {
 const PASSWORD = 'password-di-prova-123';
 const GIORNO_IN_MILLISECONDI = 24 * 60 * 60 * 1000;
 
-/** Primo mercoledì utile: giorno lavorativo entro i 60 giorni consentiti. */
+/**
+ * Primo mercoledì utile: giorno lavorativo entro i 60 giorni consentiti e
+ * oltre il limite di preavviso.
+ *
+ * La ricerca parte da tre giorni da adesso, non da domani: con un solo giorno
+ * di margine un appuntamento alle 10:00 di domani cade sotto le 24 ore di
+ * preavviso se i test girano dopo le 10:00, e annullamento e spostamento
+ * dall'app risulterebbero negati a seconda dell'ora di esecuzione.
+ */
 function prossimoMercoledi(): string {
-  let giorno = new Date(Date.now() + GIORNO_IN_MILLISECONDI);
+  let giorno = new Date(Date.now() + 3 * GIORNO_IN_MILLISECONDI);
 
   while (giornoSettimanaLocale(giorno) !== 3) {
     giorno = new Date(giorno.getTime() + GIORNO_IN_MILLISECONDI);

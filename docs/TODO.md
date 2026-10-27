@@ -95,13 +95,6 @@ insieme alla prenotazione forzata del titolare.
       in `modelli-email.ts`.
 - [ ] `TODO` `PUT /prodotti/ordine` è l'unico endpoint con `@Body()` grezzo senza schema
       Zod. Prisma parametrizza, quindi non è iniettabile, ma è un'incoerenza da chiudere.
-- [ ] `TODO` Tre test di `area-cliente.integrazione.spec.ts` dipendono dall'ora in cui
-      vengono eseguiti: `prossimoMercoledi()` prenota alle 10:00 del primo mercoledì utile,
-      quindi quando li si lancia intorno alle 10:00 del giorno prima l'appuntamento cade
-      appena sotto il limite di preavviso di 24 ore e `puoAnnullare`, lo spostamento e
-      l'annullamento dall'app risultano negati. Il difetto è nel test, non nel codice, ed
-      è anteriore a questo branch (verificato con `git stash` sul commit `c035e17`).
-      Spostare la prenotazione di prova più in là nella settimana.
 - [ ] `TODO` Verificare se il personale debba ricevere in risposta il token di invito del
       cliente: `CLAUDE.md` dice che «il personale non conosce né imposta mai la password
       del cliente», e chi ha il token può impostarla. Valutare l'invio sul solo recapito.
@@ -170,6 +163,12 @@ sotto _Da fare_. Decisioni in `docs/adr/0013-correzioni-di-sicurezza.md`.
       numero verificato rifiutato), unione delle schede alla verifica, verifica non
       disponibile senza WhatsApp, catalogo senza dati personali, e due test di
       concorrenza (credito speso una volta sola, caparra restituita una volta sola).
+- [x] `COMPLETATO` Tre test di `area-cliente.integrazione.spec.ts` dipendevano dall'ora di
+      esecuzione: `prossimoMercoledi()` partiva da domani, quindi un appuntamento alle
+      10:00 cadeva sotto le 24 ore di preavviso se la suite girava dopo le 10:00, e
+      annullamento e spostamento dall'app risultavano negati. La ricerca parte ora da tre
+      giorni, come `prossimoGiovedi()` in `caparra.integrazione.spec.ts`. Difetto del test,
+      non del codice, anteriore a questo branch (verificato con `git stash` su `c035e17`).
 
 ### Navigazione del personale e dati del salone modificabili (25/10/2026)
 
